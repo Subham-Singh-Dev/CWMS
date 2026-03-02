@@ -3,11 +3,7 @@ from . import views
 
 urlpatterns = [
     path('payslip/<int:salary_id>/', views.download_payslip, name='download_payslip'),
-    path(
-        "manager/payroll/summary/",
-        views.payroll_batch_summary,
-        name="payroll_batch_summary"
-    ),
+    path("summary/", views.payroll_batch_summary, name="payroll_batch_summary"),
     path(
     "manager/payroll/salaries/",
     views.salary_list_view,

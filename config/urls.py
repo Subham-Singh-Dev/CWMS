@@ -33,6 +33,8 @@ urlpatterns = [
 
     path("", include("employees.urls")),
 
+    path("", include("analytics.urls")),
+
     
 ]
 

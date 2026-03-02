@@ -50,6 +50,8 @@ INSTALLED_APPS = [
 
     'expenses.apps.ExpensesConfig',
 
+    'analytics.apps.AnalyticsConfig',
+
 
 ]
 

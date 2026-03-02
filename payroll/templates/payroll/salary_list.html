@@ -1,0 +1,960 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salary List — {{ selected_month }}</title>
+    
+    <!-- Professional Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ============================================
+           DESIGN SYSTEM - Financial Data Optimized
+           ============================================ */
+        
+        :root {
+            /* Light Theme */
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-table-header: #f1f5f9;
+            --bg-row-even: #fafbfc;
+            --bg-row-hover: #f1f5f9;
+            
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            
+            --border-light: #e2e8f0;
+            --border-medium: #cbd5e1;
+            
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --success-border: #86efac;
+            
+            --warning-bg: #fef3c7;
+            --warning-text: #92400e;
+            --warning-border: #fcd34d;
+            
+            --danger-bg: #fee2e2;
+            --danger-text: #991b1b;
+            --danger-border: #fca5a5;
+            
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --bg-body: #0a0f1e;
+            --bg-card: #1e293b;
+            --bg-table-header: #1e293b;
+            --bg-row-even: #1a2333;
+            --bg-row-hover: #293548;
+            
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            
+            --border-light: #334155;
+            --border-medium: #475569;
+            
+            --success-bg: rgba(22, 163, 74, 0.15);
+            --success-text: #86efac;
+            --success-border: rgba(134, 239, 172, 0.3);
+            
+            --warning-bg: rgba(234, 179, 8, 0.15);
+            --warning-text: #fde047;
+            --warning-border: rgba(253, 224, 71, 0.3);
+            
+            --danger-bg: rgba(220, 38, 38, 0.15);
+            --danger-text: #fca5a5;
+            --danger-border: rgba(252, 165, 165, 0.3);
+            
+            --accent: #60a5fa;
+            --accent-hover: #3b82f6;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ============================================
+           BASE STYLES
+           ============================================ */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .page-container {
+            max-width: 1400px;
+            margin: 32px auto;
+            padding: 0 24px;
+        }
+
+        /* ============================================
+           PAGE HEADER - Enhanced Navigation
+           ============================================ */
+        
+        .page-header {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .month-display {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            border: 1px solid var(--border-medium);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .header-link:hover {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .theme-toggle-btn {
+            width: 42px;
+            height: 42px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-body);
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle-btn:hover {
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .export-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        /* ============================================
+           MESSAGES - System Feedback
+           ============================================ */
+        
+        .messages {
+            margin: 0 0 20px 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .msg {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .msg::before {
+            font-size: 18px;
+        }
+
+        .msg.success {
+            background: var(--success-bg);
+            color: var(--success-text);
+            border-color: var(--success-border);
+        }
+
+        .msg.success::before {
+            content: '✓';
+        }
+
+        .msg.warning {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border-color: var(--warning-border);
+        }
+
+        .msg.warning::before {
+            content: '⚠';
+        }
+
+        .msg.error {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            border-color: var(--danger-border);
+        }
+
+        .msg.error::before {
+            content: '✕';
+        }
+
+        /* ============================================
+           TABLE CONTAINER - Financial Data Display
+           ============================================ */
+        
+        .table-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Table Stats Summary Bar */
+        .table-stats {
+            padding: 16px 20px;
+            background: var(--bg-body);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        /* Table Wrapper for Scroll */
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: calc(100vh - 300px);
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ============================================
+           TABLE HEADER - Sticky & Professional
+           ============================================ */
+        
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--bg-table-header);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        th {
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+            border-bottom: 2px solid var(--border-medium);
+            white-space: nowrap;
+        }
+
+        th.col-numeric {
+            text-align: right;
+        }
+
+        /* ============================================
+           TABLE BODY - Enhanced Readability
+           ============================================ */
+        
+        tbody tr {
+            transition: background-color 0.15s ease;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        tbody tr:nth-child(even) {
+            background: var(--bg-row-even);
+        }
+
+        tbody tr:hover {
+            background: var(--bg-row-hover);
+        }
+
+        td {
+            padding: 16px 20px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        /* Employee Name Column */
+        .employee-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Numeric Columns - Right Aligned */
+        td.col-numeric {
+            text-align: right;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        /* Currency Symbol Styling */
+        .currency {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-right: 2px;
+        }
+
+        /* Empty State */
+        td.empty-cell {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* ============================================
+           STATUS BADGES - Clear Visual States
+           ============================================ */
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            border: 1px solid;
+        }
+
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .badge-paid {
+            background: var(--success-bg);
+            color: var(--success-text);
+            border-color: var(--success-border);
+        }
+
+        .badge-paid::before {
+            background: var(--success-text);
+            box-shadow: 0 0 6px var(--success-text);
+        }
+
+        .badge-unpaid {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border-color: var(--warning-border);
+        }
+
+        .badge-unpaid::before {
+            background: var(--warning-text);
+            animation: pulse-badge 2s ease-in-out infinite;
+        }
+
+        .badge-not-generated {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            border-color: var(--danger-border);
+        }
+
+        .badge-not-generated::before {
+            background: var(--danger-text);
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ============================================
+           ACTION BUTTONS - Clear CTAs
+           ============================================ */
+        
+        .action-form {
+            margin: 0;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-medium);
+            border-radius: 6px;
+            background: var(--accent);
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        }
+
+        .action-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Generate Salary Button (Different Color) */
+        .btn-generate {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
+        }
+
+        .btn-generate:hover {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Empty Action State */
+        .action-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        /* ============================================
+           LOADING STATE
+           ============================================ */
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN
+           ============================================ */
+        
+        @media (max-width: 768px) {
+            .page-container {
+                padding: 0 16px;
+                margin: 16px auto;
+            }
+
+            .page-header {
+                padding: 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .header-link,
+            .export-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .page-title {
+                font-size: 22px;
+            }
+
+            .table-stats {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .table-wrapper {
+                max-height: calc(100vh - 400px);
+            }
+
+            th, td {
+                padding: 12px;
+                font-size: 13px;
+            }
+
+            .action-btn {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+        }
+
+        /* ============================================
+           ACCESSIBILITY & POLISH
+           ============================================ */
+        
+        /* Paid On date - subtle financial metadata */
+        td small {
+            display: block;
+            font-size: 12px;
+            opacity: 0.85;
+            margin-top: 4px;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        ::selection {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-body);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-medium);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .theme-toggle-btn,
+            .export-btn,
+            .header-link {
+                display: none;
+            }
+
+            .table-container {
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="page-container">
+
+    <!-- ============================================
+         PAGE HEADER - Navigation & Actions
+         ============================================ -->
+    <div class="page-header">
+        <div class="header-title-section">
+            <h1 class="page-title">💼 Salary List</h1>
+            <div class="month-display">{{ selected_month }}</div>
+        </div>
+
+        <div class="header-actions">
+            <a href="{% url 'payroll_batch_summary' %}?month={{ selected_month }}" class="header-link">
+                ← Back to Summary
+            </a>
+
+            <a href="{% url 'manager_dashboard' %}" class="header-link">
+                ← Back to Dashboard
+            </a>
+
+            <button id="themeToggle" type="button" class="theme-toggle-btn" aria-label="Toggle theme">
+                🌙
+            </button>
+
+            <a href="{% url 'export_salary_list_csv' %}?month={{ selected_month }}" class="export-btn">
+                📊 Export Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- ============================================
+         SYSTEM MESSAGES
+         ============================================ -->
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li class="msg {{ message.tags }}">
+                    {{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <!-- ============================================
+         SALARY TABLE
+         ============================================ -->
+    <div class="table-container">
+        
+        <!-- Quick Stats Bar -->
+        <div class="table-stats">
+            <div class="stat-item">
+                <div class="stat-label">Total Entries</div>
+                <div class="stat-value" id="totalCount">{{ rows|length }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Paid</div>
+                <div class="stat-value stat-paid" id="paidCount">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value stat-unpaid" id="unpaidCount">0</div>
+            </div>
+        </div>
+
+        <!-- Scrollable Table -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th class="col-numeric">Gross Pay</th>
+                        <th class="col-numeric">Advance Deducted</th>
+                        <th class="col-numeric">Net Pay</th>
+                        <th>Status</th>
+                        <th>Paid On</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for row in rows %}
+                        <tr data-status="{% if row.salary %}{% if row.salary.is_paid %}paid{% else %}unpaid{% endif %}{% else %}not-generated{% endif %}">
+                            <!-- Employee Name -->
+                            <td>
+                                <span class="employee-name">{{ row.employee.name }}</span>
+                            </td>
+
+                            {% if row.salary %}
+                                <!-- Gross Pay -->
+                                <td class="col-numeric">
+                                    <span class="currency">₹</span>{{ row.salary.gross_pay|floatformat:0 }}
+                                </td>
+
+                                <!-- Advance Deducted -->
+                                <td class="col-numeric">
+                                    <span class="currency">₹</span>{{ row.salary.advance_deducted|floatformat:0 }}
+                                </td>
+
+                                <!-- Net Pay -->
+                                <td class="col-numeric">
+                                    <span class="currency">₹</span>{{ row.salary.net_pay|floatformat:0 }}
+                                </td>
+
+                                <!-- Status Badge -->
+                                <td>
+                                    {% if row.salary and row.salary.is_paid %}
+                                        <span class="badge badge-paid">PAID</span>
+                                    {% elif row.salary %}
+                                        <span class="badge badge-unpaid">UNPAID</span>
+                                    {% else %}
+                                        <span class="badge badge-not-generated">NOT GENERATED</span>
+                                    {% endif %}
+                                </td>
+                               
+                                <!-- PAID-ON -->
+                                <td>
+                                    {% if row.salary and row.salary.is_paid %}
+                                        <small class="text-muted">
+                                            {{ row.salary.paid_on|date:"d M Y" }}
+                                        </small>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+
+
+                                <!-- Action -->
+                                <td>
+                                    {% if not row.salary.is_paid %}
+                                        <form method="post" action="{% url 'mark_salary_paid' %}" class="action-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="salary_id" value="{{ row.salary.id }}">
+                                            <input type="hidden" name="month" value="{{ selected_month }}">
+                                            <button type="submit" class="action-btn">
+                                                ✓ Mark as Paid
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="action-empty">—</span>
+                                    {% endif %}
+                                </td>
+
+                            {% else %}
+                                <!-- No Salary Generated -->
+                                <td colspan="3" class="empty-cell">—</td>
+
+                                <td>
+                                    <span class="badge badge-not-generated">Not Generated</span>
+                                </td>
+
+                                <td>
+                                    <form method="post" action="{% url 'generate_employee_salary' %}" class="action-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="employee_id" value="{{ row.employee.id }}">
+                                        <input type="hidden" name="month" value="{{ selected_month }}">
+                                        <button type="submit" class="action-btn btn-generate">
+                                            ⚡ Generate Salary
+                                        </button>
+                                    </form>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Loading Overlay (for form submissions) -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
+
+<!-- ============================================
+     JAVASCRIPT - UI Enhancements Only
+     ============================================ -->
+<script>
+// ============================================
+// THEME TOGGLE
+// ============================================
+const themeToggle = document.getElementById("themeToggle");
+const savedTheme = localStorage.getItem("theme");
+
+if (savedTheme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    themeToggle.textContent = "☀️";
+}
+
+themeToggle.addEventListener("click", () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+
+    if (isDark) {
+        document.documentElement.removeAttribute("data-theme");
+        localStorage.setItem("theme", "light");
+        themeToggle.textContent = "🌙";
+    } else {
+        document.documentElement.setAttribute("data-theme", "dark");
+        localStorage.setItem("theme", "dark");
+        themeToggle.textContent = "☀️";
+    }
+    
+    // Visual feedback
+    themeToggle.style.transform = 'scale(0.9)';
+    setTimeout(() => {
+        themeToggle.style.transform = 'scale(1)';
+    }, 100);
+});
+
+// ============================================
+// COUNT STATISTICS (Client-side from table)
+// ============================================
+function updateStats() {
+    const rows = document.querySelectorAll('tbody tr');
+    let paidCount = 0;
+    let unpaidCount = 0;
+    
+    rows.forEach(row => {
+        const status = row.dataset.status;
+        if (status === 'paid') paidCount++;
+        if (status === 'unpaid') unpaidCount++;
+    });
+    
+    document.getElementById('paidCount').textContent = paidCount;
+    document.getElementById('unpaidCount').textContent = unpaidCount;
+}
+
+// ============================================
+// FORM SUBMISSION FEEDBACK
+// ============================================
+const forms = document.querySelectorAll('.action-form');
+const loadingOverlay = document.getElementById('loadingOverlay');
+
+forms.forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const button = this.querySelector('.action-btn');
+        
+        // Disable button
+        button.disabled = true;
+        button.textContent = 'Processing...';
+        
+        // Show loading overlay
+        loadingOverlay.classList.add('active');
+    });
+});
+
+// ============================================
+// BUTTON CLICK FEEDBACK
+// ============================================
+document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        this.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            this.style.transform = '';
+        }, 150);
+    });
+});
+
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    updateStats();
+    
+    console.log(
+        '%c💼 CWMS Salary List',
+        'background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 8px 16px; font-size: 12px; font-weight: bold; border-radius: 4px;'
+    );
+    console.log('%c✓ Financial Interface Loaded', 'color: #10b981; font-weight: bold;');
+});
+</script>
+</body>
+</html>
+
+

@@ -1,0 +1,505 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Employee | CWMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neutral-50: #f8fafc;
+            --neutral-100: #f1f5f9;
+            --neutral-200: #e2e8f0;
+            --neutral-300: #cbd5e1;
+            --neutral-400: #94a3b8;
+            --neutral-500: #64748b;
+            --neutral-600: #475569;
+            --neutral-700: #334155;
+            --neutral-800: #1e293b;
+            --neutral-900: #0f172a;
+            --danger-50: #fef2f2;
+            --danger-500: #ef4444;
+            --danger-600: #dc2626;
+            --success-50: #f0fdf4;
+            --success-500: #10b981;
+            --success-600: #059669;
+            --primary-50: #eff6ff;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+            --warning-50: #fffbeb;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+            --purple-500: #8b5cf6;
+            --purple-600: #7c3aed;
+            --bg-body: var(--neutral-50);
+            --bg-card: #ffffff;
+            --bg-secondary: var(--neutral-100);
+            --text-primary: var(--neutral-900);
+            --text-secondary: var(--neutral-600);
+            --text-muted: var(--neutral-500);
+            --border-subtle: var(--neutral-200);
+            --border-strong: var(--neutral-300);
+            --shadow-xs: 0 1px 2px 0 rgba(0,0,0,.05);
+            --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
+        }
+        [data-theme="dark"] {
+            --bg-body: #0a0d14;
+            --bg-card: var(--neutral-800);
+            --bg-secondary: #151924;
+            --text-primary: var(--neutral-50);
+            --text-secondary: var(--neutral-400);
+            --text-muted: var(--neutral-500);
+            --border-subtle: var(--neutral-700);
+            --border-strong: var(--neutral-600);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+            transition: background-color .2s ease, color .2s ease;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            width: 100%;
+            max-width: 1400px;   
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* HEADER */
+        .header {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 20px 28px;
+            margin-bottom: 28px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-500), var(--purple-500));
+        }
+        .brand-section { display: flex; flex-direction: column; gap: 2px; }
+        .brand {
+            font-weight: 900;
+            font-size: 24px;
+            letter-spacing: -.5px;
+            background: linear-gradient(135deg, var(--primary-600), var(--purple-600));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .brand-subtitle { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .header-controls { display: flex; align-items: center; gap: 12px; }
+        .user-info {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 14px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+        }
+        .user-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-500), var(--purple-500));
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: 700; font-size: 14px;
+            text-transform: uppercase;
+        }
+        .user-name { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+        .theme-toggle {
+            width: 40px; height: 40px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all .2s ease;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .theme-toggle:hover { border-color: var(--primary-500); transform: scale(1.05); }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            transition: all .2s ease;
+        }
+        .back-link:hover {
+            border-color: var(--primary-500);
+            background: var(--primary-50);
+        }
+        [data-theme="dark"] .back-link:hover {
+            background: rgba(59, 130, 246, 0.15);
+        }
+        
+        /* FORM PANEL */
+        .form-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 28px;
+        }
+        .form-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+        
+        .employee-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-label { 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: var(--text-secondary); 
+            text-transform: uppercase; 
+            letter-spacing: .5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .required { color: var(--danger-500); }
+        .form-input, .form-select {
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-subtle);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: inherit;
+            transition: all .2s;
+            outline: none;
+        }
+        .form-input:focus, .form-select:focus { 
+            border-color: var(--primary-500); 
+            box-shadow: 0 0 0 4px rgba(59,130,246,.12);
+            background: var(--bg-card);
+        }
+        .form-input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .form-helper {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .form-error {
+            font-size: 13px;
+            color: var(--danger-600);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* INFO BOX */
+        .info-box {
+            background: linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(139,92,246,.08) 100%);
+            border: 1.5px solid var(--primary-500);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: start;
+            gap: 12px;
+        }
+        .info-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .info-content {
+            font-size: 13px;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        /* ACTIONS */
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 16px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .btn-primary {
+            padding: 12px 32px;
+            background: linear-gradient(135deg, var(--primary-600), var(--purple-600));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,.4); }
+        .btn-secondary {
+            padding: 12px 28px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 2px solid var(--border-subtle);
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s ease;
+            font-family: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-secondary:hover {
+            border-color: var(--border-strong);
+            background: var(--bg-body);
+        }
+        
+        /* MESSAGES */
+        .messages { margin-bottom: 20px; }
+        .message {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.success {
+            background: var(--success-50);
+            color: var(--success-600);
+            border-color: var(--success-500);
+        }
+        .message.error {
+            background: var(--danger-50);
+            color: var(--danger-600);
+            border-color: var(--danger-500);
+        }
+        
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .employee-form {
+                grid-template-columns: 1fr;
+            }
+            .form-panel {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- HEADER -->
+    <div class="header">
+        <div class="brand-section">
+            <div class="brand">CWMS</div>
+            <div class="brand-subtitle">👷 Add New Employee</div>
+        </div>
+        <div class="header-controls">
+            <a href="{% url 'manager_dashboard' %}" class="back-link">← Back To Dashboard</a>
+            <div class="user-info">
+                <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+                <span class="user-name">{{ request.user.username }}</span>
+            </div>
+            <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
+        </div>
+    </div>
+
+    <!-- MESSAGES -->
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- INFO BOX -->
+    <div class="info-box">
+        <span class="info-icon">💡</span>
+        <div class="info-content">
+            <strong>Employee Code will be auto-generated</strong> after saving. Workers can login using their phone number. Daily wage determines base pay calculation.
+        </div>
+    </div>
+
+    <!-- FORM PANEL -->
+    <div class="form-panel">
+        <div class="form-title">👤 Employee Information</div>
+        <div class="form-subtitle">Fill in the details to add a new worker to your workforce</div>
+        
+        <form method="post" class="employee-form">
+                {% csrf_token %}
+
+                {% if error %}
+                <div class="message error full-width">
+                    ⚠️ {{ error }}
+                </div>
+                {% endif %}
+
+                {% if success %}
+                <div class="message success full-width">
+                    ✅ Employee Created<br>
+                    🆔 System ID: {{ system_id }}<br>
+                    🔑 Temporary Password: {{ temp_password }}<br>
+                    <small>Write this down. It will not be shown again.</small>
+                </div>
+                {% endif %}
+
+                <!-- Name -->
+                <div class="form-group">
+                    <label class="form-label">
+                        Full Name <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text"
+                        name="name"
+                        class="form-input"
+                        placeholder="e.g. Rajesh Kumar"
+                        required>
+                </div>
+
+                <!-- Phone -->
+                <div class="form-group">
+                    <label class="form-label">
+                        Phone Number <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="tel"
+                        name="phone_number"
+                        class="form-input"
+                        placeholder="e.g. 9876543210"
+                        pattern="[0-9]{10}"
+                        required>
+                    <div class="form-helper">Used for worker login (10 digits)</div>
+                </div>
+
+                <!-- Daily Wage -->
+                <div class="form-group">
+                    <label class="form-label">
+                        Daily Wage (₹) <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="number"
+                        name="daily_wage"
+                        class="form-input"
+                        placeholder="e.g. 500"
+                        min="0"
+                        step="0.01"
+                        required>
+                    <div class="form-helper">Base pay per working day</div>
+                </div>
+
+                <!-- Role -->
+                <div class="form-group">
+                    <label class="form-label">
+                        Role <span class="required">*</span>
+                    </label>
+                    <select name="role" class="form-select" required>
+                        <option value="">Select Role</option>
+                        {% for role in roles %}
+                            <option value="{{ role.id }}">{{ role.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-helper">Determines overtime rate</div>
+                </div>
+
+                <!-- Join Date -->
+                <div class="form-group">
+                    <label class="form-label">
+                        Join Date <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="date"
+                        name="join_date"
+                        class="form-input"
+                        required>
+                    <div class="form-helper">When did they start working?</div>
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="is_active" class="form-select">
+                        <option value="true" selected>Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="form-actions">
+                    <a href="{% url 'manager_dashboard' %}" class="btn-secondary">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn-primary">
+                        ✓ Add Employee
+                    </button>
+                </div>
+            </form>
+    </div>
+</div>
+
+<script>
+// Phone number validation
+document.querySelector('input[name="phone_number"]').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '').substring(0, 10);
+});
+</script>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

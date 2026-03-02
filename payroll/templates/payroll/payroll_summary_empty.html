@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>No Payroll Found</title>
+</head>
+<body>
+
+<h1>No Payroll Data</h1>
+
+<p>
+    No payroll has been generated for <strong>{{ selected_month }}</strong>.
+</p>
+
+<a href="{% url 'manager_dashboard' %}">
+    Back to Dashboard
+</a>
+
+</body>
+</html>

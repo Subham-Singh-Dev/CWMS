@@ -1,0 +1,195 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login | CWMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f3f4f6;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 380px;
+            transition: transform 0.2s;
+        }
+
+        /* ROLE TABS */
+        .tabs {
+            display: flex;
+            background: #e5e7eb;
+            padding: 5px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            border-radius: 8px;
+            color: #6b7280;
+            transition: all 0.2s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* HEADER */
+        .header { text-align: center; margin-bottom: 25px; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary); }
+        .subtitle { font-size: 13px; color: #6b7280; margin-top: 5px; }
+
+        /* FORM */
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; font-size: 12px; color: #374151; margin-bottom: 6px; text-transform: uppercase; }
+        
+        input { 
+            width: 100%; 
+            padding: 12px 15px; 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px; 
+            font-size: 15px; 
+            box-sizing: border-box; 
+            transition: 0.2s;
+        }
+        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); }
+
+        .btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #1a252f; }
+
+        .alert { 
+            background: #fee2e2; 
+            color: #b91c1c; 
+            padding: 12px; 
+            border-radius: 8px; 
+            font-size: 13px; 
+            margin-bottom: 20px; 
+            text-align: center;
+        }
+        
+        /* Helper Text */
+        .helper {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    
+    <div class="tabs">
+        <div class="tab active" onclick="switchRole('worker')" id="tab-worker">👷 Worker</div>
+        <div class="tab" onclick="switchRole('manager')" id="tab-manager">👔 Manager</div>
+    </div>
+
+    <div class="header">
+        <div class="logo">CWMS Portal</div>
+        <div class="subtitle" id="subtitle-text">Secure Access for Employees</div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label id="label-id">Phone Number</label>
+            <input type="text" name="login_id" id="input-id" placeholder="Enter your 10-digit number" required autofocus>
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn" id="btn-text">Login as Worker</button>
+    </form>
+
+    <div class="helper">Authorized Personnel Only • Secure Connection</div>
+</div>
+
+<script>
+    function switchRole(role) {
+        // Elements
+        const tabWorker = document.getElementById('tab-worker');
+        const tabManager = document.getElementById('tab-manager');
+        const labelId = document.getElementById('label-id');
+        const inputId = document.getElementById('input-id');
+        const btnText = document.getElementById('btn-text');
+        const subtitle = document.getElementById('subtitle-text');
+
+        if (role === 'worker') {
+            // UI Updates for Worker
+            tabWorker.classList.add('active');
+            tabManager.classList.remove('active');
+            
+            labelId.textContent = "Phone Number";
+            inputId.placeholder = "Enter your 10-digit number";
+            btnText.textContent = "Login as Worker";
+            subtitle.textContent = "Secure Access for Employees";
+            
+            // Switch input mode for mobile keyboards
+            inputId.setAttribute('inputmode', 'numeric');
+        } else {
+            // UI Updates for Manager
+            tabManager.classList.add('active');
+            tabWorker.classList.remove('active');
+            
+            labelId.textContent = "Username";
+            inputId.placeholder = "Enter Admin/Manager Username";
+            btnText.textContent = "Login to Console";
+            subtitle.textContent = "Administrative Access";
+            
+            // Standard text input
+            inputId.setAttribute('inputmode', 'text');
+        }
+    }
+</script>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

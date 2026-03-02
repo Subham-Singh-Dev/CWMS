@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #333; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .company-name { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+        .title { font-size: 14px; margin-top: 5px; font-weight: bold; }
+        .section { margin-bottom: 15px; }
+        .row { margin-bottom: 5px; }
+        .label { font-weight: bold; display: inline-block; width: 130px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+        th { background-color: #f0f0f0; font-weight: bold; }
+        .amount { text-align: right; }
+        .total-row { font-weight: bold; background-color: #e8e8e8; }
+        .footer { margin-top: 30px; font-size: 10px; text-align: center; color: #777; border-top: 1px solid #ccc; padding-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="company-name">Construction Workflow Management</div>
+        <div class="title">PAYSLIP - {{ salary.month|date:"F Y"|upper }}</div>
+    </div>
+
+    <div class="section">
+        <div class="row"><span class="label">Employee Name:</span> {{ salary.employee.name }}</div>
+        <div class="row"><span class="label">ID:</span> {{ salary.employee.user.username }}</div>
+        <div class="row"><span class="label">Role:</span> {{ salary.employee.role.name }}</div>
+        <div class="row"><span class="label">Phone:</span> {{ salary.employee.phone_number }}</div>
+    </div>
+
+    <div class="section">
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="amount">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Gross Pay / Basic Salary</td>
+                    <td class="amount">{{ salary.gross_pay }}</td>
+                </tr>
+                <tr>
+                    <td>Overtime ({{ salary.overtime_hours }} hrs)</td>
+                    <td class="amount">Included</td>
+                </tr>
+                <tr>
+                    <td>Less: Advance Deducted</td>
+                    <td class="amount" style="color: #d9534f;">- {{ salary.advance_deducted }}</td>
+                </tr>
+                <tr class="total-row">
+                    <td>NET PAYABLE</td>
+                    <td class="amount">₹ {{ salary.net_pay }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section" style="margin-top: 20px;">
+        <strong>Attendance Summary:</strong><br>
+        <span style="font-size: 11px;">
+            Present: {{ salary.days_present }} days &nbsp;|&nbsp; 
+            Half Days: {{ salary.half_days }} &nbsp;|&nbsp; 
+            Paid Leaves: {{ salary.paid_leaves }}
+        </span>
+    </div>
+
+    <div class="footer">
+        Generated on {% now "d M Y" %} | Computer Generated Invoice
+    </div>
+
+</body>
+</html>

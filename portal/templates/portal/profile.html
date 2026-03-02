@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Profile</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; max-width: 400px; margin: 0 auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .label { color: #888; font-size: 12px; margin-bottom: 5px; }
+        .value { font-size: 16px; color: #333; font-weight: 500; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { text-align: center; margin-bottom: 30px; }
+        .btn-back { display: block; text-align: center; margin-top: 20px; text-decoration: none; color: #666; }
+        .btn-password { background: #6c757d; color: white; display: block; text-align: center; padding: 12px; text-decoration: none; border-radius: 6px; margin-top: 10px;}
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>My Profile</h2>
+
+    <div class="label">FULL NAME</div>
+    <div class="value">{{ employee.name }}</div>
+
+    <div class="label">PHONE NUMBER (Login ID)</div>
+    <div class="value">{{ employee.phone_number }}</div>
+
+    <div class="label">ROLE</div>
+    <div class="value">{{ employee.role.name }}</div>
+
+    <div class="label">DATE OF JOINING</div>
+    <div class="value">{{ employee.join_date|date:"d M Y" }}</div>
+
+    <a href="#" onclick="alert('Please contact Admin to reset password')" class="btn-password">🔒 Change Password</a>
+    
+    <a href="{% url 'worker_dashboard' %}" class="btn-back">← Back to Dashboard</a>
+</div>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

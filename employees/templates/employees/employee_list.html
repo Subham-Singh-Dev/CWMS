@@ -1,0 +1,573 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Employees | CWMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neutral-50: #f8fafc;
+            --neutral-100: #f1f5f9;
+            --neutral-200: #e2e8f0;
+            --neutral-300: #cbd5e1;
+            --neutral-400: #94a3b8;
+            --neutral-500: #64748b;
+            --neutral-600: #475569;
+            --neutral-700: #334155;
+            --neutral-800: #1e293b;
+            --neutral-900: #0f172a;
+            --danger-50: #fef2f2;
+            --danger-500: #ef4444;
+            --danger-600: #dc2626;
+            --success-50: #f0fdf4;
+            --success-500: #10b981;
+            --success-600: #059669;
+            --primary-50: #eff6ff;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --warning-50: #fffbeb;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+            --purple-500: #8b5cf6;
+            --purple-600: #7c3aed;
+            --bg-body: var(--neutral-50);
+            --bg-card: #ffffff;
+            --bg-secondary: var(--neutral-100);
+            --text-primary: var(--neutral-900);
+            --text-secondary: var(--neutral-600);
+            --text-muted: var(--neutral-500);
+            --border-subtle: var(--neutral-200);
+            --border-strong: var(--neutral-300);
+            --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
+        }
+        [data-theme="dark"] {
+            --bg-body: #0a0d14;
+            --bg-card: var(--neutral-800);
+            --bg-secondary: #151924;
+            --text-primary: var(--neutral-50);
+            --text-secondary: var(--neutral-400);
+            --text-muted: var(--neutral-500);
+            --border-subtle: var(--neutral-700);
+            --border-strong: var(--neutral-600);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+            transition: background-color .2s ease, color .2s ease;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        /* HEADER */
+        .header {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 20px 28px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-500), var(--purple-500));
+        }
+        .brand-section { display: flex; flex-direction: column; gap: 2px; }
+        .brand {
+            font-weight: 900;
+            font-size: 24px;
+            letter-spacing: -.5px;
+            background: linear-gradient(135deg, var(--primary-600), var(--purple-600));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .brand-subtitle { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all .2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-600), var(--purple-600));
+            color: white;
+            box-shadow: 0 4px 12px rgba(59,130,246,.3);
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59,130,246,.4);
+        }
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        .btn-secondary:hover {
+            border-color: var(--primary-500);
+            background: var(--primary-50);
+        }
+        [data-theme="dark"] .btn-secondary:hover {
+            background: rgba(59, 130, 246, 0.15);
+        }
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-secondary);
+            font-size: 18px;
+        }
+        .theme-toggle:hover {
+            border-color: var(--primary-500);
+            transform: scale(1.05);
+        }
+        
+        /* METRICS */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            transition: all .2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card:hover { 
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+        }
+        .metric-card.total::after { background: linear-gradient(90deg, var(--primary-500), var(--purple-500)); }
+        .metric-card.active::after { background: linear-gradient(90deg, var(--success-500), #34d399); }
+        .metric-card.inactive::after { background: linear-gradient(90deg, var(--neutral-400), var(--neutral-500)); }
+        .metric-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .metric-icon { font-size: 24px; }
+        .metric-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .badge-primary { background: var(--primary-50); color: var(--primary-600); }
+        .badge-success { background: var(--success-50); color: var(--success-600); }
+        .badge-neutral { background: var(--neutral-100); color: var(--neutral-600); }
+        [data-theme="dark"] .badge-primary { background: rgba(59,130,246,.15); color: #93c5fd; }
+        [data-theme="dark"] .badge-success { background: rgba(16,185,129,.15); color: #6ee7b7; }
+        [data-theme="dark"] .badge-neutral { background: rgba(148,163,184,.15); color: var(--neutral-400); }
+        .metric-label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+        .metric-value { font-size: 28px; font-weight: 800; color: var(--text-primary); letter-spacing: -.5px; }
+        
+        /* FILTERS */
+        .filter-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .filter-form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .filter-input, .filter-select {
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: all .2s;
+        }
+        .filter-input:focus, .filter-select:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+        }
+        .btn-filter {
+            padding: 10px 24px;
+            background: var(--primary-500);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+            font-family: inherit;
+        }
+        .btn-filter:hover {
+            background: var(--primary-600);
+            transform: translateY(-1px);
+        }
+        
+        /* TABLE */
+        .table-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .table-count {
+            font-size: 13px;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--bg-secondary);
+            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            border-bottom: 2px solid var(--border-strong);
+        }
+        th.col-numeric { text-align: right; }
+        td {
+            padding: 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-subtle);
+            vertical-align: middle;
+        }
+        td.col-numeric {
+            text-align: right;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--bg-secondary); }
+        
+        .employee-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--neutral-100);
+            color: var(--text-secondary);
+        }
+        [data-theme="dark"] .role-badge {
+            background: var(--neutral-700);
+        }
+        .system-id {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .status-active {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--success-50);
+            color: var(--success-600);
+        }
+        .status-inactive {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--neutral-200);
+            color: var(--neutral-600);
+        }
+        [data-theme="dark"] .status-active {
+            background: rgba(16,185,129,.15);
+            color: #6ee7b7;
+        }
+        [data-theme="dark"] .status-inactive {
+            background: rgba(148,163,184,.15);
+            color: var(--neutral-400);
+        }
+        .action-link {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all .2s;
+            background: var(--primary-50);
+            color: var(--primary-600);
+            display: inline-block;
+        }
+        .action-link:hover {
+            background: var(--primary-500);
+            color: white;
+        }
+        [data-theme="dark"] .action-link {
+            background: rgba(59,130,246,.15);
+            color: #93c5fd;
+        }
+        [data-theme="dark"] .action-link:hover {
+            background: var(--primary-600);
+            color: white;
+        }
+        
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .empty-icon { font-size: 56px; margin-bottom: 12px; }
+        .empty-text { font-size: 16px; font-weight: 600; color: var(--text-secondary); }
+        
+        /* RESPONSIVE */
+        @media (max-width: 968px) {
+            .filter-form {
+                grid-template-columns: 1fr 1fr;
+            }
+            .filter-group:first-child {
+                grid-column: 1 / -1;
+            }
+        }
+        @media (max-width: 768px) {
+            .filter-form {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- HEADER -->
+    <div class="header">
+        <div class="brand-section">
+            <div class="brand">CWMS</div>
+            <div class="brand-subtitle">👥 Employee Management</div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'manager_dashboard' %}" class="btn btn-secondary">← Dashboard</a>
+            <a href="{% url 'add_employee' %}" class="btn btn-primary">
+                <span>+</span> Add Employee
+            </a>
+            <button class="btn btn-secondary theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
+        </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="metrics-grid">
+        <div class="metric-card total">
+            <div class="metric-header">
+                <div class="metric-icon">👥</div>
+                <span class="metric-badge badge-primary">Total</span>
+            </div>
+            <div class="metric-label">Total Employees</div>
+            <div class="metric-value">{{ employees|length }}</div>
+        </div>
+        
+        <div class="metric-card active">
+            <div class="metric-header">
+                <div class="metric-icon">✅</div>
+                <span class="metric-badge badge-success">Active</span>
+            </div>
+            <div class="metric-label">Active Workers</div>
+            <div class="metric-value">{{ employees|length }}</div>
+        </div>
+        
+        <div class="metric-card inactive">
+            <div class="metric-header">
+                <div class="metric-icon">⏸️</div>
+                <span class="metric-badge badge-neutral">Inactive</span>
+            </div>
+            <div class="metric-label">Inactive Workers</div>
+            <div class="metric-value">0</div>
+        </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filter-panel">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label class="filter-label">Search</label>
+                <input type="text" name="search" class="filter-input" placeholder="Search by name..." value="{{ request.GET.search }}">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Role</label>
+                <select name="role" class="filter-select">
+                    <option value="">All Roles</option>
+                    {% for role in roles %}
+                    <option value="{{ role.id }}" {% if request.GET.role == role.id|stringformat:"s" %}selected{% endif %}>
+                        {{ role.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Status</label>
+                <select name="status" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if request.GET.status == "inactive" %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <button type="submit" class="btn-filter">🔍 Filter</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-panel">
+        <div class="table-header">
+            <div class="table-title">📋 Employee List</div>
+            <div class="table-count">{{ employees|length }} Found</div>
+        </div>
+        <div class="table-wrap">
+            {% if employees %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee Name</th>
+                        <th>Role</th>
+                        <th class="col-numeric">Daily Wage</th>
+                        <th>System ID</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr>
+                        <td>
+                            <span class="employee-name">{{ employee.name }}</span>
+                        </td>
+                        <td>
+                            <span class="role-badge">{{ employee.role.name }}</span>
+                        </td>
+                        <td class="col-numeric">
+                            <span style="font-size: 13px; opacity: 0.7; margin-right: 2px;">₹</span>{{ employee.daily_wage }}
+                        </td>
+                        <td>
+                            <span class="system-id">{{ employee.user.username }}</span>
+                        </td>
+                        <td>
+                            {% if employee.is_active %}
+                                <span class="status-active">✓ Active</span>
+                            {% else %}
+                                <span class="status-inactive">⏸ Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'edit_employee' employee.id %}" class="action-link">
+                                Edit
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <div class="empty-text">No employees found</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

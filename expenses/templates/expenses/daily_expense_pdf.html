@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Daily Expense Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        h2 { margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #333; padding: 6px; text-align: left; }
+        th { background: #f0f0f0; }
+        .total { margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h2>Daily Expense Report</h2>
+<p><strong>Date:</strong> {{ report_date }}</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Payment Mode</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for exp in expenses %}
+        <tr>
+            <td>{{ exp.get_category_display }}</td>
+            <td>{{ exp.description }}</td>
+            <td>₹ {{ exp.amount }}</td>
+            <td>{{ exp.get_payment_mode_display }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p class="total">Total: ₹ {{ total_amount }}</p>
+
+</body>
+</html>

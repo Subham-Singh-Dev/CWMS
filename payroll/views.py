@@ -1,0 +1,411 @@
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from .models import MonthlySalary
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from decimal import Decimal
+from datetime import datetime
+
+from django.db.models import Sum, Count, Q
+from django.db.models.functions import Coalesce
+from django.http import Http404
+
+from django.shortcuts import redirect
+from django.contrib import messages
+
+from payroll.services import generate_monthly_salary
+from payroll.services import SalaryAlreadyGeneratedError
+
+from portal.decorators import manager_required
+from django.core.exceptions import ValidationError
+from employees.models import Employee
+from .services import issue_advance
+from django.utils import timezone
+
+
+@login_required
+def download_payslip(request, salary_id):
+    # --- IMPROVEMENT 2: PERFORMANCE ---
+    # Fetch salary AND employee data in 1 query (saves DB hits)
+    salary = get_object_or_404(
+        MonthlySalary.objects.select_related('employee'), 
+        id=salary_id
+    )
+
+    # --- SECURITY & BUSINESS LOGIC CHECKS ---
+    
+    # Case A: Admin/Superuser (Allow access to everything)
+    if request.user.is_superuser or request.user.is_staff:
+        pass 
+    
+    # Case B: Worker (Strict Checks)
+    elif hasattr(request.user, 'employee'):
+        # Check 1: Ownership (Prevent ID guessing)
+        if salary.employee != request.user.employee:
+            raise PermissionDenied("⛔ You are not authorized to view this payslip.")
+        
+        # --- IMPROVEMENT 1: BUSINESS LOGIC ---
+        # Check 2: Status (Prevent early access)
+        if not salary.is_paid:
+            raise PermissionDenied("⏳ Payslip not available until salary is paid.")
+            
+    # Case C: Random User (Block)
+    else:
+        raise PermissionDenied("Unauthorized access.")
+    # -------------------------------------
+
+    # Generate PDF (Standard Logic)
+    template_path = 'payroll/payslip_pdf.html'
+    context = {'salary': salary}
+    response = HttpResponse(content_type='application/pdf')
+    # Use clean filename
+    filename = f"Payslip_{salary.employee.name}_{salary.month.strftime('%b_%Y')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    template = get_template(template_path)
+    html = template.render(context)
+
+    pisa_status = pisa.CreatePDF(html, dest=response)
+
+    if pisa_status.err:
+        return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    
+    return response
+
+@manager_required
+def payroll_batch_summary(request):
+    selected_month = request.GET.get("month")
+
+    if not selected_month:
+        raise Http404("Month is required")
+
+    try:
+        month_date = datetime.strptime(selected_month, "%Y-%m").date()
+    except ValueError:
+        raise Http404("Invalid month format. Expected YYYY-MM")
+
+    salaries_qs = MonthlySalary.objects.filter(
+    month__year=month_date.year,
+    month__month=month_date.month
+)
+    batch_generated_at = salaries_qs.order_by("generated_at").values_list(
+    "generated_at", flat=True
+    ).first()
+
+
+    if not salaries_qs.exists():
+        return render(
+            request,
+            "payroll/payroll_summary_empty.html",
+            {"selected_month": selected_month}
+        )
+
+    aggregates = salaries_qs.aggregate(
+    total_employees=Count("id"),
+
+    total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
+    total_advance_deducted=Coalesce(Sum("advance_deducted"), Decimal("0.00")),
+    total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
+
+    paid_count=Count("id", filter=Q(is_paid=True)),
+    unpaid_count=Count("id", filter=Q(is_paid=False)),
+)
+
+
+    unpaid_liability = salaries_qs.filter(is_paid=False).aggregate(
+    liability=Coalesce(Sum("net_pay"), Decimal("0.00"))
+    )["liability"]
+
+
+    context = {
+        "selected_month": selected_month,
+        "total_employees": aggregates["total_employees"],
+        "paid_count": aggregates["paid_count"],
+        "unpaid_count": aggregates["unpaid_count"],
+        "total_gross": aggregates["total_gross"],
+        "total_advance_deducted": aggregates["total_advance_deducted"],
+        "total_net": aggregates["total_net"],
+        "total_liability": unpaid_liability,
+        "generated_at": batch_generated_at,
+    }
+
+    return render(
+        request,
+        "payroll/payroll_batch_summary.html",
+        context
+    )
+
+
+@manager_required
+def salary_list_view(request):
+    
+    from django.utils.timezone import now
+    from datetime import datetime
+
+    selected_month = request.GET.get("month")
+
+    if not selected_month:
+        # Default to current month
+        today = now().date()
+        month_date = today.replace(day=1)
+        selected_month = month_date.strftime("%Y-%m")
+    else:
+        try:
+            month_date = datetime.strptime(selected_month, "%Y-%m")
+        except ValueError:
+            raise Http404("Invalid month format. Expected YYYY-MM")
+        
+
+    from datetime import datetime
+    try:
+        month_date = datetime.strptime(selected_month, "%Y-%m").date()
+    except ValueError:
+        raise Http404("Invalid month format")
+
+    # All employees
+    from employees.models import Employee
+    employees = Employee.objects.all()
+
+    # Salaries already generated for this month
+    salaries = MonthlySalary.objects.filter(
+        month__year=month_date.year,
+        month__month=month_date.month
+    ).select_related("employee")
+
+    # Map: employee_id -> salary
+    salary_map = {s.employee_id: s for s in salaries}
+
+    rows = []
+    for employee in employees:
+        rows.append({
+            "employee": employee,
+            "salary": salary_map.get(employee.id),  # None if not generated
+        })
+
+    context = {
+        "selected_month": selected_month,
+        "rows": rows,
+    }
+
+    return render(
+        request,
+        "payroll/salary_list.html",
+        context
+    )
+
+@manager_required
+def generate_employee_salary(request):
+    if request.method != "POST":
+        raise Http404()
+
+    employee_id = request.POST.get("employee_id")
+    selected_month = request.POST.get("month")
+
+    if not employee_id or not selected_month:
+        raise Http404("Invalid request")
+
+    from datetime import datetime
+    try:
+        month_date = datetime.strptime(selected_month, "%Y-%m").date()
+    except ValueError:
+        raise Http404("Invalid month format")
+
+    from employees.models import Employee
+    employee = get_object_or_404(Employee, id=employee_id)
+
+    from django.utils.timezone import now
+    timestamp = now().strftime("%d %b %Y %H:%M")
+
+    try:
+        salary = generate_monthly_salary(employee, month_date)
+
+        if salary is None:
+            messages.warning(
+                request,
+                f"⚠️ Salary not generated for {employee.name} — "
+                f"no payable attendance for {selected_month} "
+                f"({timestamp})"
+            )
+        else:
+            messages.success(
+                request,
+                f"✅ Salary generated for {employee.name} "
+                f"({selected_month}) at {timestamp}"
+            )
+
+    except SalaryAlreadyGeneratedError:
+        messages.warning(
+            request,
+            f"⚠️ Salary already generated for {employee.name}"
+        )
+
+    except Exception as e:
+        messages.error(
+            request,
+            f"❌ Failed to generate salary for {employee.name}: {e}"
+        )
+
+    return redirect(
+        f"/payroll/manager/payroll/salaries/?month={selected_month}"
+    )
+
+@manager_required
+def mark_salary_paid(request):
+    if request.method != "POST":
+        raise Http404()
+
+    salary_id = request.POST.get("salary_id")
+    selected_month = request.POST.get("month")
+
+    if not salary_id or not selected_month:
+        raise Http404("Invalid request")
+
+    salary = get_object_or_404(MonthlySalary, id=salary_id)
+
+    # Safety check: prevent double marking
+    if salary.is_paid:
+        messages.warning(
+            request,
+            f"⚠️ Salary already marked as paid for {salary.employee.name}"
+        )
+        return redirect(
+            f"/payroll/manager/payroll/salaries/?month={selected_month}"
+        )
+
+    from django.utils.timezone import now
+    salary.is_paid = True
+    salary.paid_on = now()
+    salary.save(update_fields=["is_paid", "paid_on"])
+
+    timestamp = salary.paid_on.strftime("%d %b %Y %H:%M")
+
+    messages.success(
+        request,
+        f"✅ Salary marked as PAID for {salary.employee.name} "
+        f"at {timestamp}"
+    )
+
+    return redirect(
+        f"/payroll/manager/payroll/salaries/?month={selected_month}"
+    )
+
+@manager_required
+def export_salary_list_csv(request):
+    selected_month = request.GET.get("month")
+
+    if not selected_month:
+        raise Http404("Month required")
+
+    from datetime import datetime
+    try:
+        month_date = datetime.strptime(selected_month, "%Y-%m").date()
+    except ValueError:
+        raise Http404("Invalid month format")
+
+    salaries = (
+        MonthlySalary.objects
+        .select_related("employee")
+        .filter(month=month_date)
+        .order_by("employee__name")
+    )
+
+    import csv
+    from django.http import HttpResponse
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = (
+        f'attachment; filename="salary_list_{selected_month}.csv"'
+    )
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Employee Name",
+        "Gross Pay",
+        "Advance Deducted",
+        "Net Pay",
+        "Status",
+        "Paid On"
+    ])
+
+    for salary in salaries:
+        writer.writerow([
+            salary.employee.name,
+            salary.gross_pay,
+            salary.advance_deducted,
+            salary.net_pay,
+            "Paid" if salary.is_paid else "Unpaid",
+            salary.paid_on.strftime("%d-%b-%Y %H:%M") if salary.paid_on else ""
+        ])
+
+    return response
+
+# ==========================================================
+# ISSUE ADVANCE VIEW
+# ==========================================================
+# PURPOSE:
+# Manager-facing endpoint to issue cash advance to employees.
+#
+# ARCHITECTURAL RULE:
+# - This view MUST NOT contain financial calculations.
+# - All financial logic MUST live in payroll/services.py.
+# - This view only validates input and delegates to service layer.
+#
+# SECURITY:
+# - Protected by @login_required
+# - Protected by @manager_required
+# - Only active employees are selectable
+# ==========================================================
+
+@login_required
+@manager_required
+def issue_advance_view(request):
+
+    # Only active employees can receive advances
+    employees = Employee.objects.filter(is_active=True)
+
+    if request.method == "POST":
+
+        employee_id = request.POST.get("employee")
+        amount = request.POST.get("amount")
+        issued_date = request.POST.get("issued_date")
+
+        try:
+            employee = Employee.objects.get(id=employee_id)
+
+            # Delegate financial responsibility to service layer
+            issue_advance(employee, amount, issued_date)
+
+            return render(
+                request,
+                "payroll/issue_advance.html",
+                {
+                    "employees": employees,
+                    "success": "Advance issued successfully."
+                }
+            )
+
+        except ValidationError as e:
+            return render(
+                request,
+                "payroll/issue_advance.html",
+                {
+                    "employees": employees,
+                    "error": str(e)
+                }
+            )
+
+    # GET Request: Render empty form
+    return render(
+        request,
+        "payroll/issue_advance.html",
+        {
+            "employees": employees,
+            "today": timezone.now().date()
+        }
+    )
+
+
+
+    

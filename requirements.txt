@@ -1,0 +1,14 @@
+# ── Core Framework ────────────────────────────────────────────
+Django>=4.2,<5.2
+
+# ── PDF Generation ────────────────────────────────────────────
+xhtml2pdf==0.2.13
+
+# ── Database ──────────────────────────────────────────────────
+psycopg2-binary>=2.9        # PostgreSQL (production)
+
+# ── Environment Variables ─────────────────────────────────────
+python-decouple==3.8        # Manage SECRET_KEY, DEBUG, DB URL via .env
+
+# ── Utilities ─────────────────────────────────────────────────
+Pillow>=10.0                # Image handling (media uploads)

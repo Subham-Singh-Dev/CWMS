@@ -1,110 +1,135 @@
-🏗️ CWMS — Contractor Workforce Management System
+# 🏗️ CWMS — Contractor Workforce Management System
 
-A production-grade Django backend system that automates daily-wage workforce management for construction contractors.
+> A production-grade Django backend system that automates daily-wage workforce management for construction contractors.
 
+---
 
-📌 Table of Contents
+## 📌 Table of Contents
+- [Overview](#overview)
+- [Problem It Solves](#problem-it-solves)
+- [User Roles](#user-roles)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Setup & Installation](#setup--installation)
+- [URL Endpoints](#url-endpoints)
+- [Authentication](#authentication)
+- [Deployment](#deployment)
+- [Future Enhancements](#future-enhancements)
 
-Overview
-Problem It Solves
-User Roles
-Features
-Tech Stack
-Project Structure
-Setup & Installation
-URL Endpoints
-Authentication
-Deployment
-Future Enhancements
+---
 
+## Overview
 
-Overview
 CWMS replaces paper registers, Excel sheets, and WhatsApp notes used by local contractors to manage 50–200+ daily-wage workers. It provides a deterministic, auditable, rule-based payroll engine with full financial visibility.
 
-Problem It Solves
-Before CWMSAfter CWMS6–8 hours of manual payrollPayroll in 10 minutes5–10% advance leakageZero leakage (FIFO auto-deduction)Frequent wage disputesWorkers trust printed payslipsZero financial visibilityReal-time liability tracking
+---
 
-User Roles
-RoleAccessCapabilitiesManagerFull ControlAttendance, payroll, advances, billing, expensesWorkerRead-OnlyView own attendance, salary, download payslipsKing (Owner)Strategic ViewBusiness analytics, cash flow, aggregate reports, inventory
+## Problem It Solves
 
-Features
-📊 Payroll Engine
+| Before CWMS | After CWMS |
+|-------------|------------|
+| 6–8 hours of manual payroll | Payroll in 10 minutes |
+| 5–10% advance leakage | Zero leakage (FIFO auto-deduction) |
+| Frequent wage disputes | Workers trust printed payslips |
+| Zero financial visibility | Real-time liability tracking |
 
-Monthly & bulk payroll generation
-Mid-month salary generation for individual employees (on-demand, partial payout)
-FIFO-based advance deduction (oldest debt first)
-Immutable salary snapshots (audit-safe)
-Paid leave logic (first 2 absences = paid leave)
-Overtime calculation by role
+---
 
-📅 Attendance System
+## User Roles
 
-Daily tracking: Present / Half Day / Absent
-Bulk attendance UI (spreadsheet-style for 100+ workers)
-Overtime hours per record
-Historical view for any past date
+| Role | Access | Capabilities |
+|------|--------|-------------|
+| **Manager** | Full Control | Attendance, payroll, advances, billing, expenses |
+| **Worker** | Read-Only | View own attendance, salary, download payslips |
+| **King (Owner)** | Strategic View | Business analytics, cash flow, aggregate reports, inventory |
 
-💰 Advance Management
+---
 
-Issue cash loans to workers
-Automatic FIFO recovery during payroll
-Partial recovery tracking across months
-Real-time outstanding balance display
-Managed within the payroll app — no separate module required
+## Features
 
-👥 Employee Management
+### 📊 Payroll Engine
+- Monthly & bulk payroll generation
+- **Mid-month salary generation** for individual employees (on-demand, partial payout)
+- FIFO-based advance deduction (oldest debt first)
+- Immutable salary snapshots (audit-safe)
+- Paid leave logic (first 2 absences = paid leave)
+- Overtime calculation by role
 
-Add/deactivate employees
-Auto-generated employee codes
-Role assignment (Worker / Manager)
-Worker login credentials (phone number + password) assigned by superuser or manager
+### 📅 Attendance System
+- Daily tracking: Present / Half Day / Absent
+- Bulk attendance UI (spreadsheet-style for 100+ workers)
+- Overtime hours per record
+- Historical view for any past date
 
-📄 Billing Module
+### 💰 Advance Management
+- Issue cash loans to workers
+- Automatic FIFO recovery during payroll
+- Partial recovery tracking across months
+- Real-time outstanding balance display
+- Managed within the `payroll` app — no separate module required
 
-Upload vendor bills (PDF)
-Mark Paid / Unpaid toggle
-Auto-generated bill numbers (BILL-001 format)
-CSV export for accountants
+### 👥 Employee Management
+- Add/deactivate employees
+- Auto-generated employee codes
+- Role assignment (Worker / Manager)
+- Worker login credentials (phone number + password) assigned by superuser or manager
 
-💸 Daily Expenses
+### 📄 Billing Module
+- Upload vendor bills (PDF)
+- Mark Paid / Unpaid toggle
+- Auto-generated bill numbers (BILL-001 format)
+- CSV export for accountants
 
-Categories: Food, Fuel, Travel, Material, Misc
-Payment modes: Cash, UPI, Bank
-Daily / Weekly / Monthly aggregates
-7-day edit lock (accounting safety)
-CSV and PDF export
+### 💸 Daily Expenses
+- Categories: Food, Fuel, Travel, Material, Misc
+- Payment modes: Cash, UPI, Bank
+- Daily / Weekly / Monthly aggregates
+- 7-day edit lock (accounting safety)
+- CSV and PDF export
 
-📑 Document Generation
+### 📑 Document Generation
+- PDF payslips (xhtml2pdf)
+- Expense PDF reports
+- CSV exports across all modules
 
-PDF payslips (xhtml2pdf)
-Expense PDF reports
-CSV exports across all modules
+### 🔍 Audit Log
+- Full activity trail across all modules (who did what, when)
+- Tamper-proof log entries for payroll, advances, and attendance changes
+- Accessible to Manager and King roles
 
-🔍 Audit Log
+### 👑 King Dashboard
+- Aggregate business analytics and cash flow overview
+- Cross-site financial visibility (future: multi-site)
+- Inventory management integration
+- Strategic reports for owner-level decision making
 
-Full activity trail across all modules (who did what, when)
-Tamper-proof log entries for payroll, advances, and attendance changes
-Accessible to Manager and King roles
+### 📦 Inventory Management
+- Track materials and equipment on-site
+- Stock-in / stock-out records
+- Low stock alerts
+- Linked to daily expenses for material cost tracking
 
-👑 King Dashboard
+---
 
-Aggregate business analytics and cash flow overview
-Cross-site financial visibility (future: multi-site)
-Inventory management integration
-Strategic reports for owner-level decision making
+## Tech Stack
 
-📦 Inventory Management
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.10+, Django 4.x/5.x |
+| Database (Dev) | SQLite3 |
+| Database (Prod) | PostgreSQL |
+| PDF Generation | xhtml2pdf |
+| Frontend | Django Templates, Vanilla JS, CSS3 |
+| Typography | Inter (Google Fonts) |
+| Financial Arithmetic | Python Decimal (zero float errors) |
+| Transaction Safety | `transaction.atomic()`, `select_for_update()` |
 
-Track materials and equipment on-site
-Stock-in / stock-out records
-Low stock alerts
-Linked to daily expenses for material cost tracking
+---
 
+## Project Structure
 
-Tech Stack
-LayerTechnologyBackendPython 3.10+, Django 4.x/5.xDatabase (Dev)SQLite3Database (Prod)PostgreSQLPDF Generationxhtml2pdfFrontendDjango Templates, Vanilla JS, CSS3TypographyInter (Google Fonts)Financial ArithmeticPython Decimal (zero float errors)Transaction Safetytransaction.atomic(), select_for_update()
-
-Project Structure
+```
 cwms/
 ├── manage.py
 ├── requirements.txt
@@ -122,16 +147,21 @@ cwms/
 ├── portal/                     # Worker portal (read-only, phone + password login)
 ├── static/                     # CSS, JS, fonts
 └── media/                      # Uploaded bills & documents
+```
 
-Setup & Installation
-Prerequisites
+---
 
-Python 3.10+
-SQLite3 (development) or PostgreSQL (production)
-pip
+## Setup & Installation
 
-Steps
-bash# 1. Clone the repository
+### Prerequisites
+- Python 3.10+
+- SQLite3 (development) or PostgreSQL (production)
+- pip
+
+### Steps
+
+```bash
+# 1. Clone the repository
 git clone https://github.com/yourusername/cwms.git
 cd cwms
 
@@ -155,42 +185,94 @@ python manage.py createsuperuser
 
 # 7. Run development server
 python manage.py runserver
-Environment Variables (.env)
+```
+
+### Environment Variables (.env)
+```
 SECRET_KEY=your-secret-key
 DEBUG=True
 DATABASE_URL=sqlite:///db.sqlite3
 ALLOWED_HOSTS=localhost,127.0.0.1
+```
 
-URL Endpoints
-Authentication
-MethodURLDescriptionPOST/worker_login/Worker login (phone number + password)POST/manager_login/Manager loginPOST/logout/Logout
-Manager
-MethodURLDescriptionGET/manager/dashboard/Manager dashboardGET/POST/manager/employees/List / add employeesGET/POST/manager/attendance/bulk/Bulk attendancePOST/manager/payroll/generate/Generate payrollPOST/manager/payroll/generate/mid-month/<id>/Mid-month salary for individual employeeGET/manager/payroll/summary/Payroll summaryGET/manager/salary-list/Salary listPOST/manager/salary/mark-paid/<id>/Mark salary paidPOST/manager/advance/add/Issue advance
-Billing
-MethodURLDescriptionGET/POST/billing/Dashboard / upload billPOST/billing/toggle/<id>/Toggle paid statusGET/billing/export/csv/Export CSV
-Expenses
-MethodURLDescriptionGET/POST/expenses/Dashboard / add expensePOST/expenses/edit/<id>/Edit expense (7-day lock)GET/expenses/export/csv/CSV exportGET/expenses/export/pdf/PDF export
-Worker Portal
-MethodURLDescriptionGET/portal/dashboard/Worker homeGET/portal/attendance/View attendanceGET/portal/salary/View salary historyGET/portal/payslip/download/<id>/Download payslip PDF
-King Dashboard
-MethodURLDescriptionGET/king/dashboard/Business analytics overviewGET/king/inventory/Inventory managementGET/king/audit-log/Full audit trail
+---
 
-Authentication
-Manager Login: Username + Password (Django default auth), session-based, protected by @manager_required decorator.
-Worker Login: Phone number + Password — credentials are created and assigned by the superuser or manager. Read-only access enforced at the view level via the portal app.
-King Login: Superuser-level credentials, session-based, protected by @king_required decorator.
-Security:
+## URL Endpoints
 
-CSRF tokens on all forms
-IDOR protection (users access only their own data)
-Password hashing (pbkdf2_sha256)
-Session hijacking prevention
-No sensitive data in URLs
-Full audit log for all critical actions
+### Authentication
+| Method | URL | Description |
+|--------|-----|-------------|
+| POST | `/worker_login/` | Worker login (phone number + password) |
+| POST | `/manager_login/` | Manager login |
+| POST | `/logout/` | Logout |
 
+### Manager
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/manager/dashboard/` | Manager dashboard |
+| GET/POST | `/manager/employees/` | List / add employees |
+| GET/POST | `/manager/attendance/bulk/` | Bulk attendance |
+| POST | `/manager/payroll/generate/` | Generate payroll |
+| POST | `/manager/payroll/generate/mid-month/<id>/` | Mid-month salary for individual employee |
+| GET | `/manager/payroll/summary/` | Payroll summary |
+| GET | `/manager/salary-list/` | Salary list |
+| POST | `/manager/salary/mark-paid/<id>/` | Mark salary paid |
+| POST | `/manager/advance/add/` | Issue advance |
 
-Deployment
-Recommended Stack (Production)
+### Billing
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET/POST | `/billing/` | Dashboard / upload bill |
+| POST | `/billing/toggle/<id>/` | Toggle paid status |
+| GET | `/billing/export/csv/` | Export CSV |
+
+### Expenses
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET/POST | `/expenses/` | Dashboard / add expense |
+| POST | `/expenses/edit/<id>/` | Edit expense (7-day lock) |
+| GET | `/expenses/export/csv/` | CSV export |
+| GET | `/expenses/export/pdf/` | PDF export |
+
+### Worker Portal
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/portal/dashboard/` | Worker home |
+| GET | `/portal/attendance/` | View attendance |
+| GET | `/portal/salary/` | View salary history |
+| GET | `/portal/payslip/download/<id>/` | Download payslip PDF |
+
+### King Dashboard
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/king/dashboard/` | Business analytics overview |
+| GET | `/king/inventory/` | Inventory management |
+| GET | `/king/audit-log/` | Full audit trail |
+
+---
+
+## Authentication
+
+**Manager Login:** Username + Password (Django default auth), session-based, protected by `@manager_required` decorator.
+
+**Worker Login:** Phone number + Password — credentials are created and assigned by the superuser or manager. Read-only access enforced at the view level via the `portal` app.
+
+**King Login:** Superuser-level credentials, session-based, protected by `@king_required` decorator.
+
+**Security:**
+- CSRF tokens on all forms
+- IDOR protection (users access only their own data)
+- Password hashing (pbkdf2_sha256)
+- Session hijacking prevention
+- No sensitive data in URLs
+- Full audit log for all critical actions
+
+---
+
+## Deployment
+
+### Recommended Stack (Production)
+```
 OS:       Ubuntu 22.04 LTS
 Web:      Nginx + Gunicorn
 Database: PostgreSQL 14+
@@ -198,21 +280,28 @@ Process:  Systemd
 SSL:      Let's Encrypt
 RAM:      2GB minimum
 Storage:  20GB minimum
-Cloud Option
+```
+
+### Cloud Option
 Railway / Render / DigitalOcean with managed PostgreSQL and AWS S3 / Cloudflare R2 for media storage.
 
-Future Enhancements
+---
 
-Multi-site support
-SMS notifications for payslips
-Biometric attendance integration
-Mobile app (React Native)
-Budget tracking module
-Tax / compliance automation
+## Future Enhancements
 
+- Multi-site support
+- SMS notifications for payslips
+- Biometric attendance integration
+- Mobile app (React Native)
+- Budget tracking module
+- Tax / compliance automation
 
-📜 License
+---
+
+## 📜 License
+
 This project is licensed under the MIT License.
 
+---
 
-Built with ❤️ to solve real problems for real contractors.
+> Built with ❤️ to solve real problems for real contractors.

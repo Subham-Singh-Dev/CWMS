@@ -205,6 +205,9 @@ def export_expenses_csv(request):
 
 @manager_required
 def daily_expense_pdf(request):
+    from datetime import datetime
+    from django.db.models import Count
+
     selected_date = request.GET.get("date")
     report_date = (
         date.fromisoformat(selected_date)
@@ -214,15 +217,41 @@ def daily_expense_pdf(request):
 
     expenses = Expense.objects.filter(date=report_date)
 
-    total_amount = expenses.aggregate(
-        total=Sum("amount")
-    )["total"] or 0
+    # Group by category + payment_mode with count and sum
+    grouped_raw = (
+        expenses
+        .values('category', 'payment_mode')
+        .annotate(
+            entry_count=Count('id'),
+            total_amount=Sum('amount')
+        )
+        .order_by('category', 'payment_mode')
+    )
+
+    # Convert to display names using model methods
+    grouped_expenses = []
+    for item in grouped_raw:
+        dummy = Expense(
+            category=item['category'],
+            payment_mode=item['payment_mode']
+        )
+        grouped_expenses.append({
+            'category':     dummy.get_category_display(),
+            'payment_mode': dummy.get_payment_mode_display(),
+            'entry_count':  item['entry_count'],
+            'total_amount': item['total_amount'],
+        })
+
+    total_amount  = expenses.aggregate(total=Sum('amount'))['total'] or 0
+    total_entries = expenses.count()
 
     template = get_template("expenses/daily_expense_pdf.html")
     html = template.render({
-        "expenses": expenses,
-        "report_date": report_date,
-        "total_amount": total_amount,
+        'report_date':      report_date,
+        'generated_at':     datetime.now().strftime('%d %b %Y, %I:%M %p'),
+        'grouped_expenses': grouped_expenses,
+        'total_amount':     total_amount,
+        'total_entries':    total_entries,
     })
 
     result = io.BytesIO()
@@ -232,5 +261,4 @@ def daily_expense_pdf(request):
     response["Content-Disposition"] = (
         f'attachment; filename="daily_expenses_{report_date}.pdf"'
     )
-
     return response

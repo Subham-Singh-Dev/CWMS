@@ -136,7 +136,7 @@
 
     <form method="POST">
         {% csrf_token %}
-        
+        <input type="hidden" name="login_type" id="login_type" value="worker">
         <div class="form-group">
             <label id="label-id">Phone Number</label>
             <input type="text" name="login_id" id="input-id" placeholder="Enter your 10-digit number" required autofocus>
@@ -165,6 +165,7 @@
 
         if (role === 'worker') {
             // UI Updates for Worker
+            document.getElementById('login_type').value = 'worker';
             tabWorker.classList.add('active');
             tabManager.classList.remove('active');
             
@@ -177,6 +178,7 @@
             inputId.setAttribute('inputmode', 'numeric');
         } else {
             // UI Updates for Manager
+            document.getElementById('login_type').value = 'manager';
             tabManager.classList.add('active');
             tabWorker.classList.remove('active');
             

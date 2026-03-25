@@ -20,11 +20,32 @@ class Employee(models.Model):
     name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
     
+    # Personal
+    father_name = models.CharField(max_length=100, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+
     # --- JOB DETAILS ---
     role = models.ForeignKey(Role, on_delete=models.PROTECT)
     daily_wage = models.DecimalField(max_digits=8, decimal_places=2)
     join_date = models.DateField()
     is_active = models.BooleanField(default=True)
+
+    # Work
+    working_location = models.CharField(max_length=100, blank=True, null=True)
+
+
+    # Address
+    current_address  = models.TextField(blank=True, null=True)
+    permanent_address= models.TextField(blank=True, null=True)
+
+    # Compliance (all optional — workers may not have these)
+    aadhar_number    = models.CharField(max_length=12,  blank=True, null=True)
+    pan_number       = models.CharField(max_length=10,  blank=True, null=True)
+    uan_number       = models.CharField(max_length=12,  blank=True, null=True)
+    esic_number      = models.CharField(max_length=17,  blank=True, null=True)
+    bank_account_no  = models.CharField(max_length=20,  blank=True, null=True)
+
+
 
     def clean(self):
         if self.daily_wage <= 0:

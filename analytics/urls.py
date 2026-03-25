@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import king_dashboard
+from . import views
 
 urlpatterns = [
-    path("king/dashboard/", king_dashboard, name="king_dashboard"),
+    # king dashboard moved to portal/urls.py - do not add it here
 ]

@@ -19,6 +19,16 @@ def add_employee_view(request):
         daily_wage = request.POST.get("daily_wage")
         join_date = request.POST.get("join_date")
         is_active = request.POST.get("is_active") == "True"
+        father_name       = request.POST.get("father_name")
+        email             = request.POST.get("email") or None,
+        current_address   = request.POST.get("current_address"),
+        permanent_address = request.POST.get("permanent_address"),
+        working_location  = request.POST.get("working_location"),
+        aadhar_number     = request.POST.get("aadhar_number") or None,
+        pan_number        = request.POST.get("pan_number") or None,
+        uan_number        = request.POST.get("uan_number") or None,
+        esic_number       = request.POST.get("esic_number") or None,
+        bank_account_no   = request.POST.get("bank_account_no") or None,
 
         # ✅ Prevent duplicate phone BEFORE service call
         if phone and Employee.objects.filter(phone_number=phone).exists():

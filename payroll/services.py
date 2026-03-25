@@ -131,7 +131,11 @@ def generate_monthly_salary(employee, month):
     present_pay = present_days * daily_wage
     half_day_pay = half_days * (daily_wage * half_day_multiplier)
     paid_leave_pay = paid_leaves * daily_wage
-    overtime_pay = overtime_hours * employee.role.overtime_rate_per_hour
+    
+    # SAFETY: Calculate overtime with NULL checks (prevents crash if role unmapped)
+    # Logic unchanged: if employee has no role, overtime defaults to zero
+    overtime_rate = employee.role.overtime_rate_per_hour if employee.role else Decimal('0.00')
+    overtime_pay = overtime_hours * overtime_rate
 
     raw_gross_pay = (
         present_pay +

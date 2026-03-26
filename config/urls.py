@@ -36,6 +36,9 @@ urlpatterns = [
     path("", include("analytics.urls")),
 
     
+    path('king/', include('king.urls', namespace='king')),
+
+    
 ]
 
 urlpatterns += static(

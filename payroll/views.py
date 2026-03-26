@@ -75,7 +75,7 @@ def download_payslip(request, salary_id):
     return response
 
 @manager_required
-def payroll_batch_summary(request):
+def payroll_batch_summary(request, viewing_as_owner=False):
     selected_month = request.GET.get("month")
 
     if not selected_month:

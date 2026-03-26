@@ -22,11 +22,5 @@ urlpatterns = [
 
     path("manager/advances/issue/", payroll_views.issue_advance_view, name="issue_advance"),
 
-    # Secret URL — only contractor knows this
-    path('secure/owner-x7k2/', views.king_login, name='king_login'),
-    
-    path('king/dashboard/', views.king_dashboard, name='king_dashboard'),
-
-    path('king/logout/', views.king_logout, name='king_logout'),
 
 ]

@@ -9,7 +9,7 @@ from .models import Bill
 
 
 @manager_required
-def billing_dashboard(request):
+def billing_dashboard(request, viewing_as_owner=False):
 
     # ==========================
     # HANDLE BILL UPLOAD (POST)
@@ -23,9 +23,15 @@ def billing_dashboard(request):
             messages.error(request, "All fields are required.")
             return redirect("billing:billing_dashboard")
 
+        try:
+            bill_amount = Decimal(amount).quantize(Decimal('0.01'))
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid amount. Please enter a valid number.")
+            return redirect("billing:billing_dashboard")
+        
         Bill.objects.create(
             description=description,
-            amount=Decimal(amount),
+            amount=bill_amount,
             pdf_file=pdf_file,
             is_paid=False
         )

@@ -52,6 +52,8 @@ INSTALLED_APPS = [
 
     'analytics.apps.AnalyticsConfig',
 
+    'king.apps.KingConfig',
+
 
 ]
 

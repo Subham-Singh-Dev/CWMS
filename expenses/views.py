@@ -21,7 +21,7 @@ from datetime import date, timedelta
 lock_date = date.today() - timedelta(days=EDIT_LOCK_DAYS)
 
 @manager_required
-def expense_dashboard(request):
+def expense_dashboard(request, viewing_as_owner=False):
     if request.method == "POST":
         date = request.POST.get("date")
         category = request.POST.get("category")
@@ -33,11 +33,17 @@ def expense_dashboard(request):
             messages.error(request, "All fields are required.")
             return redirect("expenses:expense_dashboard")
 
+        try:
+            expense_amount = Decimal(amount).quantize(Decimal('0.01'))
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid amount. Please enter a valid number.")
+            return redirect("expenses:expense_dashboard")
+        
         Expense.objects.create(
             date=date,
             category=category,
             description=description,
-            amount=Decimal(amount),
+            amount=expense_amount,
             payment_mode=payment_mode,
             created_by=request.user,
         )
@@ -48,12 +54,15 @@ def expense_dashboard(request):
     from datetime import date
     
     selected_date = request.GET.get("date")
-
-    base_date = (
-        date.fromisoformat(selected_date)
-        if selected_date
-        else date.today()
-    )
+    
+    try:
+        base_date = (
+            date.fromisoformat(selected_date)
+            if selected_date
+            else date.today()
+        )
+    except ValueError:
+        base_date = date.today()
 
     category_totals = (
         Expense.objects
@@ -132,22 +141,40 @@ def delete_expense(request, expense_id):
             request,
             "This expense is locked and cannot be deleted."
         )
-    return redirect("expenses:expense_dashboard")
-    expense.delete()
-    messages.success(request, "Expense deleted Successfully.")
+    else:
+        expense.delete()
+        messages.success(request, "Expense deleted Successfully.")
     return redirect("expenses:expense_dashboard")
 
 from datetime import timedelta
 
 @manager_required
 def edit_expense(request, expense_id):
-    expense = Expense.objects.get(id=expense_id)
+    from django.shortcuts import get_object_or_404
+    expense = get_object_or_404(Expense, id=expense_id)
 
     if request.method == "POST":
-        expense.date = request.POST.get("date")
+        new_date = request.POST.get("date")
+        new_amount = request.POST.get("amount")
+        
+        # Validate date
+        if new_date:
+            try:
+                expense.date = date.fromisoformat(new_date)
+            except ValueError:
+                messages.error(request, "Invalid date format.")
+                return redirect("expenses:expense_dashboard")
+        
+        # Validate amount
+        if new_amount:
+            try:
+                expense.amount = Decimal(new_amount).quantize(Decimal('0.01'))
+            except (ValueError, TypeError):
+                messages.error(request, "Invalid amount. Please enter a valid number.")
+                return redirect("expenses:expense_dashboard")
+        
         expense.category = request.POST.get("category")
         expense.description = request.POST.get("description")
-        expense.amount = request.POST.get("amount")
         expense.payment_mode = request.POST.get("payment_mode")
         expense.save()
 
@@ -163,12 +190,12 @@ def edit_expense(request, expense_id):
         )
         return redirect("expenses:expense_dashboard")
 
-        return render(request, "expenses/edit_expense.html", {
-            "expense": expense
-        })
+    return render(request, "expenses/edit_expense.html", {
+        "expense": expense
+    })
 
 @manager_required
-def export_expenses_csv(request):
+def export_expenses_csv(request, viewing_as_owner=False):
     selected_date = request.GET.get("date")
     export_date = (
         date.fromisoformat(selected_date)

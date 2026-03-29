@@ -38,6 +38,9 @@ def manager_required(view_func):
         is_manager = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
         is_king = request.user.groups.filter(name='King').exists()
         
+        # Set viewing_as_owner flag on request (accessible to all views)
+        request.viewing_as_owner = False
+        
         # Case 1: Manager or Superuser - full access
         if is_manager and not is_king:
             logger.info(f"Manager {username} accessed manager view from {client_ip}")
@@ -46,7 +49,7 @@ def manager_required(view_func):
         # Case 2: King user - read-only access to manager data
         if is_king:
             logger.info(f"King {username} viewing manager data from {client_ip}")
-            kwargs['viewing_as_owner'] = True  # Mark as owner viewing
+            request.viewing_as_owner = True  # Mark as owner viewing (stored in request)
             return view_func(request, *args, **kwargs)
         
         # Case 3: Unauthorized user
@@ -120,7 +123,7 @@ def king_required(view_func):
         # STEP 1: Check basic authentication
         if not request.user.is_authenticated:
             logger.info(f"King dashboard: Unauthenticated access attempt from {client_ip}")
-            return redirect('king_login')
+            return redirect('king:king_login')
         
         # STEP 2: Check session flag (double-authentication layer)
         if not request.session.get('king_authenticated'):
@@ -128,7 +131,7 @@ def king_required(view_func):
                 f"King dashboard: Session flag missing for {username} from {client_ip}. "
                 f"Possible direct URL access attempt. Redirecting to login."
             )
-            return redirect('king_login')
+            return redirect('king:king_login')
         
         # STEP 3: EXPLICIT REJECTION of Manager group (CRITICAL SECURITY)
         if request.user.groups.filter(name='Manager').exists():

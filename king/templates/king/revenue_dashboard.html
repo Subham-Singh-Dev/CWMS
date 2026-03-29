@@ -1,0 +1,310 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Revenue | CWMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-400:#fbbf24; --gold-500:#f59e0b; --gold-600:#d97706;
+            --green-400:#34d399; --green-500:#10b981;
+            --red-400:#f87171; --blue-400:#60a5fa; --purple-400:#a78bfa;
+            --text-primary:#eef0f8; --text-secondary:#a8b0c8; --text-muted:#6b7294;
+            --border:rgba(255,255,255,0.06); --border-strong:rgba(255,255,255,0.12);
+            --card-bg:#111420;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:#0a0b10; color:var(--text-primary); padding:20px; }
+        .container { max-width:1400px; margin:0 auto; }
+
+        .header {
+            background:var(--card-bg); border:1px solid var(--border-strong);
+            border-radius:16px; padding:24px 28px; margin-bottom:24px;
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
+            position:relative; overflow:hidden;
+        }
+        .header::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--green-500),var(--gold-400)); }
+        .header-title { font-size:22px; font-weight:900; display:flex; align-items:center; gap:10px; }
+        .header-sub   { font-size:13px; color:var(--text-muted); margin-top:3px; }
+        .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+        .btn-gold {
+            padding:10px 20px; background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
+            color:#000; font-weight:700; font-size:13px; border:none; border-radius:10px;
+            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+        }
+        .btn-ghost {
+            padding:10px 16px; background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
+            color:var(--text-primary); font-weight:600; font-size:13px; border-radius:10px;
+            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:all .2s;
+        }
+        .btn-ghost:hover { border-color:var(--gold-600); color:var(--gold-400); }
+
+        /* ADD FORM PANEL */
+        .add-panel {
+            background:var(--card-bg); border:1px solid var(--border-strong);
+            border-left:4px solid var(--green-500);
+            border-radius:14px; padding:24px; margin-bottom:24px;
+        }
+        .add-panel-title { font-size:14px; font-weight:700; color:var(--green-400); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+        .add-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
+        .form-group { display:flex; flex-direction:column; gap:6px; }
+        .form-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
+        .form-input, .form-select {
+            padding:9px 13px; background:rgba(255,255,255,.15);
+            border:1px solid var(--border-strong); border-radius:8px;
+            color:var(--text-primary); font-size:13px; font-family:inherit;
+            outline:none; transition:border-color .2s;
+        }
+        input[type="date"], input[type="time"], input[type="datetime-local"] {
+            color-scheme: light;
+            background: rgba(255,255,255,.15);
+            color: var(--text-primary);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(1.2);
+            cursor: pointer;
+        }
+        .form-input:focus, .form-select:focus { border-color:var(--green-500); }
+        .form-select option { background:#1c1f2e; }
+        .add-actions { margin-top:16px; display:flex; gap:10px; justify-content:flex-end; }
+
+        /* CAT TOTALS */
+        .cat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:24px; }
+        .cat-card {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:12px; padding:16px;
+            display:flex; flex-direction:column; gap:6px;
+        }
+        .cat-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
+        .cat-value { font-size:22px; font-weight:900; color:var(--green-400); }
+
+        /* TOTAL CARD */
+        .total-card {
+            background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(245,158,11,.08));
+            border:1px solid rgba(52,211,153,.2); border-radius:14px;
+            padding:20px 24px; margin-bottom:20px;
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+        }
+        .total-label { font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+        .total-value { font-size:32px; font-weight:900; color:var(--green-400); letter-spacing:-1px; }
+
+        /* FILTER */
+        .filter-bar {
+            background:var(--card-bg); border:1px solid var(--border); border-radius:12px;
+            padding:14px 20px; margin-bottom:20px;
+            display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+        }
+        .filter-label { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+
+        /* TABLE */
+        .table-card { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+        table { width:100%; border-collapse:collapse; }
+        thead tr { background:rgba(255,255,255,.03); }
+        th { padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); text-align:left; border-bottom:1px solid var(--border); }
+        td { padding:13px 16px; font-size:13px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        tbody tr:hover { background:rgba(255,255,255,.02); }
+        tbody tr:last-child td { border-bottom:none; }
+
+        .badge {
+            display:inline-block; padding:3px 9px; border-radius:5px; font-size:10px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.4px;
+        }
+        .badge-contract { background:rgba(245,158,11,.12); color:var(--gold-400); }
+        .badge-labour   { background:rgba(96,165,250,.12); color:var(--blue-400); }
+        .badge-material { background:rgba(167,139,250,.12); color:var(--purple-400); }
+        .badge-other    { background:rgba(255,255,255,.06); color:var(--text-secondary); }
+
+        .pay-tag {
+            display:inline-block; padding:3px 8px; border-radius:5px; font-size:10px; font-weight:700;
+        }
+        .pay-cash { background:rgba(52,211,153,.1); color:var(--green-400); }
+        .pay-upi  { background:rgba(96,165,250,.1); color:var(--blue-400); }
+        .pay-bank { background:rgba(255,255,255,.06); color:var(--text-secondary); }
+
+        .btn-delete {
+            padding:5px 10px; background:rgba(239,68,68,.1); color:var(--red-400);
+            border:none; border-radius:6px; font-size:11px; font-weight:600;
+            cursor:pointer; transition:all .2s;
+        }
+        .btn-delete:hover { background:rgba(239,68,68,.2); }
+
+        .empty-state { padding:50px; text-align:center; color:var(--text-muted); }
+
+        /* Messages */
+        .messages { margin-bottom:16px; }
+        .message { padding:12px 16px; border-radius:10px; margin-bottom:8px; font-size:13px; font-weight:500; }
+        .message.success { background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.3); color:var(--green-400); }
+        .message.error   { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:var(--red-400); }
+
+        @media(max-width:768px) { .add-grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div>
+            <div class="header-title">💹 Manual Revenue</div>
+            <div class="header-sub">Record income entries — feeds into king dashboard total</div>
+        </div>
+        <div class="header-right">
+            <a href="{% url 'king:workorder_dashboard' %}" class="btn-ghost">📋 Work Orders</a>
+            <a href="{% url 'king:king_dashboard' %}" class="btn-ghost">← King Dashboard</a>
+        </div>
+    </div>
+
+    <!-- MESSAGES -->
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ADD REVENUE FORM -->
+    <div class="add-panel">
+        <div class="add-panel-title">➕ Add Revenue Entry</div>
+        <form method="post" action="{% url 'king:revenue_add' %}">
+            {% csrf_token %}
+            <div class="add-grid">
+                <div class="form-group">
+                    <label class="form-label">Date *</label>
+                    <input type="date" name="date" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount (₹) *</label>
+                    <input type="number" name="amount" class="form-input" placeholder="e.g. 50000" min="0.01" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Source / Description *</label>
+                    <input type="text" name="source" class="form-input" placeholder="e.g. 1st installment - Sharma" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select name="category" class="form-select" required>
+                        <option value="">Select Category</option>
+                        {% for val, label in category_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Mode *</label>
+                    <select name="payment_mode" class="form-select" required>
+                        <option value="">Select Mode</option>
+                        {% for val, label in payment_mode_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Link to Work Order</label>
+                    <select name="work_order" class="form-select">
+                        <option value="">— None —</option>
+                        {% for wo in work_orders %}
+                        <option value="{{ wo.id }}">{{ wo.wo_number }} — {{ wo.project_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="add-actions">
+                <button type="submit" class="btn-gold">✓ Add Revenue</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- TOTAL + FILTER -->
+    <div class="total-card">
+        <div>
+            <div class="total-label">Total Revenue — {{ selected_month }}</div>
+            <div class="total-value">₹{{ total_revenue|floatformat:0 }}</div>
+        </div>
+        <form method="get" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span class="filter-label" style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Month</span>
+            <input type="month" name="month" value="{{ selected_month }}" class="form-input" style="width:auto;">
+            <button type="submit" class="btn-ghost" style="padding:8px 14px;font-size:12px;">Apply</button>
+        </form>
+    </div>
+
+    <!-- CATEGORY BREAKDOWN -->
+    {% if cat_data %}
+    <div class="cat-grid">
+        {% for cat in cat_data %}
+        <div class="cat-card">
+            <div class="cat-label">{{ cat.label }}</div>
+            <div class="cat-value">₹{{ cat.total|floatformat:0 }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- REVENUE TABLE -->
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Category</th>
+                    <th>Payment Mode</th>
+                    <th>Work Order</th>
+                    <th style="text-align:right;">Amount</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rev in revenues %}
+                <tr>
+                    <td>{{ rev.date|date:"d M Y" }}</td>
+                    <td style="font-weight:600;">{{ rev.source }}</td>
+                    <td>
+                        <span class="badge badge-{{ rev.category }}">
+                            {{ rev.get_category_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="pay-tag pay-{{ rev.payment_mode }}">
+                            {{ rev.get_payment_mode_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if rev.work_order %}
+                        <a href="{% url 'king:workorder_detail' rev.work_order.id %}"
+                           style="color:var(--gold-400);font-size:12px;font-weight:600;text-decoration:none;">
+                            {{ rev.work_order.wo_number }}
+                        </a>
+                        {% else %}
+                        <span style="color:var(--text-muted);font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;font-weight:700;color:var(--green-400);">
+                        ₹{{ rev.amount|floatformat:0 }}
+                    </td>
+                    <td>
+                        <form method="post" action="{% url 'king:revenue_delete' rev.id %}"
+                              onsubmit="return confirm('Delete this entry?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-delete">✕</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">No revenue entries for this month.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

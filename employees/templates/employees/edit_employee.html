@@ -219,6 +219,17 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        input[type="date"], input[type="time"], input[type="datetime-local"] {
+            color-scheme: light;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(1.2);
+            cursor: pointer;
+        }
         .form-helper {
             font-size: 12px;
             color: var(--text-muted);

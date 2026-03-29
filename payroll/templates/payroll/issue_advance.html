@@ -242,6 +242,17 @@
             color: var(--text-muted);
             margin-top: 4px;
         }
+        input[type="date"], input[type="time"], input[type="datetime-local"] {
+            color-scheme: light;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(1.2);
+            cursor: pointer;
+        }
         
         /* EMPLOYEE SEARCH */
         .employee-search-wrapper {

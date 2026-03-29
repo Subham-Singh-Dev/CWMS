@@ -199,7 +199,7 @@ def manager_dashboard(request, viewing_as_owner=False):
     ).exists()
 
     context["payroll_exists"] = payroll_exists
-    context["viewing_as_owner"] = viewing_as_owner  # Pass flag to template
+    context["viewing_as_owner"] = request.viewing_as_owner  # Pass flag from request
 
 
     # 1. WORKFORCE METRICS
@@ -252,73 +252,101 @@ def bulk_attendance(request):
     """
     Bulk Attendance Interface.
     Allows marking 100+ workers in one go.
+    
+    RESTRICTIONS:
+    - Only current month dates allowed
+    - Cannot mark future dates
+    - Cannot mark previous months
     """
+    today = timezone.now().date()
+    
     # 1. Get Date from URL (or default to Today)
     date_str = request.GET.get('date')
     if date_str:
         try:
             selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            # Validate date is in current month and not in future
+            if selected_date > today:
+                messages.warning(request, "Cannot mark attendance for future dates.")
+                selected_date = today
+            elif selected_date.year < today.year or (selected_date.year == today.year and selected_date.month < today.month):
+                messages.warning(request, "Cannot mark attendance for previous months.")
+                selected_date = today
         except ValueError:
-            selected_date = timezone.now().date()
+            selected_date = today
     else:
-        selected_date = timezone.now().date()
+        selected_date = today
 
     # 2. Handle SAVE (POST)
     if request.method == "POST":
         post_date_str = request.POST.get('attendance_date')
-        selected_date = datetime.strptime(post_date_str, '%Y-%m-%d').date()
-        
         try:
-            with transaction.atomic():
-                # Loop through POST data to find status keys
+            selected_date = datetime.strptime(post_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            selected_date = today
+        
+        # VALIDATE: No future dates
+        if selected_date > today:
+            messages.error(request, "❌ Cannot mark attendance for future dates.")
+            selected_date = today
+        # VALIDATE: No previous months
+        elif selected_date.year < today.year or (selected_date.year == today.year and selected_date.month < today.month):
+            messages.error(request, "❌ Cannot mark attendance for previous months.")
+            selected_date = today
+        else:
+            # Valid date - proceed with saving attendance
+            try:
+                with transaction.atomic():
+                    # Loop through POST data to find status keys
+                    for key, value in request.POST.items():
+                        if key.startswith('status_'):
+                            # key format: status_101 (where 101 is employee ID)
+                            emp_id = key.split('_')[1]
+                            
+                            status = value
+                            overtime_str = request.POST.get(f'overtime_{emp_id}', 0) or 0
+                            
+                            # Validate and convert Overtime to Decimal
+                            try:
+                                overtime = Decimal(str(overtime_str)).quantize(Decimal('0.01'))
+                            except (ValueError, TypeError):
+                                overtime = Decimal('0.00')
+                            
+                            # Update or Create
+                            Attendance.objects.update_or_create(
+                                employee_id=emp_id,
+                                date=selected_date,
+                                defaults={
+                                    'status': status,
+                                    'overtime_hours': overtime,
+                                    
+                                }
+                            )
+                    
+                # COUNT STATUSES
+                present = 0
+                absent = 0
+                half_day = 0
+                
                 for key, value in request.POST.items():
                     if key.startswith('status_'):
-                        # key format: status_101 (where 101 is employee ID)
-                        emp_id = key.split('_')[1]
-                        
-                        status = value
-                        overtime_str = request.POST.get(f'overtime_{emp_id}', 0) or 0
-                        
-                        # Validate and convert Overtime to Decimal
-                        try:
-                            overtime = Decimal(str(overtime_str)).quantize(Decimal('0.01'))
-                        except (ValueError, TypeError):
-                            overtime = Decimal('0.00')
-                        
-                        # Update or Create
-                        Attendance.objects.update_or_create(
-                            employee_id=emp_id,
-                            date=selected_date,
-                            defaults={
-                                'status': status,
-                                'overtime_hours': overtime,
-                                
-                            }
-                        )
+                        if value == 'P':
+                            present += 1
+                        elif value == 'A':
+                            absent += 1
+                        elif value == 'H':
+                            half_day += 1
                 
-            # COUNT STATUSES
-            present = 0
-            absent = 0
-            half_day = 0
-            
-            for key, value in request.POST.items():
-                if key.startswith('status_'):
-                    if value == 'P':
-                        present += 1
-                    elif value == 'A':
-                        absent += 1
-                    elif value == 'H':
-                        half_day += 1
-            
-            # SUCCESS MESSAGE
-            messages.success(
-                request,
-                f"✓ Attendance saved for {selected_date} | "
-                f"Present: {present} | Half Day: {half_day} | Absent: {absent}"
-            )
-            
-        except Exception as e:
-            messages.error(request, f"Error: {str(e)}")
+                # SUCCESS MESSAGE
+                messages.success(
+                    request,
+                    f"✓ Attendance saved for {selected_date} | "
+                    f"Present: {present} | Half Day: {half_day} | Absent: {absent}"
+                )
+                
+            except Exception as e:
+                messages.error(request, f"Error: {str(e)}")
 
     # 3. Handle VIEW (GET)
     # Fetch all active workers

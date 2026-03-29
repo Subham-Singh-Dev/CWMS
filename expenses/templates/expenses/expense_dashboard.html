@@ -255,6 +255,17 @@
             transition: border-color .2s;
         }
         .form-input-inline:focus { border-color: var(--primary-500); }
+        input[type="date"], input[type="time"], input[type="datetime-local"] {
+            color-scheme: light;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(1.2);
+            cursor: pointer;
+        }
         .export-actions {
             display: flex;
             gap: 10px;
@@ -316,6 +327,7 @@
             font-family: inherit;
             transition: border-color .2s, box-shadow .2s;
             outline: none;
+            color-scheme: light;
         }
         .form-input:focus, .form-select:focus { 
             border-color: var(--primary-500); 

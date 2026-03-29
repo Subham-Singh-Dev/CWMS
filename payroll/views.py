@@ -6,7 +6,7 @@ from .models import MonthlySalary
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 from django.db.models import Sum, Count, Q
 from django.db.models.functions import Coalesce
@@ -76,51 +76,108 @@ def download_payslip(request, salary_id):
 
 @manager_required
 def payroll_batch_summary(request, viewing_as_owner=False):
+    """
+    Payroll Batch Summary - Shows current or previous month payroll
+    
+    LOGIC:
+    1. If month param provided, use it
+    2. Else, try current month payroll
+    3. If current month has no payroll, fallback to previous month
+    4. Show month selector to allow switching between months
+    
+    This ensures contractors can always see payroll status even if current month isn't generated yet.
+    """
+    today = date.today()
+    current_month_str = today.strftime("%Y-%m")
+    prev_month = (today.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+    
+    # STEP 1: Determine which month to display
     selected_month = request.GET.get("month")
-
+    
     if not selected_month:
-        raise Http404("Month is required")
-
+        # Try current month first
+        month_to_check = current_month_str
+        
+        # Check if current month has payroll
+        check_date = datetime.strptime(month_to_check, "%Y-%m").date()
+        if not MonthlySalary.objects.filter(month__year=check_date.year, month__month=check_date.month).exists():
+            # Fall back to previous month
+            selected_month = prev_month
+        else:
+            selected_month = month_to_check
+    
+    # Parse selected month
     try:
         month_date = datetime.strptime(selected_month, "%Y-%m").date()
     except ValueError:
         raise Http404("Invalid month format. Expected YYYY-MM")
-
+    
+    # STEP 2: Get payroll data for selected month
     salaries_qs = MonthlySalary.objects.filter(
-    month__year=month_date.year,
-    month__month=month_date.month
-)
+        month__year=month_date.year,
+        month__month=month_date.month
+    )
+    
     batch_generated_at = salaries_qs.order_by("generated_at").values_list(
-    "generated_at", flat=True
+        "generated_at", flat=True
     ).first()
-
-
+    
+    # STEP 3: Get available months for dropdown (only up to current month)
+    # Find all months that have payroll data, but exclude future months
+    all_months_raw = MonthlySalary.objects.values_list("month", flat=True).distinct().order_by("-month")
+    
+    # Filter to only include months up to and including current month
+    current_date = date.today()
+    available_months_list = []
+    for m in all_months_raw:
+        # Only include if month is <= current month
+        if m.year < current_date.year or (m.year == current_date.year and m.month <= current_date.month):
+            month_str = m.strftime("%Y-%m")
+            month_display_name = m.strftime("%B %Y")
+            available_months_list.append({"value": month_str, "display": month_display_name})
+            # Limit to last 12 months
+            if len(available_months_list) >= 12:
+                break
+    
+    available_months = available_months_list
+    
     if not salaries_qs.exists():
+        # No payroll for selected month
+        context = {
+            "selected_month": selected_month,
+            "available_months": available_months,
+            "current_month_str": current_month_str,
+            "prev_month_str": prev_month,
+            "month_display": datetime.strptime(selected_month, "%Y-%m").strftime("%B %Y"),
+            "has_payroll": False,
+        }
         return render(
             request,
-            "payroll/payroll_summary_empty.html",
-            {"selected_month": selected_month}
+            "payroll/payroll_batch_summary.html",
+            context
         )
-
+    
+    # STEP 4: Aggregate payroll data
     aggregates = salaries_qs.aggregate(
-    total_employees=Count("id"),
-
-    total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
-    total_advance_deducted=Coalesce(Sum("advance_deducted"), Decimal("0.00")),
-    total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
-
-    paid_count=Count("id", filter=Q(is_paid=True)),
-    unpaid_count=Count("id", filter=Q(is_paid=False)),
-)
-
-
+        total_employees=Count("id"),
+        total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
+        total_advance_deducted=Coalesce(Sum("advance_deducted"), Decimal("0.00")),
+        total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
+        paid_count=Count("id", filter=Q(is_paid=True)),
+        unpaid_count=Count("id", filter=Q(is_paid=False)),
+    )
+    
     unpaid_liability = salaries_qs.filter(is_paid=False).aggregate(
-    liability=Coalesce(Sum("net_pay"), Decimal("0.00"))
+        liability=Coalesce(Sum("net_pay"), Decimal("0.00"))
     )["liability"]
-
-
+    
+    # STEP 5: Build context with month selector data
     context = {
         "selected_month": selected_month,
+        "month_display": datetime.strptime(selected_month, "%Y-%m").strftime("%B %Y"),  # "March 2026"
+        "available_months": available_months,
+        "current_month_str": current_month_str,
+        "prev_month_str": prev_month,
         "total_employees": aggregates["total_employees"],
         "paid_count": aggregates["paid_count"],
         "unpaid_count": aggregates["unpaid_count"],
@@ -129,8 +186,9 @@ def payroll_batch_summary(request, viewing_as_owner=False):
         "total_net": aggregates["total_net"],
         "total_liability": unpaid_liability,
         "generated_at": batch_generated_at,
+        "has_payroll": True,
     }
-
+    
     return render(
         request,
         "payroll/payroll_batch_summary.html",

@@ -418,6 +418,49 @@
 </head>
 <body>
 <div class="container">
+    {% if not has_payroll %}
+    <!-- NO PAYROLL STATE -->
+    <div class="header">
+        <div class="header-top">
+            <div class="header-left">
+                <h1>💰 Payroll Summary</h1>
+                <p>Monitor and manage monthly payroll expenses</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'manager_dashboard' %}" class="btn btn-secondary">← Back To Dashboard</a>
+                <button class="btn btn-secondary theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
+            </div>
+        </div>
+    </div>
+    
+    <div style="display: grid; place-items: center; min-height: 400px; text-align: center;">
+        <div style="background: var(--card-bg); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 48px; max-width: 500px;">
+            <div style="font-size: 64px; margin-bottom: 16px;">📋</div>
+            <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">No Payroll Generated</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6;">
+                Payroll for <strong>{{ month_display }}</strong> hasn't been generated yet.
+            </p>
+            
+            {% if available_months %}
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase;">View Previous Month Payroll</label>
+                <select onchange="if(this.value) window.location.href='?month=' + this.value" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; cursor: pointer; font-size: 14px;">
+                    <option value="">-- Select Month --</option>
+                    {% for month in available_months %}
+                        <option value="{{ month.value }}">
+                            {{ month.display }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            
+            <a href="{% url 'manager_dashboard' %}" class="btn btn-primary">← Back To Dashboard</a>
+        </div>
+    </div>
+    
+    {% else %}
+    <!-- PAYROLL EXISTS - SHOW SUMMARY -->
     <!-- HEADER -->
     <div class="header">
         <div class="header-top">
@@ -431,20 +474,34 @@
                     📋 Salary List
                 </a>
                 <button class="btn btn-secondary" onclick="window.print()">📊 Export</button>
-                <button class="btn btn-primary" disabled title="Feature coming in Phase 3">
-                    💳 Mark Payments
-                </button>
                 <button class="btn btn-secondary theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
             </div>
         </div>
         
-        <!-- Context Banner -->
-        <div class="context-banner">
-            <div class="month-label">📅 Payroll Month</div>
-            <div class="month-value">{{ selected_month|date:"F Y" }}</div>
-            <div class="meta-info">
-                Generated on: {{ generated_at|default:"System Generated Payroll" }}
+        <!-- Context Banner with Month Selector -->
+        <div class="context-banner" style="display: flex; align-items: center; gap: 20px; justify-content: space-between;">
+            <div>
+                <div class="month-label">📅 Payroll Month</div>
+                <div class="month-value" style="font-weight: 900; font-size: 28px;">{{ month_display }}</div>
+                <div class="meta-info">
+                    Generated on: {{ generated_at|default:"System Generated Payroll" }}
+                </div>
             </div>
+            
+            <!-- Month Selector -->
+            {% if available_months %}
+            <div style="background: var(--card-bg); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; min-width: 200px;">
+                <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Switch Month</label>
+                <select onchange="if(this.value) window.location.href='?month=' + this.value" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; cursor: pointer;">
+                    <option value="">-- Select Month --</option>
+                    {% for month in available_months %}
+                        <option value="{{ month.value }}" {% if month.value == selected_month %}selected{% endif %}>
+                            {{ month.display }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
         </div>
         
         <!-- Notice -->
@@ -522,10 +579,12 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <script>
-// Animate Currency Values
+// Animate Currency Values (only if has_payroll)
+{% if has_payroll %}
 document.querySelectorAll('.stat-value[data-value]').forEach(el => {
     const target = parseFloat(el.dataset.value) || 0;
     const duration = 1000;
@@ -550,6 +609,7 @@ document.querySelectorAll('.chart-tab').forEach(tab => {
         setTimeout(() => this.style.transform = 'scale(1)', 100);
     });
 });
+{% endif %}
 
 // Console Log
 console.log(

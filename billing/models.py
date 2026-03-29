@@ -12,7 +12,12 @@ class Bill(models.Model):
         default=Decimal("0.00")
     )
 
-    pdf_file = models.FileField(upload_to="billing/billing_pdfs/")
+    pdf_file = models.FileField(
+        upload_to="billing/billing_pdfs/",
+        null=True,
+        blank=True,
+        help_text="Optional PDF file for the bill"
+    )
 
     is_paid = models.BooleanField(default=False)
 
@@ -35,5 +40,6 @@ class Bill(models.Model):
             self.paid_on = None
 
         super().save(*args, **kwargs)
+
 
 

@@ -5,965 +5,893 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>King Dashboard | CWMS</title>
+    <script>
+        // Set theme immediately before page renders to prevent flash
+        (function() {
+            const theme = localStorage.getItem('king_theme') || 'light';
+            document.documentElement.setAttribute('data-kingTheme', theme);
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        /* ══════════════════════════════════════════════════════════
+           LIGHT THEME (DEFAULT) - Professional, Clean, Contractor-Ready
+           ══════════════════════════════════════════════════════════ */
         :root {
-            --gold-50:  #fffbeb;
-            --gold-100: #fef3c7;
-            --gold-300: #fcd34d;
-            --gold-400: #fbbf24;
-            --gold-500: #f59e0b;
-            --gold-600: #d97706;
-            --gold-700: #b45309;
-            --gold-900: #78350f;
-            --green-400: #34d399;
-            --green-500: #10b981;
-            --green-600: #059669;
-            --red-400:  #f87171;
-            --red-500:  #ef4444;
-            --red-600:  #dc2626;
-            --blue-400: #60a5fa;
-            --blue-500: #3b82f6;
-            --cyan-400: #22d3ee;
-            --purple-400: #a78bfa;
-            --orange-400: #fb923c;
-            --n900: #0a0b10;
-            --n800: #0f1117;
-            --n700: #161822;
-            --n600: #1c1f2e;
-            --n500: #252840;
-            --n400: #2e3250;
-            --n300: #3d4266;
-            --n200: #565b80;
-            --n100: #7880a0;
-            --n50:  #a8b0c8;
-            --text-primary:   #eef0f8;
-            --text-secondary: #a8b0c8;
-            --text-muted:     #6b7294;
-            --border:         rgba(255,255,255,0.06);
-            --border-strong:  rgba(255,255,255,0.12);
-            --card-bg:        #111420;
-            --card-bg-2:      #161923;
-            --body-bg:        #0a0b10;
+            --gold-300: #fef3c7; --gold-400: #fcd34d; --gold-500: #f59e0b; --gold-600: #d97706;
+            --green-400: #4ade80; --green-500: #22c55e; --green-600: #16a34a;
+            --red-400: #f87171;  --red-500: #ef4444;
+            --blue-400: #60a5fa; --blue-500: #3b82f6;
+            --cyan-400: #06b6d4; --purple-400: #a78bfa; --orange-400: #fb923c;
+            --n700: #f0f0f0; --n600: #e5e5e5; --n500: #d4d4d8; --n400: #e4e4e7;
+            --text-primary: #1f2937; --text-secondary: #6b7280; --text-muted: #9ca3af;
+            --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.15);
+            --card-bg: #ffffff; --card-bg-2: #f9fafb; --body-bg: #f5f7fa;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* ══════════════════════════════════════════════════════════
+           DARK THEME - Elegant, Professional, Evening-Friendly
+           ══════════════════════════════════════════════════════════ */
+        html[data-kingTheme="dark"] {
+            --gold-300: #fcd34d; --gold-400: #fbbf24; --gold-500: #f59e0b; --gold-600: #d97706;
+            --green-400: #34d399; --green-500: #10b981; --green-600: #059669;
+            --red-400: #f87171;  --red-500: #ef4444;
+            --blue-400: #60a5fa; --blue-500: #3b82f6;
+            --cyan-400: #22d3ee; --purple-400: #a78bfa; --orange-400: #fb923c;
+            --n700: #161822; --n600: #1c1f2e; --n500: #252840; --n400: #2e3250;
+            --text-primary: #eef0f8; --text-secondary: #a8b0c8; --text-muted: #6b7294;
+            --border: rgba(255,255,255,0.06); --border-strong: rgba(255,255,255,0.12);
+            --card-bg: #111420; --card-bg-2: #0e1119; --body-bg: #0a0b10;
+        }
+
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--body-bg);
-            color: var(--text-primary);
-            line-height: 1.6;
-            padding: 20px;
-            -webkit-font-smoothing: antialiased;
+            font-family:'Inter',sans-serif;
+            background:var(--body-bg); color:var(--text-primary);
+            line-height:1.6; padding:24px 20px;
+            -webkit-font-smoothing:antialiased;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .container { max-width: 1600px; margin: 0 auto; }
+        
+        /* Dark theme explicit overrides for body */
+        html[data-kingTheme="dark"] body {
+            background-color: #0a0b10;
+            color: #eef0f8;
+        }
+        .container { max-width:1600px; margin:0 auto; }
 
-        /* ═══════════════════════ HEADER ═══════════════════════════ */
+        /* ── ZONE LABEL ── */
+        .zone-label {
+            font-size:11px; font-weight:700; letter-spacing:.9px;
+            text-transform:uppercase; color:var(--text-muted);
+            margin:28px 0 14px 2px;
+            display:flex; align-items:center; gap:10px;
+        }
+        .zone-label::after { content:''; flex:1; height:1px; background:var(--border-strong); }
+
+        /* ── HEADER ── */
         .header {
-            position: relative;
-            border-radius: 20px;
-            padding: 32px 36px;
-            margin-bottom: 28px;
-            overflow: hidden;
-            background: var(--n700);
-            border: 1px solid var(--border-strong);
+            position:relative; border-radius:20px;
+            padding:28px 36px; margin-bottom:24px;
+            background:var(--n700); border:1px solid var(--border-strong); overflow:hidden;
         }
         .header-bg {
-            position: absolute; inset: 0;
+            position:absolute; inset:0; pointer-events:none;
             background:
-                radial-gradient(ellipse 60% 80% at 80% 50%, rgba(245,158,11,0.12) 0%, transparent 70%),
-                radial-gradient(ellipse 40% 60% at 10% 30%, rgba(251,191,36,0.06) 0%, transparent 60%);
-            pointer-events: none;
+                radial-gradient(ellipse 60% 80% at 80% 50%, rgba(245,158,11,.1) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 60% at 10% 30%, rgba(251,191,36,.05) 0%, transparent 60%);
         }
         .header-stripe {
-            position: absolute; top:0; left:0; right:0; height:3px;
-            background: linear-gradient(90deg, var(--gold-600), var(--gold-400), var(--gold-600));
+            position:absolute; top:0; left:0; right:0; height:3px;
+            background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600));
         }
         .header-content {
-            position: relative; z-index: 1;
-            display: flex; justify-content: space-between;
-            align-items: center; flex-wrap: wrap; gap: 20px;
+            position:relative; z-index:1;
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;
         }
-        .header-left { display:flex; flex-direction:column; gap:6px; }
+        .header-left { display:flex; flex-direction:column; gap:4px; }
+        .header-company {
+            font-size:11px; font-weight:700; letter-spacing:1.5px;
+            text-transform:uppercase; color:var(--gold-500); opacity:.85;
+        }
         .header-greeting {
-            font-size:13px; font-weight:600; letter-spacing:.5px;
-            text-transform: uppercase; color: var(--gold-400); opacity:.9;
+            font-size:13px; font-weight:600; color:var(--text-muted);
         }
         .header-title {
-            font-size: 36px; font-weight:900; letter-spacing:-1px;
-            color: var(--text-primary);
-            display:flex; align-items:center; gap:14px;
+            font-size:32px; font-weight:900; letter-spacing:-1px;
+            color:var(--text-primary); display:flex; align-items:center; gap:14px;
         }
         .crown-badge {
             display:inline-flex; align-items:center; justify-content:center;
-            width:52px; height:52px; border-radius:14px;
-            background: linear-gradient(135deg, var(--gold-600), var(--gold-400));
-            font-size:26px; flex-shrink:0;
-            box-shadow: 0 0 24px rgba(245,158,11,0.3);
+            width:48px; height:48px; border-radius:13px; font-size:24px; flex-shrink:0;
+            background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
+            box-shadow:0 0 22px rgba(245,158,11,.3);
         }
-        .header-subtitle { font-size:14px; color:var(--text-secondary); }
-        .header-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .header-subtitle { font-size:13px; color:var(--text-secondary); margin-top:2px; }
+        .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
         .hdr-pill {
             display:flex; align-items:center; gap:8px;
-            padding:10px 16px; border-radius:12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border-strong);
+            padding:9px 14px; border-radius:11px;
+            background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
             font-size:13px; font-weight:600; color:var(--text-primary);
         }
         .user-avatar {
-            width:36px; height:36px; border-radius:50%;
-            background: linear-gradient(135deg, var(--gold-600), var(--gold-400));
+            width:34px; height:34px; border-radius:50%;
+            background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
             display:flex; align-items:center; justify-content:center;
-            font-weight:800; font-size:15px; color:#fff;
+            font-weight:800; font-size:14px; color:#000;
         }
-        .user-role-tag {
-            font-size:10px; font-weight:700; letter-spacing:.5px;
-            text-transform:uppercase; color:var(--gold-400);
-        }
+        .user-role-tag { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gold-400); }
         .king-theme-toggle, .logout-btn {
-            height:42px; padding:0 16px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border-strong);
-            border-radius:12px; cursor:pointer;
-            font-size:14px; font-weight:600; color:var(--text-primary);
-            transition:all .2s; display:flex; align-items:center; gap:6px;
-            text-decoration:none;
+            height:40px; padding:0 14px;
+            background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
+            border-radius:11px; cursor:pointer; font-size:13px; font-weight:600;
+            color:var(--text-primary); transition:all .2s;
+            display:flex; align-items:center; gap:6px; text-decoration:none;
         }
         .king-theme-toggle:hover, .logout-btn:hover {
-            background: rgba(245,158,11,0.15);
-            border-color: var(--gold-600);
+            background:rgba(245,158,11,.15); border-color:var(--gold-600);
         }
 
-        /* ═══════════════ FINANCIAL HEALTH BAR ═════════════════════ */
-        .health-bar {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 18px 28px;
-            margin-bottom: 24px;
-            display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
-        }
-        .health-label {
-            font-size:12px; font-weight:700; letter-spacing:.5px;
-            text-transform:uppercase; color:var(--text-muted);
-            white-space:nowrap;
-        }
-        .health-track {
-            flex:1; min-width:200px; height:8px;
-            background: var(--n500); border-radius:99px; overflow:hidden;
-        }
-        .health-fill {
-            height:100%; border-radius:99px;
-            background: linear-gradient(90deg, var(--red-500), var(--gold-400), var(--green-500));
-            transition: width .6s ease;
-        }
-        .health-segments {
-            display:flex; gap:24px; flex-wrap:wrap;
-        }
-        .health-seg {
-            display:flex; flex-direction:column; gap:2px; min-width:80px;
-        }
-        .hs-label { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
-        .hs-value { font-size:15px; font-weight:700; }
-        .hs-value.positive { color:var(--green-400); }
-        .hs-value.negative { color:var(--red-400); }
-        .hs-value.gold { color:var(--gold-400); }
+        /* ── KPI CARDS ── */
+        .kpi-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:0; }
+        .kpi-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:0; }
+        .kpi-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:0; }
 
-        /* ═══════════════════ KPI CARDS ════════════════════════════ */
-        .kpi-grid {
-            display:grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap:16px; margin-bottom:24px;
-        }
         .kpi-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
+            background:var(--card-bg); border:1px solid var(--border);
             border-radius:16px; padding:22px;
-            transition: all .25s ease; cursor:pointer;
-            position:relative; overflow:hidden;
+            transition:all .25s ease; position:relative; overflow:hidden;
         }
         .kpi-card:hover { transform:translateY(-3px); border-color:var(--border-strong); }
-        .kpi-card::after {
-            content:''; position:absolute; top:0; left:0; right:0; height:3px;
-        }
-        .kpi-card.revenue::after   { background: linear-gradient(90deg,var(--green-500),var(--green-400)); }
-        .kpi-card.expenses::after  { background: linear-gradient(90deg,var(--red-500),var(--red-400)); }
-        .kpi-card.profit::after    { background: linear-gradient(90deg,var(--gold-600),var(--gold-400)); }
-        .kpi-card.payroll::after   { background: linear-gradient(90deg,var(--purple-400),#c084fc); }
-        .kpi-card.liability::after { background: linear-gradient(90deg,var(--orange-400),#fdba74); }
-        .kpi-card.workers::after   { background: linear-gradient(90deg,var(--blue-500),var(--blue-400)); }
-        .kpi-card.attendance::after{ background: linear-gradient(90deg,var(--cyan-400),#a5f3fc); }
+        .kpi-card::after { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+
+        /* accent colours per card type */
+        .kc-revenue::after   { background:linear-gradient(90deg,var(--green-500),var(--green-400)); }
+        .kc-liability::after { background:linear-gradient(90deg,var(--red-500),var(--red-400)); }
+        .kc-daily::after     { background:linear-gradient(90deg,var(--cyan-400),#a5f3fc); }
+        .kc-accum::after     { background:linear-gradient(90deg,var(--gold-600),var(--gold-400)); }
+        .kc-workers::after   { background:linear-gradient(90deg,var(--blue-500),var(--blue-400)); }
+        .kc-attendance::after{ background:linear-gradient(90deg,var(--purple-400),#c084fc); }
+        .kc-profit::after    { background:linear-gradient(90deg,var(--orange-400),#fdba74); }
+        .kc-expenses::after  { background:linear-gradient(90deg,var(--red-400),var(--orange-400)); }
 
         .kpi-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
         .kpi-icon {
-            width:44px; height:44px; border-radius:11px;
-            display:flex; align-items:center; justify-content:center; font-size:22px;
-            background: rgba(255,255,255,0.05);
+            width:42px; height:42px; border-radius:11px; font-size:20px;
+            display:flex; align-items:center; justify-content:center;
+            background:rgba(255,255,255,.05);
         }
         .kpi-trend {
-            padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700;
+            padding:4px 10px; border-radius:7px; font-size:11px; font-weight:700;
             display:flex; align-items:center; gap:4px;
         }
-        .t-up   { background:rgba(52,211,153,.12); color:var(--green-400); }
-        .t-down { background:rgba(248,113,113,.12); color:var(--red-400); }
-        .t-neu  { background:rgba(255,255,255,.06); color:var(--text-secondary); }
+        .t-up  { background:rgba(52,211,153,.12); color:var(--green-400); }
+        .t-down{ background:rgba(248,113,113,.12); color:var(--red-400); }
+        .t-neu { background:rgba(255,255,255,.06);  color:var(--text-secondary); }
+        .t-gold{ background:rgba(245,158,11,.12);   color:var(--gold-400); }
 
         .kpi-label {
             font-size:11px; font-weight:700; letter-spacing:.6px;
             text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;
         }
         .kpi-value {
-            font-size:28px; font-weight:900; letter-spacing:-1px;
-            color:var(--text-primary); margin-bottom:4px;
-            font-variant-numeric: tabular-nums;
+            font-size:26px; font-weight:900; letter-spacing:-1px;
+            color:var(--text-primary); margin-bottom:4px; font-variant-numeric:tabular-nums;
         }
         .kpi-desc { font-size:12px; color:var(--text-muted); }
-        .kpi-card.profit .kpi-value {
-            background: linear-gradient(135deg, var(--gold-400), var(--gold-300));
-            -webkit-background-clip:text; background-clip:text;
-            -webkit-text-fill-color:transparent;
-        }
 
-        /* ═══════════════════ CHARTS ROW ════════════════════════════ */
-        .charts-grid {
-            display:grid; grid-template-columns:2fr 1fr;
-            gap:16px; margin-bottom:24px;
+        /* gold gradient text for revenue */
+        .kpi-value.gold-text {
+            background:linear-gradient(135deg,var(--gold-400),var(--gold-300));
+            -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
         }
-        .chart-card {
+        .kpi-value.red-text   { color:var(--red-400); }
+        .kpi-value.cyan-text  { color:var(--cyan-400); }
+        .kpi-value.green-text { color:var(--green-400); }
+
+        /* ── HEALTH BAR ── */
+        .health-bar {
             background:var(--card-bg); border:1px solid var(--border);
-            border-radius:16px; padding:24px;
+            border-radius:14px; padding:18px 28px;
+            display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+        }
+        .health-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); white-space:nowrap; }
+        .health-track { flex:1; min-width:160px; height:7px; background:var(--n500); border-radius:99px; overflow:hidden; }
+        .health-fill  { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--red-500),var(--gold-400),var(--green-500)); transition:width .6s ease; }
+        .health-segments { display:flex; gap:20px; flex-wrap:wrap; }
+        .health-seg  { display:flex; flex-direction:column; gap:2px; min-width:72px; }
+        .hs-label    { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
+        .hs-value    { font-size:15px; font-weight:700; }
+        .hs-value.positive { color:var(--green-400); }
+        .hs-value.negative { color:var(--red-400); }
+        .hs-value.gold     { color:var(--gold-400); }
+
+        /* ── CHARTS ── */
+        .charts-grid   { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
+        .charts-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .chart-card {
+            background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:24px;
         }
         .chart-head {
             display:flex; justify-content:space-between; align-items:center;
-            margin-bottom:20px; padding-bottom:16px;
-            border-bottom:1px solid var(--border);
+            margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border);
         }
-        .chart-title {
-            font-size:16px; font-weight:700; color:var(--text-primary);
-            display:flex; align-items:center; gap:8px;
-        }
-        .chart-tabs {
-            display:flex; gap:6px; background:var(--n600); padding:4px; border-radius:8px;
-        }
+        .chart-title { font-size:15px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
+        .chart-tabs  { display:flex; gap:6px; background:var(--n600); padding:4px; border-radius:8px; }
         .chart-tab {
             padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600;
-            color:var(--text-secondary); cursor:pointer; transition:all .2s;
-            border:none; background:transparent;
+            color:var(--text-secondary); cursor:pointer; transition:all .2s; border:none; background:transparent;
         }
         .chart-tab.active { background:var(--n400); color:var(--gold-400); }
-        .chart-wrap { position:relative; height:280px; }
+        .chart-wrap { position:relative; height:380px; }
 
-        /* ═══════════════ SECOND ROW CHARTS ════════════════════════ */
-        .charts-grid-2 {
-            display:grid; grid-template-columns:1fr 1fr;
-            gap:16px; margin-bottom:24px;
+        /* ── PAYROLL VERIFICATION ── */
+        .verify-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+        .verify-col-title {
+            font-size:13px; font-weight:700; color:var(--text-primary);
+            margin-bottom:14px; padding-bottom:10px;
+            display:flex; align-items:center; gap:8px;
         }
+        .verify-row {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:10px 14px; background:var(--card-bg-2); border-radius:9px; margin-bottom:8px;
+        }
+        .verify-row-label { font-size:12px; color:var(--text-muted); }
+        .verify-row-value { font-size:15px; font-weight:700; }
+        .verify-result {
+            margin-top:20px; padding:16px; border-radius:12px;
+            border-left:4px solid; grid-column:1/-1;
+            display:flex; flex-direction:column; gap:6px;
+        }
+        .verify-result.match    { border-color:var(--green-500); background:rgba(52,211,153,.06); }
+        .verify-result.variance { border-color:var(--gold-500);  background:rgba(245,158,11,.06); }
+        .verify-result.mismatch { border-color:var(--red-500);   background:rgba(239,68,68,.06); }
+        .verify-result.waiting  { border-color:var(--blue-500);  background:rgba(96,165,250,.06); }
 
-        /* ═══════════════ ALERTS ROW ════════════════════════════════ */
-        .alerts-grid {
-            display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-            gap:16px; margin-bottom:24px;
-        }
+        /* ── ALERTS ── */
+        .alerts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
         .alert-card {
-            background:var(--card-bg); border-radius:14px;
-            padding:20px; display:flex; flex-direction:column; gap:12px;
-            border-left:4px solid;
+            background:var(--card-bg); border-radius:14px; padding:20px;
+            display:flex; flex-direction:column; gap:12px; border-left:4px solid;
         }
-        .alert-card.danger  { border-color:var(--red-500); border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
+        .alert-card.danger  { border-color:var(--red-500);  border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
         .alert-card.warning { border-color:var(--gold-500); border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
         .alert-card.info    { border-color:var(--blue-500); border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
+        .alert-card.ok      { border-color:var(--green-500);border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
         .alert-head { display:flex; align-items:center; gap:10px; }
-        .alert-icon {
-            width:36px; height:36px; border-radius:9px;
-            display:flex; align-items:center; justify-content:center; font-size:18px;
-            flex-shrink:0;
-        }
+        .alert-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
         .alert-card.danger  .alert-icon { background:rgba(239,68,68,.15); }
         .alert-card.warning .alert-icon { background:rgba(245,158,11,.15); }
         .alert-card.info    .alert-icon { background:rgba(59,130,246,.15); }
+        .alert-card.ok      .alert-icon { background:rgba(52,211,153,.15); }
         .alert-title { font-size:13px; font-weight:700; color:var(--text-primary); }
         .alert-sub   { font-size:11px; color:var(--text-muted); }
-        .alert-amount {
-            font-size:26px; font-weight:900; letter-spacing:-0.5px;
-        }
+        .alert-amount { font-size:24px; font-weight:900; letter-spacing:-.5px; }
         .alert-card.danger  .alert-amount { color:var(--red-400); }
         .alert-card.warning .alert-amount { color:var(--gold-400); }
         .alert-card.info    .alert-amount { color:var(--blue-400); }
+        .alert-card.ok      .alert-amount { color:var(--green-400); }
         .alert-link {
-            display:inline-flex; align-items:center; gap:6px;
-            font-size:12px; font-weight:600; text-decoration:none;
-            padding:7px 14px; border-radius:8px;
-            transition:all .2s; width:fit-content;
+            display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+            text-decoration:none; padding:7px 14px; border-radius:8px; transition:all .2s; width:fit-content;
         }
         .alert-card.danger  .alert-link { background:rgba(239,68,68,.12); color:var(--red-400); }
         .alert-card.warning .alert-link { background:rgba(245,158,11,.12); color:var(--gold-400); }
         .alert-card.info    .alert-link { background:rgba(59,130,246,.12); color:var(--blue-400); }
+        .alert-card.ok      .alert-link { background:rgba(52,211,153,.12); color:var(--green-400); }
         .alert-link:hover { opacity:.8; }
 
-        /* ═══════════════ QUICK ACTIONS ═════════════════════════════ */
-        .section-label {
-            font-size:11px; font-weight:700; letter-spacing:.8px;
-            text-transform:uppercase; color:var(--text-muted);
-            margin-bottom:14px; padding-left:4px;
-            display:flex; align-items:center; gap:8px;
-        }
-        .section-label::after {
-            content:''; flex:1; height:1px;
-            background:var(--border-strong);
-        }
+        /* ── QUICK ACTIONS ── */
         .actions-grid {
-            display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-            gap:12px; margin-bottom:24px;
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px;
         }
         .action-card {
-            background:var(--card-bg); border:1px solid var(--border);
-            border-radius:14px; padding:18px; text-decoration:none;
-            transition:all .2s ease; display:flex; flex-direction:column; gap:10px;
+            background:var(--card-bg); border:1px solid var(--border); border-radius:13px;
+            padding:18px; text-decoration:none; transition:all .2s ease;
+            display:flex; flex-direction:column; gap:10px;
         }
-        .action-card:hover {
-            border-color:var(--gold-600);
-            background:rgba(245,158,11,.06);
-            transform:translateY(-2px);
-        }
-        .action-card.disabled {
-            pointer-events:none; opacity:.4; cursor:not-allowed;
-        }
-        .action-icon {
-            width:38px; height:38px; border-radius:10px;
-            display:flex; align-items:center; justify-content:center; font-size:18px;
-            background:rgba(255,255,255,0.05);
-        }
-        .action-title { font-size:14px; font-weight:700; color:var(--text-primary); }
+        .action-card:hover { border-color:var(--gold-600); background:rgba(245,158,11,.05); transform:translateY(-2px); }
+        .action-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; background:rgba(255,255,255,.05); }
+        .action-title { font-size:13px; font-weight:700; color:var(--text-primary); }
         .action-desc  { font-size:11px; color:var(--text-muted); }
 
-        /* ═══════════════ ACTIVITY FEED ═════════════════════════════ */
-        .activity-card {
-            background:var(--card-bg); border:1px solid var(--border);
-            border-radius:16px; padding:24px; margin-bottom:8px;
-        }
+        /* ── ACTIVITY ── */
+        .activity-card { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:24px; }
         .activity-list { display:flex; flex-direction:column; gap:10px; }
         .activity-item {
-            display:flex; gap:14px; padding:14px;
-            background:var(--card-bg-2); border-radius:10px;
-            border:1px solid var(--border); transition:all .2s;
+            display:flex; gap:14px; padding:13px; background:var(--card-bg-2);
+            border-radius:10px; border:1px solid var(--border); transition:all .2s;
         }
         .activity-item:hover { border-color:var(--border-strong); }
-        .activity-dot {
-            width:38px; height:38px; border-radius:10px; flex-shrink:0;
-            display:flex; align-items:center; justify-content:center; font-size:16px;
-        }
+        .activity-dot { width:36px; height:36px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:15px; }
         .activity-dot.success { background:rgba(52,211,153,.12); }
         .activity-dot.warning { background:rgba(245,158,11,.12); }
         .activity-dot.info    { background:rgba(96,165,250,.12); }
         .activity-text { font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:3px; }
         .activity-time { font-size:11px; color:var(--text-muted); }
 
-        /* ═══════════════ RESPONSIVE ════════════════════════════════ */
-        @media (max-width:1200px) {
-            .charts-grid    { grid-template-columns:1fr; }
-            .charts-grid-2  { grid-template-columns:1fr; }
-        }
-        @media (max-width:768px) {
-            .header-title   { font-size:26px; }
-            .kpi-grid       { grid-template-columns:1fr 1fr; }
-            .health-bar     { flex-direction:column; align-items:flex-start; }
-            body            { padding:12px; }
-        }
-        @media (max-width:480px) {
-            .kpi-grid       { grid-template-columns:1fr; }
-        }
+        /* ── DIVIDER ── */
+        .kpi-row-gap { margin-bottom:16px; }
 
-        /* ═══════════════ LIGHT MODE ════════════════════════════════ */
-        [data-king-theme="light"] {
-            --text-primary:   #0a0b10;
-            --text-secondary: #1f2937;
-            --text-muted:     #4b5563;
-            --border:         rgba(0,0,0,0.12);
-            --border-strong:  rgba(0,0,0,0.2);
-            --card-bg:        #f9fafb;
-            --card-bg-2:      #f3f4f6;
-            --body-bg:        #ffffff;
-            --n900: #ffffff;
-            --n800: #f9fafb;
-            --n700: #f3f4f6;
-            --n600: #e5e7eb;
-            --n500: #d1d5db;
-            --n400: #9ca3af;
-            --n300: #6b7280;
+        /* ── RESPONSIVE ── */
+        @media(max-width:1200px) {
+            .kpi-grid-4 { grid-template-columns:1fr 1fr; }
+            .charts-grid { grid-template-columns:1fr; }
+            .charts-grid-2 { grid-template-columns:1fr; }
+            .alerts-grid { grid-template-columns:1fr 1fr; }
         }
-        
-        [data-king-theme="light"] body {
-            background: var(--body-bg);
-            color: var(--text-primary);
+        @media(max-width:900px) {
+            .kpi-grid-4 { grid-template-columns:1fr 1fr; }
+            .kpi-grid-3 { grid-template-columns:1fr 1fr; }
+            .verify-grid { grid-template-columns:1fr; }
+            .alerts-grid { grid-template-columns:1fr; }
         }
-        
-        [data-king-theme="light"] .kpi-label,
-        [data-king-theme="light"] .section-label,
-        [data-king-theme="light"] .chart-title {
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        
-        [data-king-theme="light"] .kpi-value {
-            font-weight: 900;
-            color: var(--text-primary);
+        @media(max-width:600px) {
+            .kpi-grid-4, .kpi-grid-3, .kpi-grid-2 { grid-template-columns:1fr; }
+            body { padding:12px; }
+            .header { padding:20px; }
+            .header-title { font-size:24px; }
         }
     </style>
 </head>
 <body>
 <div class="container">
 
-    <!-- ═══════════════════ HEADER ═══════════════════════════════ -->
-    <div class="header">
-        <div class="header-bg"></div>
-        <div class="header-stripe"></div>
-        <div class="header-content">
-            <div class="header-left">
-                <div class="header-greeting">⚡ Good {{ time_of_day }} — Command Center</div>
-                <div class="header-title">
-                    <div class="crown-badge">👑</div>
-                    King Dashboard
-                </div>
-                <div class="header-subtitle">Complete financial &amp; workforce oversight — {{ today|date:"l, d M Y" }}</div>
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 0 — HEADER
+══════════════════════════════════════════════════════════════ -->
+<div class="header">
+    <div class="header-bg"></div>
+    <div class="header-stripe"></div>
+    <div class="header-content">
+        <div class="header-left">
+            <div class="header-company">Sakuntalam India Services &nbsp;·&nbsp; CWMS</div>
+            <div class="header-title">
+                <div class="crown-badge">👑</div>
+                King Dashboard
             </div>
-            <div class="header-right">
-                <div class="hdr-pill">
-                    📅 {{ today|date:"M Y" }}
+            <div class="header-greeting">Good {{ time_of_day }}, {{ request.user.get_full_name|default:request.user.username }}</div>
+            <div class="header-subtitle">{{ today|date:"l, d M Y" }} &nbsp;·&nbsp; Command Center</div>
+        </div>
+        <div class="header-right">
+            <div class="hdr-pill">📅 {{ today|date:"M Y" }}</div>
+            <div class="hdr-pill">
+                <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+                <div>
+                    <div style="font-size:13px;font-weight:700;">{{ request.user.username }}</div>
+                    <div class="user-role-tag">Owner</div>
                 </div>
-                <div class="hdr-pill">
-                    <div class="user-avatar">{{ request.user.username|first|upper }}</div>
-                    <div>
-                        <div style="font-size:13px;font-weight:700;">{{ request.user.username }}</div>
-                        <div class="user-role-tag">Owner</div>
-                    </div>
-                </div>
-                <button class="king-theme-toggle" onclick="toggleKingTheme()" data-label="">🌙</button>
-                <a href="{% url 'king:king_logout' %}" class="logout-btn">🚪 Logout</a>
             </div>
+            <button class="king-theme-toggle" onclick="toggleKingTheme()">🌙</button>
+            <a href="{% url 'king:king_logout' %}" class="logout-btn">🚪 Logout</a>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 1 — FINANCIAL HEALTH SNAPSHOT (always visible at top)
+══════════════════════════════════════════════════════════════ -->
+<div class="health-bar" style="margin-bottom:28px;">
+    <div class="health-label">💰 Financial Health — {{ today|date:"F Y" }}</div>
+    <div class="health-track">
+        <div class="health-fill" style="width:{% if profit_margin >= 0 %}{{ profit_margin|add:'50'|floatformat:0 }}{% else %}10{% endif %}%"></div>
+    </div>
+    <div class="health-segments">
+        <div class="health-seg">
+            <span class="hs-label">Revenue (YTD)</span>
+            <span class="hs-value gold">₹{{ total_revenue|floatformat:0 }}</span>
+        </div>
+        <div class="health-seg">
+            <span class="hs-label">Expenses</span>
+            <span class="hs-value" style="color:var(--text-secondary)">₹{{ total_expenses|floatformat:0 }}</span>
+        </div>
+        <div class="health-seg">
+            <span class="hs-label">Net Profit</span>
+            <span class="hs-value {% if net_profit >= 0 %}positive{% else %}negative{% endif %}">
+                {% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}
+            </span>
+        </div>
+        <div class="health-seg">
+            <span class="hs-label">Margin</span>
+            <span class="hs-value {% if profit_margin >= 0 %}positive{% else %}negative{% endif %}">{{ profit_margin }}%</span>
+        </div>
+        <div class="health-seg">
+            <span class="hs-label">Liability</span>
+            <span class="hs-value negative">₹{{ total_liability|floatformat:0 }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 2 — PRIMARY KPIs (Revenue + Liability — highest priority)
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">💰 Revenue &amp; Liability — What Matters Most</div>
+<div class="kpi-grid-4 kpi-row-gap">
+
+    <!-- Manual Revenue — Yearly -->
+    <div class="kpi-card kc-revenue">
+        <div class="kpi-top">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-trend t-gold">{{ today|date:"Y" }}</div>
+        </div>
+        <div class="kpi-label">Manual Revenue (Yearly)</div>
+        <div class="kpi-value gold-text">₹{{ total_revenue|floatformat:0 }}</div>
+        <div class="kpi-desc">Manually recorded income — {{ today|date:"Y" }}</div>
+    </div>
+
+    <!-- Outstanding Liability -->
+    <div class="kpi-card kc-liability">
+        <div class="kpi-top">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-trend t-down">Unpaid</div>
+        </div>
+        <div class="kpi-label">Outstanding Liability</div>
+        <div class="kpi-value red-text">₹{{ total_liability|floatformat:0 }}</div>
+        <div class="kpi-desc">Salaries generated but not yet paid</div>
+    </div>
+
+    <!-- Advance Outstanding -->
+    <div class="kpi-card kc-expenses">
+        <div class="kpi-top">
+            <div class="kpi-icon">💳</div>
+            <div class="kpi-trend t-down">Active loans</div>
+        </div>
+        <div class="kpi-label">Advance Outstanding</div>
+        <div class="kpi-value red-text">₹{{ advance_outstanding|floatformat:0 }}</div>
+        <div class="kpi-desc">Unrecovered loans issued to workers</div>
+    </div>
+
+    <!-- Net Position -->
+    <div class="kpi-card kc-profit">
+        <div class="kpi-top">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-trend {% if profit_margin >= 0 %}t-up{% else %}t-down{% endif %}">{{ profit_margin }}% margin</div>
+        </div>
+        <div class="kpi-label">Net Profit This Month</div>
+        <div class="kpi-value {% if net_profit >= 0 %}gold-text{% else %}red-text{% endif %}">
+            {% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}
+        </div>
+        <div class="kpi-desc">Revenue − Expenses − Payroll</div>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 3 — SALARY CARDS (Daily + Accumulated)
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">💵 Salary Tracker — Today &amp; Month</div>
+<div class="kpi-grid-3 kpi-row-gap">
+
+    <!-- Today's Daily Salary -->
+    <div class="kpi-card kc-daily">
+        <div class="kpi-top">
+            <div class="kpi-icon">📅</div>
+            <div class="kpi-trend t-up">{{ today|date:"d M" }}</div>
+        </div>
+        <div class="kpi-label">Today's Salary Liability</div>
+        <div class="kpi-value cyan-text">₹{{ todays_daily_salary|floatformat:0 }}</div>
+        <div class="kpi-desc">
+            P: {{ todays_attendance.present }} &nbsp;|&nbsp;
+            H: {{ todays_attendance.half_day }} &nbsp;|&nbsp;
+            A: {{ todays_attendance.absent }}
         </div>
     </div>
 
-    <!-- ═══════════════ FINANCIAL HEALTH BAR ═════════════════════ -->
-    <div class="health-bar">
-        <div class="health-label">📊 Monthly Health</div>
-        <div class="health-track">
-            <div class="health-fill" style="width: {{ profit_margin|add:'50'|floatformat:0 }}%"></div>
+    <!-- Accumulated Monthly -->
+    <div class="kpi-card kc-accum">
+        <div class="kpi-top">
+            <div class="kpi-icon">📈</div>
+            <div class="kpi-trend t-gold">{{ days_processed }}/{{ days_in_month }} days</div>
         </div>
-        <div class="health-segments">
-            <div class="health-seg">
-                <span class="hs-label">Revenue</span>
-                <span class="hs-value gold">₹{{ total_revenue|floatformat:0 }}</span>
+        <div class="kpi-label">Accumulated Salary (MTD)</div>
+        <div class="kpi-value gold-text">₹{{ accumulated_salary|floatformat:0 }}</div>
+        <div class="kpi-desc">Total salary earned so far this month</div>
+    </div>
+
+    <!-- Payroll Generated -->
+    <div class="kpi-card kc-revenue">
+        <div class="kpi-top">
+            <div class="kpi-icon">💼</div>
+            <div class="kpi-trend {% if payroll_change <= 0 %}t-up{% else %}t-down{% endif %}">
+                {% if payroll_change >= 0 %}↗{% else %}↘{% endif %} {{ payroll_change }}%
             </div>
-            <div class="health-seg">
-                <span class="hs-label">Total Cost</span>
-                <span class="hs-value" style="color:var(--text-secondary)">₹{{ total_expenses|floatformat:0 }}</span>
+        </div>
+        <div class="kpi-label">Payroll Generated (Month)</div>
+        <div class="kpi-value green-text">₹{{ total_payroll|floatformat:0 }}</div>
+        <div class="kpi-desc">{{ payroll_generated_count }}/{{ total_active_workers }} workers processed</div>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 4 — WORKFORCE CARDS
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">👷 Workforce Overview</div>
+<div class="kpi-grid-3 kpi-row-gap">
+
+    <div class="kpi-card kc-workers">
+        <div class="kpi-top">
+            <div class="kpi-icon">👷</div>
+            <div class="kpi-trend t-up">+{{ new_workers }} this month</div>
+        </div>
+        <div class="kpi-label">Active Workers</div>
+        <div class="kpi-value">{{ total_workers }}</div>
+        <div class="kpi-desc">Current headcount on site</div>
+    </div>
+
+    <div class="kpi-card kc-attendance">
+        <div class="kpi-top">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-trend {% if attendance_rate >= 80 %}t-up{% else %}t-down{% endif %}">
+                {{ attendance_rate }}%
             </div>
-            <div class="health-seg">
-                <span class="hs-label">Net Profit</span>
-                <span class="hs-value {% if net_profit >= 0 %}positive{% else %}negative{% endif %}">
-                    {% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}
-                </span>
-            </div>
-            <div class="health-seg">
-                <span class="hs-label">Margin</span>
-                <span class="hs-value {% if profit_margin >= 0 %}positive{% else %}negative{% endif %}">
-                    {{ profit_margin }}%
-                </span>
-            </div>
+        </div>
+        <div class="kpi-label">Attendance Rate (MTD)</div>
+        <div class="kpi-value">{{ attendance_rate }}%</div>
+        <div class="kpi-desc">
+            {% if todays_attendance.marked %}✓ Today marked{% else %}⚠ Today not marked yet{% endif %}
         </div>
     </div>
 
-    <!-- ═══════════════════ KPI CARDS ════════════════════════════ -->
-    <div class="kpi-grid">
-
-        <div class="kpi-card revenue">
-            <div class="kpi-top">
-                <div class="kpi-icon">💰</div>
-                <div class="kpi-trend {% if revenue_change >= 0 %}t-up{% else %}t-down{% endif %}">
-                    {% if revenue_change >= 0 %}↗{% else %}↘{% endif %} {{ revenue_change }}%
-                </div>
-            </div>
-            <div class="kpi-label">Total Revenue</div>
-            <div class="kpi-value">₹{{ total_revenue|floatformat:0 }}</div>
-            <div class="kpi-desc">Paid bills — this month</div>
+    <div class="kpi-card kc-daily">
+        <div class="kpi-top">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-trend t-neu">Today</div>
         </div>
-
-        <div class="kpi-card expenses">
-            <div class="kpi-top">
-                <div class="kpi-icon">💸</div>
-                <div class="kpi-trend {% if expense_change <= 0 %}t-up{% else %}t-down{% endif %}">
-                    {% if expense_change >= 0 %}↗{% else %}↘{% endif %} {{ expense_change }}%
-                </div>
-            </div>
-            <div class="kpi-label">Daily Expenses</div>
-            <div class="kpi-value">₹{{ total_expenses|floatformat:0 }}</div>
-            <div class="kpi-desc">Food, fuel, material, misc</div>
-        </div>
-
-        <div class="kpi-card profit">
-            <div class="kpi-top">
-                <div class="kpi-icon">📈</div>
-                <div class="kpi-trend {% if profit_margin >= 0 %}t-up{% else %}t-down{% endif %}">
-                    {{ profit_margin }}% margin
-                </div>
-            </div>
-            <div class="kpi-label">Net Profit</div>
-            <div class="kpi-value">{% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}</div>
-            <div class="kpi-desc">Revenue − Expenses − Payroll</div>
-        </div>
-
-        <div class="kpi-card payroll">
-            <div class="kpi-top">
-                <div class="kpi-icon">💵</div>
-                <div class="kpi-trend {% if payroll_change <= 0 %}t-up{% else %}t-down{% endif %}">
-                    {% if payroll_change >= 0 %}↗{% else %}↘{% endif %} {{ payroll_change }}%
-                </div>
-            </div>
-            <div class="kpi-label">Payroll Cost</div>
-            <div class="kpi-value">₹{{ total_payroll|floatformat:0 }}</div>
-            <div class="kpi-desc">This month's salaries</div>
-        </div>
-
-        <div class="kpi-card liability">
-            <div class="kpi-top">
-                <div class="kpi-icon">⚠️</div>
-                <div class="kpi-trend t-down">Unpaid</div>
-            </div>
-            <div class="kpi-label">Outstanding Liability</div>
-            <div class="kpi-value">₹{{ total_liability|floatformat:0 }}</div>
-            <div class="kpi-desc">Pending salary payments</div>
-        </div>
-
-        <div class="kpi-card workers">
-            <div class="kpi-top">
-                <div class="kpi-icon">👷</div>
-                <div class="kpi-trend t-up">+{{ new_workers }} new</div>
-            </div>
-            <div class="kpi-label">Active Workers</div>
-            <div class="kpi-value">{{ total_workers }}</div>
-            <div class="kpi-desc">Current headcount</div>
-        </div>
-
-        <div class="kpi-card attendance">
-            <div class="kpi-top">
-                <div class="kpi-icon">📋</div>
-                <div class="kpi-trend {% if attendance_rate >= 80 %}t-up{% else %}t-down{% endif %}">
-                    {{ attendance_rate }}%
-                </div>
-            </div>
-            <div class="kpi-label">Attendance Rate</div>
-            <div class="kpi-value">{{ attendance_rate }}%</div>
-            <div class="kpi-desc">Month-to-date average</div>
-        </div>
-
+        <div class="kpi-label">Today's Attendance</div>
+        <div class="kpi-value">{{ todays_attendance.total_marked }}<span style="font-size:16px;font-weight:600;color:var(--text-muted);">/{{ todays_attendance.total_employees }}</span></div>
+        <div class="kpi-desc">P: {{ todays_attendance.present }} &nbsp;|&nbsp; H: {{ todays_attendance.half_day }} &nbsp;|&nbsp; A: {{ todays_attendance.absent }}</div>
     </div>
 
-    <!-- ═══════════════════ DAILY SNAPSHOT ════════════════════ -->
-    <div class="section-label">📅 TODAY'S SNAPSHOT</div>
-    <div class="kpi-grid">
-        <div class="kpi-card workers">
-            <div class="kpi-top">
-                <div class="kpi-icon">✓</div>
-                <div class="kpi-trend t-up">{{ todays_attendance.total_marked }}/{{ todays_attendance.total_employees }}</div>
-            </div>
-            <div class="kpi-label">Attendance Status</div>
-            <div class="kpi-value">
-                {% if todays_attendance.marked %}
-                ✓ Marked
-                {% else %}
-                ⚠️ Not Marked Yet
-                {% endif %}
-            </div>
-            <div class="kpi-desc">P: {{ todays_attendance.present }} | A: {{ todays_attendance.absent }} | H: {{ todays_attendance.half_day }}</div>
-        </div>
+</div>
 
-        <div class="kpi-card payroll">
-            <div class="kpi-top">
-                <div class="kpi-icon">💰</div>
-                <div class="kpi-trend t-up">Today</div>
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 5 — CHARTS ROW 1 (Financial trends + Expense breakdown)
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">📈 Financial Trends</div>
+<div class="charts-grid" style="margin-bottom:0;">
+    <div class="chart-card">
+        <div class="chart-head">
+            <div class="chart-title">📈 6-Month Overview</div>
+            <div class="chart-tabs">
+                <button class="chart-tab active" onclick="switchChart('bar',this)">Bar</button>
+                <button class="chart-tab" onclick="switchChart('line',this)">Line</button>
             </div>
-            <div class="kpi-label">Daily Salary Generated</div>
-            <div class="kpi-value">₹{{ todays_daily_salary|floatformat:0 }}</div>
-            <div class="kpi-desc">Total for {{ today|date:"d M Y" }}</div>
         </div>
-
-        <div class="kpi-card profit">
-            <div class="kpi-top">
-                <div class="kpi-icon">📈</div>
-                <div class="kpi-trend t-up">{{ days_processed }}/{{ days_in_month }}</div>
-            </div>
-            <div class="kpi-label">Accumulated So Far</div>
-            <div class="kpi-value">₹{{ accumulated_salary|floatformat:0 }}</div>
-            <div class="kpi-desc">{{ days_processed }} days processed</div>
-        </div>
+        <div class="chart-wrap"><canvas id="financialChart"></canvas></div>
     </div>
-
-    <!-- ═══════════════════ SALARY TRACKER DETAIL ═════════════ -->
-    <div class="section-label">💹 MONTHLY SALARY ACCUMULATION</div>
-    <div class="chart-card" style="padding: 24px; margin-bottom: 24px;">
-        <div class="chart-head" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;">
-            <div class="chart-title">📊 Progressive Salary Accumulation</div>
+    <div class="chart-card">
+        <div class="chart-head">
+            <div class="chart-title">💸 Expense Breakdown</div>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-            <div style="background: var(--card-bg-2); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
-                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Status</div>
-                <div style="font-size: 24px; font-weight: 900; color: var(--text-primary);">
-                    {% if todays_attendance.marked %}
-                    ✓ Marked
-                    {% else %}
-                    ⚠️ Not Marked Yet
-                    {% endif %}
+        <div class="chart-wrap"><canvas id="expenseCatChart"></canvas></div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 5b — CHARTS ROW 2 (Workforce + Revenue vs Payroll)
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">🏗️ Workforce &amp; Payroll Trends</div>
+<div class="charts-grid-2" style="margin-bottom:0;">
+    <div class="chart-card">
+        <div class="chart-head">
+            <div class="chart-title">🏗️ Workforce by Role</div>
+        </div>
+        <div class="chart-wrap"><canvas id="workforceChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+        <div class="chart-head">
+            <div class="chart-title">💹 Revenue vs Payroll</div>
+        </div>
+        <div class="chart-wrap"><canvas id="rvpChart"></canvas></div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 6 — PAYROLL VERIFICATION
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">✅ Payroll Verification</div>
+<div class="chart-card" style="margin-bottom:0;">
+    <div class="chart-head">
+        <div class="chart-title">🔍 Calculated vs Generated Salary — {{ today|date:"F Y" }}</div>
+    </div>
+    <div class="verify-grid">
+        <div>
+            <div class="verify-col-title" style="border-bottom:2px solid var(--gold-500);">
+                📊 Calculated (From Attendance)
+            </div>
+            <div class="verify-row">
+                <span class="verify-row-label">Total Salary Earned</span>
+                <span class="verify-row-value" style="color:var(--gold-400);">₹{{ accumulated_salary|floatformat:0 }}</span>
+            </div>
+            <div class="verify-row">
+                <span class="verify-row-label">Days Processed</span>
+                <span class="verify-row-value" style="color:var(--blue-400);">{{ days_processed }} / {{ days_in_month }}</span>
+            </div>
+        </div>
+        <div>
+            <div class="verify-col-title" style="border-bottom:2px solid var(--green-500);">
+                💰 Generated Payroll
+            </div>
+            <div class="verify-row">
+                <span class="verify-row-label">Total Payroll Amount</span>
+                <span class="verify-row-value" style="color:var(--green-400);">₹{{ generated_payroll_total|floatformat:0 }}</span>
+            </div>
+            <div class="verify-row">
+                <span class="verify-row-label">Workers Processed</span>
+                <span class="verify-row-value" style="color:var(--blue-400);">{{ payroll_generated_count }} / {{ total_active_workers }}</span>
+            </div>
+        </div>
+
+        <!-- RESULT -->
+        {% if generated_payroll_total > 0 %}
+            {% if accumulated_salary == generated_payroll_total %}
+            <div class="verify-result match" style="grid-column:1/-1;">
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:var(--green-400);">
+                    ✅ Perfect Match — Payroll is accurate
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);">
+                    Calculated ₹{{ accumulated_salary|floatformat:0 }} = Generated ₹{{ generated_payroll_total|floatformat:0 }}
                 </div>
             </div>
-            <div style="background: var(--card-bg-2); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
-                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Days Processed</div>
-                <div style="font-size: 24px; font-weight: 900; color: var(--gold-400);">{{ days_processed }}/{{ days_in_month }}</div>
-            </div>
-            <div style="background: var(--card-bg-2); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
-                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Total Accumulated</div>
-                <div style="font-size: 24px; font-weight: 900; color: var(--green-400);">₹{{ accumulated_salary|floatformat:0 }}</div>
-            </div>
-            <div style="background: var(--card-bg-2); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
-                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Today's Salary</div>
-                <div style="font-size: 24px; font-weight: 900; color: var(--cyan-400);">₹{{ todays_daily_salary|floatformat:0 }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════════════ CHARTS ROW 1 ═════════════════════════ -->
-    <div class="charts-grid">
-
-        <div class="chart-card">
-            <div class="chart-head">
-                <div class="chart-title">📈 6-Month Financial Overview</div>
-                <div class="chart-tabs">
-                    <button class="chart-tab active" onclick="switchChart('bar',this)">Bar</button>
-                    <button class="chart-tab" onclick="switchChart('line',this)">Line</button>
+            {% else %}
+            <div class="verify-result mismatch" style="grid-column:1/-1;">
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:var(--red-400);">
+                    ❌ Discrepancy Detected — Review required
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);">
+                    Calculated ₹{{ accumulated_salary|floatformat:0 }} &nbsp;≠&nbsp; Generated ₹{{ generated_payroll_total|floatformat:0 }}
                 </div>
             </div>
-            <div class="chart-wrap"><canvas id="financialChart"></canvas></div>
-        </div>
-
-        <div class="chart-card">
-            <div class="chart-head">
-                <div class="chart-title">💸 Expense Breakdown</div>
+            {% endif %}
+        {% else %}
+        <div class="verify-result waiting" style="grid-column:1/-1;">
+            <div style="font-size:14px;font-weight:700;color:var(--blue-400);">⏳ Awaiting Payroll Generation</div>
+            <div style="font-size:12px;color:var(--text-muted);">
+                Expected payroll: ₹{{ accumulated_salary|floatformat:0 }} based on {{ days_processed }} days of attendance
             </div>
-            <div class="chart-wrap"><canvas id="expenseCatChart"></canvas></div>
         </div>
-
+        {% endif %}
     </div>
+</div>
 
-    <!-- ═══════════════════ CHARTS ROW 2 ═════════════════════════ -->
-    <div class="charts-grid-2">
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 7 — ALERTS
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">🚨 Alerts &amp; Action Required</div>
+<div class="alerts-grid" style="margin-bottom:0;">
 
-        <div class="chart-card">
-            <div class="chart-head">
-                <div class="chart-title">🏗️ Workforce by Role</div>
-            </div>
-            <div class="chart-wrap"><canvas id="workforceChart"></canvas></div>
-        </div>
-
-        <div class="chart-card">
-            <div class="chart-head">
-                <div class="chart-title">💹 Revenue vs Payroll</div>
-            </div>
-            <div class="chart-wrap"><canvas id="rvpChart"></canvas></div>
-        </div>
-
-    </div>
-
-    <!-- ═══════════════════ PAYROLL VERIFICATION ════════════════ -->
-    <div class="section-label">✓ PAYROLL VERIFICATION PANEL</div>
-    <div class="chart-card" style="padding: 24px; margin-bottom: 24px;">
-        <div class="chart-head" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;">
-            <div class="chart-title">🔍 Calculated vs Generated Comparison</div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-            <!-- CALCULATED SALARY -->
+    <div class="alert-card {% if pending_bills_count > 0 %}danger{% else %}ok{% endif %}">
+        <div class="alert-head">
+            <div class="alert-icon">📄</div>
             <div>
-                <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--gold-500);">
-                    📊 CALCULATED (From Attendance)
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--card-bg-2); border-radius: 8px;">
-                        <span style="font-size: 12px; color: var(--text-muted);">Total Salary Earned:</span>
-                        <span style="font-size: 16px; font-weight: 700; color: var(--gold-400);">₹{{ accumulated_salary|floatformat:0 }}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--card-bg-2); border-radius: 8px;">
-                        <span style="font-size: 12px; color: var(--text-muted);">Days Processed:</span>
-                        <span style="font-size: 16px; font-weight: 700; color: var(--blue-400);">{{ days_processed }}/{{ days_in_month }}</span>
-                    </div>
-                </div>
+                <div class="alert-title">Pending Vendor Bills</div>
+                <div class="alert-sub">{{ pending_bills_count }} bill{{ pending_bills_count|pluralize }} awaiting payment</div>
             </div>
-            
-            <!-- GENERATED PAYROLL -->
+        </div>
+        <div class="alert-amount">₹{{ pending_bills_amount|floatformat:0 }}</div>
+        <a href="{% url 'billing:billing_dashboard' %}" class="alert-link">View Bills →</a>
+    </div>
+
+    <div class="alert-card {% if advance_outstanding > 0 %}warning{% else %}ok{% endif %}">
+        <div class="alert-head">
+            <div class="alert-icon">💳</div>
             <div>
-                <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--green-500);">
-                    💰 GENERATED PAYROLL
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--card-bg-2); border-radius: 8px;">
-                        <span style="font-size: 12px; color: var(--text-muted);">Total Payroll Amount:</span>
-                        <span style="font-size: 16px; font-weight: 700; color: var(--green-400);">₹{{ generated_payroll_total|floatformat:0 }}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--card-bg-2); border-radius: 8px;">
-                        <span style="font-size: 12px; color: var(--text-muted);">Workers Processed:</span>
-                        <span style="font-size: 16px; font-weight: 700; color: var(--blue-400);">{{ payroll_generated_count }}/{{ total_active_workers }}</span>
-                    </div>
-                </div>
+                <div class="alert-title">Outstanding Advances</div>
+                <div class="alert-sub">Unrecovered loans to workers</div>
             </div>
         </div>
-        
-        <!-- VERIFICATION RESULT -->
-        <div style="margin-top: 24px; padding: 16px; border-radius: 12px; background: linear-gradient(135deg, rgba(52,211,153,0.1), rgba(52,211,153,0.05)); border-left: 4px solid var(--green-500);">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                {% if generated_payroll_total > 0 %}
-                    {% if accumulated_salary == generated_payroll_total %}
-                    <span style="font-size: 20px;">✅</span>
-                    <span style="font-size: 14px; font-weight: 700; color: var(--green-400);">PERFECT MATCH</span>
-                    {% elif accumulated_salary|add:"1000" >= generated_payroll_total and accumulated_salary|add:"-1000" <= generated_payroll_total %}
-                    <span style="font-size: 20px;">⚠️</span>
-                    <span style="font-size: 14px; font-weight: 700; color: var(--gold-400);">MINOR VARIANCE</span>
-                    {% else %}
-                    <span style="font-size: 20px;">❌</span>
-                    <span style="font-size: 14px; font-weight: 700; color: var(--red-400);">DISCREPANCY DETECTED</span>
-                    {% endif %}
-                {% else %}
-                <span style="font-size: 20px;">⏳</span>
-                <span style="font-size: 14px; font-weight: 700; color: var(--text-secondary);">AWAITING PAYROLL GENERATION</span>
-                {% endif %}
-            </div>
-            <div style="font-size: 12px; color: var(--text-muted);">
-                {% if generated_payroll_total > 0 %}
-                    Calculated: ₹{{ accumulated_salary|floatformat:0 }} | Generated: ₹{{ generated_payroll_total|floatformat:0 }}
-                {% else %}
-                    Payroll will be generated and compared against calculated amount (₹{{ accumulated_salary|floatformat:0 }})
-                {% endif %}
-            </div>
-        </div>
+        <div class="alert-amount">₹{{ advance_outstanding|floatformat:0 }}</div>
+        <a href="{% url 'manager_dashboard' %}" class="alert-link">Manage →</a>
     </div>
 
-    <!-- ═══════════════════ ALERTS ═══════════════════════════════ -->
-    <div class="section-label">🚨 Alerts &amp; Action Required</div>
-    <div class="alerts-grid">
-
-        <div class="alert-card {% if pending_bills_count > 0 %}danger{% else %}info{% endif %}">
-            <div class="alert-head">
-                <div class="alert-icon">📄</div>
-                <div>
-                    <div class="alert-title">Pending Vendor Bills</div>
-                    <div class="alert-sub">{{ pending_bills_count }} bill{{ pending_bills_count|pluralize }} awaiting payment</div>
-                </div>
+    <div class="alert-card {% if total_liability > 0 %}danger{% else %}ok{% endif %}">
+        <div class="alert-head">
+            <div class="alert-icon">💵</div>
+            <div>
+                <div class="alert-title">Unpaid Salaries</div>
+                <div class="alert-sub">Salaries pending disbursement</div>
             </div>
-            <div class="alert-amount">₹{{ pending_bills_amount|floatformat:0 }}</div>
-            <a href="{% url 'billing:billing_dashboard' %}" class="alert-link">
-                View Bills →
-            </a>
         </div>
-
-        <div class="alert-card {% if advance_outstanding > 0 %}warning{% else %}info{% endif %}">
-            <div class="alert-head">
-                <div class="alert-icon">💳</div>
-                <div>
-                    <div class="alert-title">Outstanding Advances</div>
-                    <div class="alert-sub">Total unrecovered loans to workers</div>
-                </div>
-            </div>
-            <div class="alert-amount">₹{{ advance_outstanding|floatformat:0 }}</div>
-            <a href="{% url 'manager_dashboard' %}" class="alert-link">
-                Manage Advances →
-            </a>
-        </div>
-
-        <div class="alert-card {% if total_liability > 0 %}danger{% else %}info{% endif %}">
-            <div class="alert-head">
-                <div class="alert-icon">💵</div>
-                <div>
-                    <div class="alert-title">Unpaid Salaries</div>
-                    <div class="alert-sub">Workers pending payout</div>
-                </div>
-            </div>
-            <div class="alert-amount">₹{{ total_liability|floatformat:0 }}</div>
-            <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="alert-link">
-                View Payroll →
-            </a>
-        </div>
-
+        <div class="alert-amount">₹{{ total_liability|floatformat:0 }}</div>
+        <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="alert-link">View Payroll →</a>
     </div>
 
-    <!-- ═══════════════════ QUICK ACTIONS ════════════════════════ -->
-    <div class="section-label">⚡ Quick Navigation</div>
-    <div class="actions-grid">
+</div>
 
-        <a href="{% url 'manager_dashboard' %}" class="action-card">
-            <div class="action-icon">⚙️</div>
-            <div class="action-title">Manager View</div>
-            <div class="action-desc">Daily operations</div>
-        </a>
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 8 — QUICK NAVIGATION
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">⚡ Quick Navigation</div>
+<div class="actions-grid" style="margin-bottom:0;">
+    <a href="{% url 'king:revenue_dashboard' %}" class="action-card">
+        <div class="action-icon">💹</div>
+        <div class="action-title">Manual Revenue</div>
+        <div class="action-desc">Record income entries</div>
+    </a>
+    <a href="{% url 'king:workorder_dashboard' %}" class="action-card">
+        <div class="action-icon">📋</div>
+        <div class="action-title">Work Orders</div>
+        <div class="action-desc">Contracts &amp; clients</div>
+    </a>
+    <a href="{% url 'king:ledger' %}" class="action-card">
+        <div class="action-icon">📒</div>
+        <div class="action-title">Ledger</div>
+        <div class="action-desc">Dr/Cr entries &amp; balance</div>
+    </a>
+    <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="action-card">
+        <div class="action-icon">💼</div>
+        <div class="action-title">Payroll Reports</div>
+        <div class="action-desc">Monthly summaries</div>
+    </a>
+    <a href="{% url 'employee_list' %}" class="action-card">
+        <div class="action-icon">👥</div>
+        <div class="action-title">Workforce</div>
+        <div class="action-desc">Employee management</div>
+    </a>
+    <a href="{% url 'billing:billing_dashboard' %}" class="action-card">
+        <div class="action-icon">📄</div>
+        <div class="action-title">Bills &amp; Invoices</div>
+        <div class="action-desc">Vendor payments</div>
+    </a>
+    <a href="{% url 'expenses:expense_dashboard' %}" class="action-card">
+        <div class="action-icon">💸</div>
+        <div class="action-title">Daily Expenses</div>
+        <div class="action-desc">Site cost tracking</div>
+    </a>
+    <a href="{% url 'manager_dashboard' %}" class="action-card">
+        <div class="action-icon">⚙️</div>
+        <div class="action-title">Manager View</div>
+        <div class="action-desc">Daily operations</div>
+    </a>
+</div>
 
-        <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="action-card">
-            <div class="action-icon">💼</div>
-            <div class="action-title">Payroll Reports</div>
-            <div class="action-desc">Monthly summaries</div>
-        </a>
-
-        <a href="{% url 'employee_list' %}" class="action-card">
-            <div class="action-icon">👥</div>
-            <div class="action-title">Workforce</div>
-            <div class="action-desc">Employee management</div>
-        </a>
-
-        <a href="{% url 'billing:billing_dashboard' %}" class="action-card">
-            <div class="action-icon">📄</div>
-            <div class="action-title">Bills &amp; Invoices</div>
-            <div class="action-desc">Vendor payments</div>
-        </a>
-
-        <a href="{% url 'expenses:expense_dashboard' %}" class="action-card">
-            <div class="action-icon">💸</div>
-            <div class="action-title">Daily Expenses</div>
-            <div class="action-desc">Site cost tracking</div>
-        </a>
-
-        <a href="{% url 'expenses:export_expenses_csv' %}" class="action-card">
-            <div class="action-icon">📊</div>
-            <div class="action-title">Export Reports</div>
-            <div class="action-desc">CSV downloads</div>
-        </a>
-
-    </div>
-
-    <!-- ═══════════════════ RECENT ACTIVITY ══════════════════════ -->
-    <div class="section-label">🕒 Recent Activity</div>
-    <div class="activity-card">
-        <div class="activity-list">
-            {% for activity in recent_activities %}
-            <div class="activity-item">
-                <div class="activity-dot {{ activity.type }}">{{ activity.icon }}</div>
-                <div>
-                    <div class="activity-text">{{ activity.text }}</div>
-                    <div class="activity-time">{{ activity.time }}</div>
-                </div>
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 9 — RECENT ACTIVITY (always last)
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">🕒 Recent Activity</div>
+<div class="activity-card">
+    <div class="activity-list">
+        {% for activity in recent_activities %}
+        <div class="activity-item">
+            <div class="activity-dot {{ activity.type }}">{{ activity.icon }}</div>
+            <div>
+                <div class="activity-text">{{ activity.text }}</div>
+                <div class="activity-time">{{ activity.time }}</div>
             </div>
-            {% empty %}
-            <div class="activity-item">
-                <div class="activity-dot info">ℹ️</div>
-                <div>
-                    <div class="activity-text">No recent activity yet</div>
-                    <div class="activity-time">System is running</div>
-                </div>
-            </div>
-            {% endfor %}
         </div>
+        {% empty %}
+        <div class="activity-item">
+            <div class="activity-dot info">ℹ️</div>
+            <div>
+                <div class="activity-text">No recent activity yet</div>
+                <div class="activity-time">System is running — {{ today|date:"d M Y" }}</div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
+</div>
 
 </div><!-- /container -->
 
 <script src="{% static 'js/king_theme.js' %}"></script>
 <script>
-    // ── Chart defaults ────────────────────────────────────────────
-    const isDark = () => document.documentElement.dataset.kingTheme === 'dark';
-    const gridColor  = 'rgba(255,255,255,0.05)';
-    const tickColor  = '#6b7294';
-    const legendColor = '#a8b0c8';
+// ─────────────────────────────────────────────────────────────────
+// THEME-AWARE CHART INITIALIZATION
+// ─────────────────────────────────────────────────────────────────
 
-    Chart.defaults.color = legendColor;
-    Chart.defaults.borderColor = gridColor;
+function getChartColors() {
+    const isDark = document.documentElement.dataset.kingTheme === 'dark';
+    return {
+        gridColor:   isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)',
+        tickColor:   isDark ? '#6b7294' : '#6b7280',
+        legendColor: isDark ? '#a8b0c8' : '#6b7280',
+        borderColor: isDark ? '#111420' : '#e5e5e5'
+    };
+}
 
-    const chartLabels  = {{ chart_labels|safe }};
-    const revenueData  = {{ revenue_data|safe }};
-    const expenseData  = {{ expense_data|safe }};
-    const payrollData  = {{ payroll_data|safe }};
+function initializeCharts() {
+    const colors = getChartColors();
+    const chartLabels = {{ chart_labels|safe }};
+    const revenueData = {{ revenue_data|safe }};
+    const expenseData = {{ expense_data|safe }};
+    const payrollData = {{ payroll_data|safe }};
 
-    // ── Financial Bar/Line Chart ──────────────────────────────────
+    Chart.defaults.color       = colors.legendColor;
+    Chart.defaults.borderColor = colors.gridColor;
+
+    // Financial Bar/Line
     const financialCtx = document.getElementById('financialChart').getContext('2d');
-    let financialChart = new Chart(financialCtx, {
+    window.financialChart = new Chart(financialCtx, {
         type: 'bar',
         data: {
             labels: chartLabels,
             datasets: [
-                { label:'Revenue',  data:revenueData, backgroundColor:'rgba(52,211,153,0.7)', borderColor:'#34d399', borderWidth:1.5, borderRadius:4 },
+                { label:'Revenue',  data:revenueData, backgroundColor:'rgba(52,211,153,0.7)',  borderColor:'#34d399', borderWidth:1.5, borderRadius:4 },
                 { label:'Expenses', data:expenseData, backgroundColor:'rgba(248,113,113,0.7)', borderColor:'#f87171', borderWidth:1.5, borderRadius:4 },
                 { label:'Payroll',  data:payrollData, backgroundColor:'rgba(167,139,250,0.7)', borderColor:'#a78bfa', borderWidth:1.5, borderRadius:4 },
             ]
         },
         options: {
             responsive:true, maintainAspectRatio:false,
-            plugins: { legend:{ position:'bottom', labels:{ color:legendColor, padding:16, font:{size:12} } } },
-            scales: {
-                x: { grid:{ color:gridColor }, ticks:{ color:tickColor } },
-                y: { grid:{ color:gridColor }, ticks:{ color:tickColor, callback: v => '₹'+v.toLocaleString() } }
+            plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:16, font:{size:12} } } },
+            scales:{
+                x:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor } },
+                y:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor, callback: v => '₹'+v.toLocaleString() } }
             }
         }
     });
 
-    function switchChart(type, btn) {
-        document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        financialChart.config.type = type;
-        if (type === 'line') {
-            financialChart.data.datasets.forEach(ds => {
-                ds.fill = true;
-                ds.tension = 0.4;
-                ds.backgroundColor = ds.borderColor.replace(')', ',0.1)').replace('rgb','rgba');
-            });
-        } else {
-            financialChart.data.datasets[0].backgroundColor = 'rgba(52,211,153,0.7)';
-            financialChart.data.datasets[1].backgroundColor = 'rgba(248,113,113,0.7)';
-            financialChart.data.datasets[2].backgroundColor = 'rgba(167,139,250,0.7)';
-        }
-        financialChart.update();
-    }
-
-    // ── Expense Category Donut ────────────────────────────────────
-    new Chart(document.getElementById('expenseCatChart').getContext('2d'), {
+    // Expense Category Donut
+    window.expenseCatChart = new Chart(document.getElementById('expenseCatChart').getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: {{ expense_cat_labels|safe }},
             datasets:[{ data:{{ expense_cat_data|safe }},
                 backgroundColor:['#f59e0b','#ef4444','#3b82f6','#10b981','#8b5cf6'],
-                borderWidth:2, borderColor:'#111420', hoverOffset:8 }]
+                borderWidth:2, borderColor:colors.borderColor, hoverOffset:8 }]
         },
-        options:{
-            responsive:true, maintainAspectRatio:false, cutout:'65%',
-            plugins:{ legend:{ position:'bottom', labels:{ color:legendColor, padding:12, font:{size:12} } } }
-        }
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'65%',
+            plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:12, font:{size:12} } } } }
     });
 
-    // ── Workforce Donut ───────────────────────────────────────────
-    new Chart(document.getElementById('workforceChart').getContext('2d'), {
+    // Workforce Donut
+    window.roleChart = new Chart(document.getElementById('workforceChart').getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: {{ role_labels|safe }},
             datasets:[{ data:{{ role_counts|safe }},
                 backgroundColor:['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444'],
-                borderWidth:2, borderColor:'#111420', hoverOffset:8 }]
+                borderWidth:2, borderColor:colors.borderColor, hoverOffset:8 }]
         },
-        options:{
-            responsive:true, maintainAspectRatio:false, cutout:'60%',
-            plugins:{ legend:{ position:'bottom', labels:{ color:legendColor, padding:12, font:{size:12} } } }
-        }
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
+            plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:12, font:{size:12} } } } }
     });
 
-    // ── Revenue vs Payroll Line ───────────────────────────────────
+    // Revenue vs Payroll Line
     new Chart(document.getElementById('rvpChart').getContext('2d'), {
         type: 'line',
         data: {
             labels: chartLabels,
             datasets:[
-                { label:'Revenue', data:revenueData, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.08)', tension:0.4, fill:true, pointBackgroundColor:'#f59e0b', pointRadius:4 },
-                { label:'Payroll', data:payrollData, borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,0.08)', tension:0.4, fill:true, pointBackgroundColor:'#a78bfa', pointRadius:4 },
-            ]
-        },
-        options:{
-            responsive:true, maintainAspectRatio:false,
-            plugins:{ legend:{ position:'bottom', labels:{ color:legendColor, padding:16, font:{size:12} } } },
-            scales:{
-                x:{ grid:{ color:gridColor }, ticks:{ color:tickColor } },
-                y:{ grid:{ color:gridColor }, ticks:{ color:tickColor, callback: v => '₹'+v.toLocaleString() } }
-            }
+            { label:'Revenue', data:revenueData, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.08)', tension:0.4, fill:true, pointBackgroundColor:'#f59e0b', pointRadius:4 },
+            { label:'Payroll', data:payrollData, borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.08)', tension:0.4, fill:true, pointBackgroundColor:'#a78bfa', pointRadius:4 },
+        ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:16, font:{size:12} } } },
+        scales:{
+            x:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor } },
+            y:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor, callback: v => '₹'+v.toLocaleString() } }
         }
+    }
     });
+}
+
+function switchChart(type, btn) {
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    window.financialChart.config.type = type;
+    if (type === 'line') {
+        window.financialChart.data.datasets.forEach(ds => {
+            ds.fill = true; ds.tension = 0.4;
+            ds.backgroundColor = ds.borderColor.replace(')',',.1)').replace('rgb','rgba');
+        });
+    } else {
+        window.financialChart.data.datasets[0].backgroundColor = 'rgba(52,211,153,0.7)';
+        window.financialChart.data.datasets[1].backgroundColor = 'rgba(248,113,113,0.7)';
+        window.financialChart.data.datasets[2].backgroundColor = 'rgba(167,139,250,0.7)';
+    }
+    window.financialChart.update();
+}
+
+// Initialize charts on page load
+window.addEventListener('DOMContentLoaded', () => {
+    initializeCharts();
+});
 </script>
 </body>
 </html>

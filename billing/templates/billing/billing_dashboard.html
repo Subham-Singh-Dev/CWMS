@@ -595,9 +595,13 @@
                             </div>
                         </td>
                         <td>
-                            <a class="pdf-link" href="{{ bill.pdf_file.url }}" target="_blank">
-                                📄 View PDF
-                            </a>
+                            {% if bill.pdf_file %}
+                                <a class="pdf-link" href="{{ bill.pdf_file.url }}" target="_blank">
+                                    📄 View PDF
+                                </a>
+                            {% else %}
+                                <span class="no-file" style="color: var(--text-muted); font-size: 13px;">No file</span>
+                            {% endif %}
                         </td>
                         <td>
                             <div class="action-form">

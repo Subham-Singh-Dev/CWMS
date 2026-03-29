@@ -1,0 +1,157 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} | CWMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-400:#fbbf24; --gold-500:#f59e0b; --gold-600:#d97706;
+            --text-primary:#eef0f8; --text-secondary:#a8b0c8; --text-muted:#6b7294;
+            --border:rgba(255,255,255,0.06); --border-strong:rgba(255,255,255,0.12);
+            --card-bg:#111420;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:#0a0b10; color:var(--text-primary); padding:20px; }
+        .container { max-width:800px; margin:0 auto; }
+        .header {
+            background:var(--card-bg); border:1px solid var(--border-strong);
+            border-radius:16px; padding:24px 28px; margin-bottom:24px;
+            position:relative; overflow:hidden;
+        }
+        .header::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--gold-600),var(--gold-400)); }
+        .header-title { font-size:20px; font-weight:900; margin-bottom:4px; }
+        .header-sub { font-size:13px; color:var(--text-muted); }
+        .form-card { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:28px; }
+        .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+        .form-group { display:flex; flex-direction:column; gap:7px; }
+        .form-group.full { grid-column:1/-1; }
+        .form-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); }
+        .form-input, .form-select, .form-textarea {
+            padding:11px 14px; background:rgba(255,255,255,.15);
+            border:1px solid var(--border-strong); border-radius:9px;
+            color:var(--text-primary); font-size:14px; font-family:inherit;
+            transition:border-color .2s; outline:none;
+        }
+        input[type="date"], input[type="time"], input[type="datetime-local"] {
+            color-scheme: light;
+            background: rgba(255,255,255,.15);
+            color: var(--text-primary);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(1.2);
+            cursor: pointer;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--gold-600); }
+        .form-select option { background:#1c1f2e; }
+        .form-textarea { resize:vertical; min-height:80px; }
+        .section-divider {
+            grid-column:1/-1; font-size:11px; font-weight:700; text-transform:uppercase;
+            letter-spacing:.6px; color:var(--gold-400); padding:10px 0 4px;
+            border-bottom:1px solid var(--border-strong); margin-top:8px;
+        }
+        .form-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:24px; padding-top:20px; border-top:1px solid var(--border); }
+        .btn-gold {
+            padding:11px 28px; background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
+            color:#000; font-weight:700; font-size:14px; border:none; border-radius:10px; cursor:pointer;
+        }
+        .btn-ghost {
+            padding:11px 20px; background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
+            color:var(--text-primary); font-weight:600; font-size:14px; border-radius:10px;
+            cursor:pointer; text-decoration:none;
+        }
+        @media(max-width:600px) { .form-grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="header-title">📋 {{ title }}</div>
+        <div class="header-sub">Fill in the work order details below</div>
+    </div>
+    <div class="form-card">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-grid">
+
+                <div class="section-divider">Client Information</div>
+
+                <div class="form-group">
+                    <label class="form-label">Client Name *</label>
+                    <input type="text" name="client_name" class="form-input"
+                           value="{{ wo.client_name|default:'' }}" placeholder="e.g. Sharma Constructions" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Client Contact</label>
+                    <input type="tel" name="client_contact" class="form-input"
+                           value="{{ wo.client_contact|default:'' }}" placeholder="e.g. 9876543210">
+                </div>
+
+                <div class="section-divider">Project Details</div>
+
+                <div class="form-group">
+                    <label class="form-label">Project Name *</label>
+                    <input type="text" name="project_name" class="form-input"
+                           value="{{ wo.project_name|default:'' }}" placeholder="e.g. G+3 Residential Building" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location *</label>
+                    <input type="text" name="location" class="form-input"
+                           value="{{ wo.location|default:'' }}" placeholder="e.g. Vijay Nagar, Indore" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Order Value (₹) *</label>
+                    <input type="number" name="order_value" class="form-input"
+                           value="{{ wo.order_value|default:'' }}" placeholder="e.g. 500000" min="0.01" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">GST Number</label>
+                    <input type="text" name="gst_number" class="form-input"
+                        value="{{ wo.gst_number|default:'' }}"
+                        placeholder="e.g. 22AGVPB5970F1ZC"
+                        maxlength="15"
+                        style="text-transform:uppercase;">
+                    <span style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+                        Client's GST registration number
+                    </span>
+                </div>
+
+                <div class="section-divider">Work Order Details</div>
+                <div class="form-group">
+                    <label class="form-label">Status *</label>
+                    <select name="status" class="form-select" required>
+                        {% for val, label in status_choices %}
+                        <option value="{{ val }}" {% if wo.status == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Start Date *</label>
+                    <input type="date" name="start_date" class="form-input"
+                           value="{{ wo.start_date|date:'Y-m-d'|default:'' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date *</label>
+                    <input type="date" name="end_date" class="form-input"
+                           value="{{ wo.end_date|date:'Y-m-d'|default:'' }}" required>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Scope / Description</label>
+                    <textarea name="description" class="form-textarea"
+                              placeholder="Describe the scope of work...">{{ wo.description|default:'' }}</textarea>
+                </div>
+
+            </div>
+            <div class="form-actions">
+                <a href="{% url 'king:workorder_dashboard' %}" class="btn-ghost">Cancel</a>
+                <button type="submit" class="btn-gold">✓ Save Work Order</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

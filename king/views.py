@@ -1,10 +1,39 @@
 # king/views.py
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
-from django.shortcuts import render, redirect
+from django.db.models.functions import TruncMonth, Coalesce
+
+from django.http import HttpResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from portal.decorators import king_required
+from django.db.models import Sum, Count, Q
+from .models import WorkOrder, Revenue
+from datetime import date, timedelta
+from .models import LedgerEntry
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+import io
+from datetime import date as date_class
+from king.models import Revenue as ManualRevenue
+from django.db.models import Sum as DSum
+from datetime import date, datetime, timedelta
+import json
+
+from employees.models import Employee
+from attendance.models import   Attendance
+from billing.models import Bill
+from expenses.models import Expense
+from .models import WorkOrder, Revenue, LedgerEntry
+from portal.decorators import king_required
+import logging
+from payroll.models   import MonthlySalary, Advance
+from django.utils import timezone
+
+
+
+
 
 
 def king_login(request):
@@ -33,7 +62,7 @@ def king_login(request):
         Redirect to king_dashboard on success
         Rendered login template on initial request or auth failure
     """
-    import logging
+    
     logger = logging.getLogger(__name__)
     
     client_ip = request.META.get('REMOTE_ADDR', 'Unknown')
@@ -136,9 +165,6 @@ def king_login(request):
 
 #(only king_dashboard changes)
 
-import json
-from datetime import datetime, date, timedelta
-from django.db.models import Sum, Count, Q
 
 @king_required
 def king_dashboard(request):
@@ -163,7 +189,7 @@ def king_dashboard(request):
         Returns:
             Decimal: Daily salary amount (always safe, never crashes)
         """
-        from decimal import Decimal, ROUND_HALF_UP
+        ROUND_HALF_UP
         
         # GUARD 1: Check if attendance exists for this day
         att = Attendance.objects.filter(
@@ -201,90 +227,171 @@ def king_dashboard(request):
         return day_pay.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     
     # ── Helper function: Calculate accumulated salary for month so far ──
+    # ── Helper function: Calculate accumulated salary (OPTIMIZED - NO LOOPS) ──
     def calculate_accumulated_salary_for_month(month_start):
         """
-        Calculate total accumulated salary from all employees for the month so far.
-        
-        OPTIMIZATION: Uses select_related to fetch all role data in one query
-        instead of N+1 queries per employee.
-        
-        SAFETY GUARANTEES:
-        - Returns Decimal('0.00') if no employees exist
-        - Safely handles NULL employee data
-        - Returns zero for invalid dates
-        - Maintains Decimal precision throughout
+        OPTIMIZED VERSION - Uses single database query instead of N+1 loops.
+        Combines all attendance for the month, then processes in Python.
         
         Args:
-            month_start: First day of month (must be valid date)
+            month_start: First day of month
             
         Returns:
-            Decimal: Total accumulated salary (never crashes, always valid)
+            Decimal: Total net salary (existing + pending)
         """
-        from decimal import Decimal, ROUND_HALF_UP
         
-        total_accumulated = Decimal('0.00')
+        # Get next month boundary
+        if month_start.month == 12:
+            next_month_date = month_start.replace(year=month_start.year + 1, month=1)
+        else:
+            next_month_date = month_start.replace(month=month_start.month + 1)
         
-        # OPTIMIZATION: select_related('role') to fetch role data in ONE query
-        # instead of fetching roles separately for each employee
-        # This reduces database queries from ~1000 to ~100 for a month
-        active_employees = Employee.objects.filter(is_active=True).select_related('role')
+        # STEP 1: Get existing payroll (single query) ✅
+        existing_total = MonthlySalary.objects.filter(
+            month=month_start
+        ).aggregate(t=Coalesce(Sum('net_pay'), Decimal('0.00')))['t']
         
-        # GUARD 1: If no employees, return zero immediately
-        if not active_employees.exists():
-            return Decimal('0.00')
+        employees_with_payroll = set(
+            MonthlySalary.objects.filter(month=month_start).values_list('employee_id', flat=True)
+        )
         
-        # GUARD 2: Validate month_start is a valid date
-        if not month_start or month_start > today:
-            return Decimal('0.00')
+        # STEP 2: Fetch ALL attendance data for this month in ONE query ✅
+        all_attendance = Attendance.objects.filter(
+            date__gte=month_start,
+            date__lt=next_month_date,
+            date__lte=today
+        ).select_related('employee__role')
         
-        # GUARD 3: Loop through each day of the month up to today
-        current_date = month_start
-        while current_date <= today:
-            # For each day, calculate salary for all employees
-            for emp in active_employees:
-                try:
-                    daily_sal = calculate_daily_salary_for_employee(emp, current_date)
-                    if daily_sal > 0:  # Only add if valid (safety check)
-                        total_accumulated += daily_sal
-                except Exception as e:
-                    # Log error but don't crash dashboard
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.warning(
-                        f"Salary calculation error for {emp.name} on {current_date}: {str(e)}"
-                    )
-                    continue  # Skip this employee, continue with next
+        # Group attendance by employee
+        emp_attendance_map = {}
+        for att in all_attendance:
+            emp_id = att.employee_id
+            if emp_id not in emp_attendance_map:
+                emp_attendance_map[emp_id] = {'employee': att.employee, 'records': []}
+            emp_attendance_map[emp_id]['records'].append(att)
+        
+        # STEP 3: Fetch ALL advances in ONE query ✅
+        all_advances = Advance.objects.filter(
+            settled=False
+        ).select_related('employee').order_by('issued_date')
+        
+        # Group advances by employee
+        emp_advances_map = {}
+        for adv in all_advances:
+            emp_id = adv.employee_id
+            if emp_id not in emp_advances_map:
+                emp_advances_map[emp_id] = []
+            emp_advances_map[emp_id].append(adv)
+        
+        # STEP 4: Calculate pending payroll from grouped data
+        pending_total = Decimal('0.00')
+        
+        for emp_id, att_data in emp_attendance_map.items():
+            # Skip if already has generated payroll
+            if emp_id in employees_with_payroll:
+                continue
             
-            current_date += timedelta(days=1)
+            emp = att_data['employee']
+            records = att_data['records']
+            
+            if not records or (emp.daily_wage or Decimal('0.00')) <= 0:
+                continue
+            
+            try:
+                # Count attendance (single pass through records)
+                present_count = sum(1 for r in records if r.status == 'P')
+                half_day_count = sum(1 for r in records if r.status == 'H')
+                absent_count = sum(1 for r in records if r.status == 'A')
+                overtime_hours = sum(r.overtime_hours or 0 for r in records)
+                
+                # Paid leave logic
+                paid_leaves = min(absent_count, 2)
+                
+                # Gross pay
+                daily_wage = emp.daily_wage or Decimal('0.00')
+                present_pay = present_count * daily_wage
+                half_day_pay = half_day_count * (daily_wage * Decimal('0.5'))
+                paid_leave_pay = paid_leaves * daily_wage
+                
+                # Overtime
+                overtime_rate = emp.role.overtime_rate_per_hour if emp.role else Decimal('0.00')
+                overtime_pay = Decimal(str(overtime_hours)) * (overtime_rate or Decimal('0.00'))
+                
+                gross_pay = (present_pay + half_day_pay + paid_leave_pay + overtime_pay).quantize(
+                    Decimal('0.01'), rounding=ROUND_HALF_UP
+                )
+                
+                # Apply FIFO advance deductions
+                net_pay = gross_pay
+                for advance in emp_advances_map.get(emp_id, []):
+                    if net_pay <= 0:
+                        break
+                    deduction = min(net_pay, advance.remaining_amount)
+                    net_pay -= deduction
+                
+                pending_total += net_pay
+                
+            except Exception as e:
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Error calculating salary for {emp.name}: {str(e)}")
+                continue
         
-        # GUARD 4: Return rounded to 2 decimal places
-        return total_accumulated.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        # Return total
+        total = (existing_total + pending_total).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return total
     
-    # ── Helper function: Get today's daily salary ──
+    # ── Helper function: Get today's daily salary (OPTIMIZED) ──
     def get_todays_daily_salary():
-        """Get total salary generated today for all employees"""
-        from decimal import Decimal, ROUND_HALF_UP
+        """Get total salary generated today for all employees using database aggregation"""
         
-        today_salary = Decimal('0.00')
-        active_employees = Employee.objects.filter(is_active=True)
+        # Use single database query with aggregation instead of looping
+        from django.db.models import Case, When, F, DecimalField
         
-        for emp in active_employees:
-            daily_sal = calculate_daily_salary_for_employee(emp, today)
-            today_salary += daily_sal
+        today_attendance = Attendance.objects.filter(
+            date=today
+        ).select_related('employee__role')
         
-        return today_salary.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        total_salary = Decimal('0.00')
+        
+        # Single query to get today's salary calculation
+        for att in today_attendance:
+            emp = att.employee
+            daily_wage = emp.daily_wage or Decimal('0.00')
+            
+            if att.status == 'P':
+                day_pay = daily_wage
+            elif att.status == 'H':
+                day_pay = daily_wage * Decimal('0.5')
+            elif att.status == 'A':
+                day_pay = Decimal('0.00')
+            else:
+                day_pay = Decimal('0.00')
+            
+            # Add overtime
+            if att.overtime_hours and emp.role:
+                overtime_rate = emp.role.overtime_rate_per_hour or Decimal('0.00')
+                day_pay += att.overtime_hours * overtime_rate
+            
+            total_salary += day_pay
+        
+        return total_salary.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     
-    # ── Helper function: Get today's attendance status ──
-    def get_todays_attendance_status():
-        """Get attendance count for today"""
-        today_att = Attendance.objects.filter(date=today)
+    # ── Helper function: Get today's attendance status (OPTIMIZED) ──
+    def get_todays_attendance_status(total_emp_count):
+        """Get attendance count for today using single database query"""
+        from django.db.models import Count, Q
         
-        present_count = today_att.filter(status='P').count()
-        absent_count = today_att.filter(status='A').count()
-        half_day_count = today_att.filter(status='H').count()
+        # Single query to get all counts at once
+        today_stats = Attendance.objects.filter(date=today).aggregate(
+            present=Count('id', filter=Q(status='P')),
+            absent=Count('id', filter=Q(status='A')),
+            half_day=Count('id', filter=Q(status='H'))
+        )
         
+        present_count = today_stats['present']
+        absent_count = today_stats['absent']
+        half_day_count = today_stats['half_day']
         total_marked = present_count + absent_count + half_day_count
-        total_employees = Employee.objects.filter(is_active=True).count()
         
         return {
             'marked': total_marked > 0,
@@ -292,7 +399,7 @@ def king_dashboard(request):
             'absent': absent_count,
             'half_day': half_day_count,
             'total_marked': total_marked,
-            'total_employees': total_employees
+            'total_employees': total_emp_count
         }
     
     # Time greeting
@@ -311,12 +418,6 @@ def king_dashboard(request):
     prev_month_end   = month_start                                      # exclusive
     prev_month_start = (month_start - timedelta(days=1)).replace(day=1)
 
-    # ── Imports ──
-    from employees.models import Employee
-    from attendance.models import Attendance
-    from payroll.models   import MonthlySalary
-    from billing.models   import Bill
-    from expenses.models  import Expense
 
     # ── Helpers ───────────────────────────────────────────────────
     def pct_change(current, previous):
@@ -340,9 +441,16 @@ def king_dashboard(request):
     ).aggregate(t=Sum('net_pay'))['t'] or 0
 
     # ── Liability (unpaid salaries) ───────────────────────────────
-    total_liability = MonthlySalary.objects.filter(
-        is_paid=False
-    ).aggregate(t=Sum('net_pay'))['t'] or 0
+    # Calculate unpaid salaries for CURRENT MONTH (matching manager dashboard)
+    cur_month_payroll = MonthlySalary.objects.filter(
+        month=month_start
+    ).aggregate(
+        total_net=Coalesce(Sum('net_pay'), Decimal('0.00')),
+        total_paid=Coalesce(Sum('net_pay', filter=Q(is_paid=True)), Decimal('0.00'))
+    )
+    
+    # Current month liability = total net - what's been paid
+    total_liability = (cur_month_payroll['total_net'] - cur_month_payroll['total_paid']) or Decimal('0.00')
 
     # ── Daily Expenses ────────────────────────────────────────────
     cur_expenses  = Expense.objects.filter(
@@ -368,12 +476,24 @@ def king_dashboard(request):
         dummy = Expense(category=item['category'])
         expense_cat_labels.append(dummy.get_category_display())
         expense_cat_data.append(float(item['total']))
+    
+    # Replace cur_revenue with yearly manual revenue only
+    year_start = date(today.year, 1, 1)
+    year_end   = date(today.year + 1, 1, 1)
+
+    cur_revenue = float(
+        ManualRevenue.objects.filter(
+            date__gte=year_start, date__lt=year_end
+        ).aggregate(t=Sum('amount'))['t'] or 0
+    )
 
     # ── Billing (Revenue = paid bills this month) ─────────────────
-    cur_revenue  = Bill.objects.filter(
+    billing_revenue  = Bill.objects.filter(
         is_paid=True,
         paid_on__gte=month_start, paid_on__lt=next_month
     ).aggregate(t=Sum('amount'))['t'] or 0
+
+    
 
     prev_revenue = Bill.objects.filter(
         is_paid=True,
@@ -388,7 +508,6 @@ def king_dashboard(request):
     # ── Advances outstanding ──────────────────────────────────────
     # ⚠️ adjust fields: amount, recovered_amount
     # ── Advances outstanding ──────────────────────────────────────
-    from payroll.models import Advance
 
     advance_outstanding = Advance.objects.filter(
     settled=False
@@ -410,34 +529,44 @@ def king_dashboard(request):
     net_profit      = float(cur_revenue) - float(cur_expenses) - float(cur_payroll)
     profit_margin   = round((net_profit / float(cur_revenue)) * 100, 1) if float(cur_revenue) > 0 else 0
 
-    # ── 6-month chart data ────────────────────────────────────────
-    chart_labels   = []
-    revenue_data   = []
-    expense_data   = []
-    payroll_data   = []
+    # ── Optimised 6-month chart (3 queries total, not 18) ──────────
+    six_months_ago = date(today.year, today.month, 1) - timedelta(days=150)
 
+    rev_by_month = {
+        r['m'].strftime('%Y-%m'): r['t']
+        for r in Revenue.objects
+            .filter(date__gte=six_months_ago)
+            .annotate(m=TruncMonth('date'))
+            .values('m')
+            .annotate(t=Sum('amount'))
+    }
+    exp_by_month = {
+        r['m'].strftime('%Y-%m'): r['t']
+        for r in Expense.objects
+            .filter(date__gte=six_months_ago)
+            .annotate(m=TruncMonth('date'))
+            .values('m')
+            .annotate(t=Sum('amount'))
+    }
+    sal_by_month = {
+        r['month'].strftime('%Y-%m'): r['t']
+        for r in MonthlySalary.objects
+            .filter(month__gte=six_months_ago)
+            .values('month').annotate(t=Sum('net_pay'))
+    }
+
+    chart_labels, revenue_data, expense_data, payroll_data = [], [], [], []
     for i in range(5, -1, -1):
         m = today.month - i
         y = today.year
         while m <= 0:
             m += 12
             y -= 1
-        m_start = date(y, m, 1)
-        m_end   = date(y, m + 1, 1) if m < 12 else date(y + 1, 1, 1)
-
-        chart_labels.append(m_start.strftime('%b %y'))
-        revenue_data.append(float(
-            Bill.objects.filter(is_paid=True, paid_on__gte=m_start, paid_on__lt=m_end)
-            .aggregate(t=Sum('amount'))['t'] or 0
-        ))
-        expense_data.append(float(
-            Expense.objects.filter(date__gte=m_start, date__lt=m_end)
-            .aggregate(t=Sum('amount'))['t'] or 0
-        ))
-        payroll_data.append(float(
-            MonthlySalary.objects.filter(month=m_start)
-            .aggregate(t=Sum('net_pay'))['t'] or 0
-        ))
+        key = f"{y}-{m:02d}"
+        chart_labels.append(date(y, m, 1).strftime('%b %y'))
+        revenue_data.append(float(rev_by_month.get(key, 0)))
+        expense_data.append(float(exp_by_month.get(key, 0)))
+        payroll_data.append(float(sal_by_month.get(key, 0)))
 
     # ── Workforce by role ─────────────────────────────────────────
     role_qs     = (
@@ -453,7 +582,7 @@ def king_dashboard(request):
     recent_activities = []
 
     # Last 5 attendance marks (TODAY AND PAST FOR TESTING)
-    from django.utils import timezone
+    
     for att in Attendance.objects.select_related('employee').order_by('-date')[:4]:
         status_emoji = {'P': '✓ Present', 'A': '✗ Absent', 'H': '⚠️ Half-day'}.get(att.status, att.status)
         recent_activities.append({
@@ -528,7 +657,7 @@ def king_dashboard(request):
 
         # ──────────── NEW FEATURES ────────────────────────────
         # 1. DAILY SNAPSHOT
-        'todays_attendance':   get_todays_attendance_status(),
+        'todays_attendance':   get_todays_attendance_status(total_workers),
         'todays_daily_salary': get_todays_daily_salary(),
         
         # 2. SALARY TRACKER
@@ -574,7 +703,7 @@ def king_logout(request):
     Returns:
         Redirect to king_login page
     """
-    import logging
+    
     logger = logging.getLogger(__name__)
     
     username = request.user.username if request.user.is_authenticated else 'Unknown'
@@ -591,6 +720,330 @@ def king_logout(request):
     
     logger.info(f"King logout: {username} logged out from {client_ip}")
     
-    return redirect('king_login')
+    return redirect('king:king_login')
 
 
+
+# ─────────────────────────────────────────────
+# WORK ORDERS
+# ─────────────────────────────────────────────
+
+@king_required
+def workorder_dashboard(request):
+    selected_month = request.GET.get('month')
+
+    if selected_month:
+        try:
+            year, month = map(int, selected_month.split('-'))
+            m_start = date(year, month, 1)
+            m_end   = date(year, month+1, 1) if month < 12 else date(year+1, 1, 1)
+            workorders = WorkOrder.objects.filter(
+                start_date__gte=m_start, start_date__lt=m_end
+            )
+        except:
+            workorders = WorkOrder.objects.all()
+    else:
+        workorders = WorkOrder.objects.all()
+
+    # Summary counts
+    summary = {
+        'total':     workorders.count(),
+        'pending':   workorders.filter(status='pending').count(),
+        'active':    workorders.filter(status='active').count(),
+        'completed': workorders.filter(status='completed').count(),
+        'cancelled': workorders.filter(status='cancelled').count(),
+        'total_value': workorders.aggregate(t=Sum('order_value'))['t'] or 0,
+    }
+
+    return render(request, 'king/workorder_dashboard.html', {
+        'workorders':     workorders,
+        'summary':        summary,
+        'selected_month': selected_month or date.today().strftime('%Y-%m'),
+    })
+
+
+@king_required
+def workorder_add(request):
+    if request.method == 'POST':
+        WorkOrder.objects.create(
+            client_name    = request.POST.get('client_name'),
+            client_contact = request.POST.get('client_contact') or None,
+            project_name   = request.POST.get('project_name'),
+            location       = request.POST.get('location'),
+            order_value    = Decimal(request.POST.get('order_value')),
+            gst_number = request.POST.get('gst_number') or None,
+            start_date     = request.POST.get('start_date'),
+            end_date       = request.POST.get('end_date'),
+            status         = request.POST.get('status', 'pending'),
+            description    = request.POST.get('description') or None,
+            created_by     = request.user,
+        )
+        messages.success(request, 'Work order created successfully.')
+        return redirect('king:workorder_dashboard')
+
+    return render(request, 'king/workorder_form.html', {
+        'title':       'Add Work Order',
+        'status_choices': WorkOrder.STATUS_CHOICES,
+    })
+
+
+@king_required
+def workorder_detail(request, wo_id):
+    wo = get_object_or_404(WorkOrder, id=wo_id)
+    revenues = wo.revenues.all()
+    total_received = wo.total_revenue_received()
+    balance        = wo.balance_remaining()
+    completion_pct = round(
+        (float(total_received) / float(wo.order_value) * 100), 1
+    ) if wo.order_value else 0
+
+    return render(request, 'king/workorder_detail.html', {
+        'wo':             wo,
+        'revenues':       revenues,
+        'total_received': total_received,
+        'balance':        balance,
+        'completion_pct': completion_pct,
+    })
+
+
+@king_required
+def workorder_edit(request, wo_id):
+    wo = get_object_or_404(WorkOrder, id=wo_id)
+
+    if request.method == 'POST':
+        wo.client_name    = request.POST.get('client_name')
+        wo.client_contact = request.POST.get('client_contact') or None
+        wo.project_name   = request.POST.get('project_name')
+        wo.location       = request.POST.get('location')
+        wo.order_value    = Decimal(request.POST.get('order_value'))
+        wo.gst_number = request.POST.get('gst_number') or None
+        wo.start_date     = request.POST.get('start_date')
+        wo.end_date       = request.POST.get('end_date')
+        wo.status         = request.POST.get('status')
+        wo.description    = request.POST.get('description') or None
+        wo.save()
+        messages.success(request, 'Work order updated.')
+        return redirect('king:workorder_detail', wo_id=wo.id)
+
+    return render(request, 'king/workorder_form.html', {
+        'title':          'Edit Work Order',
+        'wo':             wo,
+        'status_choices': WorkOrder.STATUS_CHOICES,
+    })
+
+
+@king_required
+def workorder_status_update(request, wo_id):
+    """Quick status toggle from dashboard."""
+    wo = get_object_or_404(WorkOrder, id=wo_id)
+    new_status = request.POST.get('status')
+    if new_status in dict(WorkOrder.STATUS_CHOICES):
+        wo.status = new_status
+        wo.save()
+        messages.success(request, f'Status updated to {wo.get_status_display()}.')
+    return redirect('king:workorder_dashboard')
+
+
+# ─────────────────────────────────────────────
+# MANUAL REVENUE
+# ─────────────────────────────────────────────
+
+@king_required
+def revenue_dashboard(request):
+    selected_month = request.GET.get('month')
+
+    if selected_month:
+        try:
+            year, month = map(int, selected_month.split('-'))
+            m_start = date(year, month, 1)
+            m_end   = date(year, month+1, 1) if month < 12 else date(year+1, 1, 1)
+            revenues = Revenue.objects.filter(
+                date__gte=m_start, date__lt=m_end
+            )
+        except:
+            revenues = Revenue.objects.all()
+    else:
+        today   = date.today()
+        m_start = today.replace(day=1)
+        m_end   = date(today.year, today.month+1, 1) if today.month < 12 else date(today.year+1, 1, 1)
+        revenues = Revenue.objects.filter(date__gte=m_start, date__lt=m_end)
+
+    # Category breakdown
+    cat_totals = (
+        revenues.values('category')
+        .annotate(total=Sum('amount'))
+        .order_by('-total')
+    )
+    cat_data = []
+    for item in cat_totals:
+        dummy = Revenue(category=item['category'])
+        cat_data.append({
+            'label': dummy.get_category_display(),
+            'total': item['total'],
+        })
+
+    total_revenue = revenues.aggregate(t=Sum('amount'))['t'] or 0
+    work_orders   = WorkOrder.objects.filter(
+        status__in=['pending', 'active']
+    ).order_by('wo_number')
+
+    return render(request, 'king/revenue_dashboard.html', {
+        'revenues':       revenues,
+        'total_revenue':  total_revenue,
+        'cat_data':       cat_data,
+        'work_orders':    work_orders,
+        'selected_month': selected_month or date.today().strftime('%Y-%m'),
+        'category_choices':     Revenue.CATEGORY_CHOICES,
+        'payment_mode_choices': Revenue.PAYMENT_MODE_CHOICES,
+    })
+
+
+@king_required
+def revenue_add(request):
+    if request.method == 'POST':
+        wo_id = request.POST.get('work_order')
+        Revenue.objects.create(
+            date         = request.POST.get('date'),
+            amount       = Decimal(request.POST.get('amount')),
+            source       = request.POST.get('source'),
+            category     = request.POST.get('category'),
+            payment_mode = request.POST.get('payment_mode'),
+            work_order   = WorkOrder.objects.get(id=wo_id) if wo_id else None,
+            created_by   = request.user,
+        )
+        messages.success(request, 'Revenue entry added.')
+        return redirect('king:revenue_dashboard')
+
+    return redirect('king:revenue_dashboard')
+
+
+@king_required
+def revenue_delete(request, rev_id):
+    rev = get_object_or_404(Revenue, id=rev_id)
+    rev.delete()
+    messages.success(request, 'Revenue entry deleted.')
+    return redirect('king:revenue_dashboard')
+
+
+# ─────────────────────────────────────────────
+# LEDGER
+# ─────────────────────────────────────────────
+
+@king_required
+def ledger_view(request):
+    # Date range filter
+    from_date_str = request.GET.get('from_date')
+    to_date_str   = request.GET.get('to_date')
+
+    today      = date_class.today()
+    from_date  = date_class.fromisoformat(from_date_str) if from_date_str else today.replace(day=1)
+    to_date    = date_class.fromisoformat(to_date_str)   if to_date_str   else today
+
+    entries = LedgerEntry.objects.filter(
+        date__gte=from_date,
+        date__lte=to_date
+    ).order_by('date', 'created_at')
+
+    # Compute running balance
+    running_balance = 0
+    ledger_rows = []
+    for entry in entries:
+        running_balance += float(entry.credit) - float(entry.debit)
+        ledger_rows.append({
+            'entry':           entry,
+            'balance':         abs(running_balance),
+            'balance_type':    'Cr' if running_balance >= 0 else 'Dr',
+        })
+
+    total_debit  = entries.aggregate(t=Sum('debit'))['t']  or 0
+    total_credit = entries.aggregate(t=Sum('credit'))['t'] or 0
+    net_balance  = float(total_credit) - float(total_debit)
+
+    return render(request, 'king/ledger.html', {
+        'ledger_rows':  ledger_rows,
+        'from_date':    from_date,
+        'to_date':      to_date,
+        'total_debit':  total_debit,
+        'total_credit': total_credit,
+        'net_balance':  abs(net_balance),
+        'net_type':     'Cr' if net_balance >= 0 else 'Dr',
+        'entry_types':  LedgerEntry.ENTRY_TYPE_CHOICES,
+        'now':          datetime.now(),
+    })
+
+
+@king_required
+def ledger_add_entry(request):
+    if request.method == 'POST':
+        debit  = request.POST.get('debit')  or '0'
+        credit = request.POST.get('credit') or '0'
+
+        LedgerEntry.objects.create(
+            date        = request.POST.get('date'),
+            entry_type  = request.POST.get('entry_type'),
+            voucher_no  = request.POST.get('voucher_no') or None,
+            particulars = request.POST.get('particulars'),
+            debit       = Decimal(debit),
+            credit      = Decimal(credit),
+            created_by  = request.user,
+        )
+        messages.success(request, 'Ledger entry added.')
+
+    return redirect('king:ledger')
+
+
+@king_required
+def ledger_delete_entry(request, entry_id):
+    entry = get_object_or_404(LedgerEntry, id=entry_id)
+    entry.delete()
+    messages.success(request, 'Entry deleted.')
+    return redirect('king:ledger')
+
+
+@king_required
+def ledger_pdf(request):
+    from_date_str = request.GET.get('from_date')
+    to_date_str   = request.GET.get('to_date')
+
+    today     = date_class.today()
+    from_date = date_class.fromisoformat(from_date_str) if from_date_str else today.replace(day=1)
+    to_date   = date_class.fromisoformat(to_date_str)   if to_date_str   else today
+
+    entries = LedgerEntry.objects.filter(
+        date__gte=from_date,
+        date__lte=to_date
+    ).order_by('date', 'created_at')
+
+    running_balance = 0
+    ledger_rows = []
+    for entry in entries:
+        running_balance += float(entry.credit) - float(entry.debit)
+        ledger_rows.append({
+            'entry':        entry,
+            'balance':      abs(running_balance),
+            'balance_type': 'Cr' if running_balance >= 0 else 'Dr',
+        })
+
+    total_debit  = entries.aggregate(t=Sum('debit'))['t']  or 0
+    total_credit = entries.aggregate(t=Sum('credit'))['t'] or 0
+    net_balance  = float(total_credit) - float(total_debit)
+
+    template = get_template('king/ledger_pdf.html')
+    html = template.render({
+        'ledger_rows':  ledger_rows,
+        'from_date':    from_date,
+        'to_date':      to_date,
+        'total_debit':  total_debit,
+        'total_credit': total_credit,
+        'net_balance':  abs(net_balance),
+        'net_type':     'Cr' if net_balance >= 0 else 'Dr',
+    })
+
+    result = io.BytesIO()
+    pisa.CreatePDF(html, dest=result)
+
+    response = HttpResponse(result.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="ledger_{from_date}_to_{to_date}.pdf"'
+    )
+    return response

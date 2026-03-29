@@ -1,0 +1,262 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Work Orders | CWMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-400: #fbbf24; --gold-500: #f59e0b; --gold-600: #d97706;
+            --green-400: #34d399; --green-500: #10b981;
+            --red-400: #f87171; --red-500: #ef4444;
+            --blue-400: #60a5fa; --blue-500: #3b82f6;
+            --orange-400: #fb923c; --purple-400: #a78bfa;
+            --n900: #0a0b10; --n800: #0f1117; --n700: #161822;
+            --n600: #1c1f2e; --n500: #252840; --n400: #2e3250;
+            --text-primary: #eef0f8; --text-secondary: #a8b0c8; --text-muted: #6b7294;
+            --border: rgba(255,255,255,0.06); --border-strong: rgba(255,255,255,0.12);
+            --card-bg: #111420;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:#0a0b10; color:var(--text-primary); padding:20px; }
+        .container { max-width:1400px; margin:0 auto; }
+
+        /* HEADER */
+        .header {
+            background:var(--card-bg); border:1px solid var(--border-strong);
+            border-radius:16px; padding:24px 28px; margin-bottom:24px;
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
+            position:relative; overflow:hidden;
+        }
+        .header::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600));
+        }
+        .header-title { font-size:22px; font-weight:900; color:var(--text-primary); display:flex; align-items:center; gap:10px; }
+        .header-sub   { font-size:13px; color:var(--text-muted); margin-top:3px; }
+        .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+        /* BUTTONS */
+        .btn-gold {
+            padding:10px 20px; background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
+            color:#000; font-weight:700; font-size:13px; border:none; border-radius:10px;
+            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+            transition:all .2s;
+        }
+        .btn-gold:hover { opacity:.9; transform:translateY(-1px); }
+        .btn-ghost {
+            padding:10px 16px; background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
+            color:var(--text-primary); font-weight:600; font-size:13px; border-radius:10px;
+            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+            transition:all .2s;
+        }
+        .btn-ghost:hover { border-color:var(--gold-600); color:var(--gold-400); }
+
+        /* SUMMARY CARDS */
+        .summary-grid {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+            gap:14px; margin-bottom:24px;
+        }
+        .sum-card {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:14px; padding:18px; text-align:center;
+        }
+        .sum-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); margin-bottom:8px; }
+        .sum-value { font-size:26px; font-weight:900; letter-spacing:-1px; }
+        .sum-card.total    .sum-value { color:var(--gold-400); }
+        .sum-card.pending  .sum-value { color:var(--blue-400); }
+        .sum-card.active   .sum-value { color:var(--green-400); }
+        .sum-card.completed .sum-value { color:var(--purple-400); }
+        .sum-card.cancelled .sum-value { color:var(--text-muted); }
+        .sum-card.value    .sum-value { color:var(--gold-400); font-size:20px; }
+
+        /* FILTER BAR */
+        .filter-bar {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:12px; padding:16px 20px; margin-bottom:20px;
+            display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+        }
+        .filter-label { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+        .filter-input {
+            padding:8px 14px; background:rgba(255,255,255,.05);
+            border:1px solid var(--border-strong); border-radius:8px;
+            color:var(--text-primary); font-size:13px; font-family:inherit;
+            colorscheme:dark;
+        }
+        .filter-input:focus { outline:none; border-color:var(--gold-600); }
+
+        /* TABLE */
+        .table-card { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+        .table-head { padding:18px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+        .table-title { font-size:15px; font-weight:700; color:var(--text-primary); }
+
+        table { width:100%; border-collapse:collapse; }
+        thead tr { background:rgba(255,255,255,.03); }
+        th { padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); text-align:left; border-bottom:1px solid var(--border); }
+        td { padding:14px 16px; font-size:13px; color:var(--text-primary); border-bottom:1px solid var(--border); vertical-align:middle; }
+        tbody tr:hover { background:rgba(255,255,255,.02); }
+        tbody tr:last-child td { border-bottom:none; }
+
+        /* STATUS BADGE */
+        .badge {
+            display:inline-flex; align-items:center; gap:5px;
+            padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.4px;
+        }
+        .badge-pending   { background:rgba(96,165,250,.12); color:var(--blue-400); }
+        .badge-active    { background:rgba(52,211,153,.12); color:var(--green-400); }
+        .badge-completed { background:rgba(167,139,250,.12); color:var(--purple-400); }
+        .badge-cancelled { background:rgba(255,255,255,.06); color:var(--text-muted); }
+
+        /* PROGRESS BAR */
+        .progress-track { width:80px; height:6px; background:rgba(255,255,255,.08); border-radius:99px; overflow:hidden; }
+        .progress-fill  { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--gold-600),var(--gold-400)); transition:width .3s; }
+
+        .action-link {
+            padding:6px 12px; border-radius:7px; font-size:12px; font-weight:600;
+            text-decoration:none; transition:all .2s; display:inline-flex; align-items:center; gap:4px;
+        }
+        .action-view { background:rgba(245,158,11,.1); color:var(--gold-400); }
+        .action-view:hover { background:rgba(245,158,11,.2); }
+
+        .empty-state { padding:60px; text-align:center; color:var(--text-muted); }
+        .empty-state .empty-icon { font-size:48px; margin-bottom:12px; }
+        .empty-state p { font-size:14px; }
+
+        @media(max-width:768px) {
+            .summary-grid { grid-template-columns:1fr 1fr; }
+            table { font-size:12px; }
+            th, td { padding:10px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div>
+            <div class="header-title">📋 Work Orders</div>
+            <div class="header-sub">Track contracts, clients & project progress</div>
+        </div>
+        <div class="header-right">
+            <a href="{% url 'king:king_dashboard' %}" class="btn-ghost">← King Dashboard</a>
+            <a href="{% url 'king:workorder_add' %}" class="btn-gold">+ New Work Order</a>
+        </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-grid">
+        <div class="sum-card total">
+            <div class="sum-label">Total Orders</div>
+            <div class="sum-value">{{ summary.total }}</div>
+        </div>
+        <div class="sum-card pending">
+            <div class="sum-label">Pending</div>
+            <div class="sum-value">{{ summary.pending }}</div>
+        </div>
+        <div class="sum-card active">
+            <div class="sum-label">Active</div>
+            <div class="sum-value">{{ summary.active }}</div>
+        </div>
+        <div class="sum-card completed">
+            <div class="sum-label">Completed</div>
+            <div class="sum-value">{{ summary.completed }}</div>
+        </div>
+        <div class="sum-card cancelled">
+            <div class="sum-label">Cancelled</div>
+            <div class="sum-value">{{ summary.cancelled }}</div>
+        </div>
+        <div class="sum-card value">
+            <div class="sum-label">Total Value</div>
+            <div class="sum-value">₹{{ summary.total_value|floatformat:0 }}</div>
+        </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <form method="get" class="filter-bar">
+        <span class="filter-label">Filter by month</span>
+        <input type="month" name="month" value="{{ selected_month }}" class="filter-input">
+        <button type="submit" class="btn-ghost" style="padding:8px 16px;">Apply</button>
+        <a href="{% url 'king:workorder_dashboard' %}" class="btn-ghost" style="padding:8px 16px;">All Time</a>
+    </form>
+
+    <!-- WORK ORDERS TABLE -->
+    <div class="table-card">
+        <div class="table-head">
+            <span class="table-title">{{ workorders.count }} Work Order{{ workorders.count|pluralize }}</span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>WO Number</th>
+                    <th>Client</th>
+                    <th>Project / Location</th>
+                    <th>Order Value</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>Revenue %</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wo in workorders %}
+                <tr>
+                    <td><strong style="color:var(--gold-400);">{{ wo.wo_number }}</strong></td>
+                    <td>
+                        <div style="font-weight:600;">{{ wo.client_name }}</div>
+                        {% if wo.client_contact %}
+                        <div style="font-size:11px;color:var(--text-muted);">{{ wo.client_contact }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="font-weight:600;">{{ wo.project_name }}</div>
+                        <div style="font-size:11px;color:var(--text-muted);">📍 {{ wo.location }}</div>
+                    </td>
+                    <td><strong>₹{{ wo.order_value|floatformat:0 }}</strong></td>
+                    <td>
+                        <div style="font-size:12px;">{{ wo.start_date|date:"d M Y" }}</div>
+                        <div style="font-size:11px;color:var(--text-muted);">→ {{ wo.end_date|date:"d M Y" }}</div>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ wo.status }}">
+                            {{ wo.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% with pct=wo.total_revenue_received %}
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">
+                            ₹{{ pct|floatformat:0 }} received
+                        </div>
+                        <div class="progress-track">
+                            {% if wo.order_value %}
+                            <div class="progress-fill" style="width:{% widthratio wo.total_revenue_received wo.order_value 100 %}%"></div>
+                            {% endif %}
+                        </div>
+                        {% endwith %}
+                    </td>
+                    <td>
+                        <a href="{% url 'king:workorder_detail' wo.id %}" class="action-link action-view">
+                            View →
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <div class="empty-icon">📋</div>
+                            <p>No work orders yet. <a href="{% url 'king:workorder_add' %}" style="color:var(--gold-400);">Add your first one →</a></p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

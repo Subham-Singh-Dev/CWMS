@@ -1,0 +1,380 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ wo.wo_number }} | Work Order Detail</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-400:#fbbf24; --gold-500:#f59e0b; --gold-600:#d97706;
+            --green-400:#34d399; --green-500:#10b981;
+            --red-400:#f87171; --blue-400:#60a5fa; --purple-400:#a78bfa;
+            --orange-400:#fb923c;
+            --text-primary:#eef0f8; --text-secondary:#a8b0c8; --text-muted:#6b7294;
+            --border:rgba(255,255,255,0.06); --border-strong:rgba(255,255,255,0.12);
+            --card-bg:#111420; --body-bg:#0a0b10;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--body-bg); color:var(--text-primary); padding:28px 24px; }
+        .container { max-width:1300px; margin:0 auto; }
+
+        .btn-gold {
+            padding:11px 22px; background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
+            color:#000; font-weight:700; font-size:13px; border:none; border-radius:10px;
+            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; transition:all .2s;
+        }
+        .btn-ghost {
+            padding:11px 18px; background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
+            color:var(--text-primary); font-weight:600; font-size:13px; border-radius:10px;
+            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; transition:all .2s;
+        }
+        .btn-ghost:hover { border-color:var(--gold-600); color:var(--gold-400); }
+
+        /* ── HEADER ── */
+        .header {
+            background:var(--card-bg); border:1px solid var(--border-strong);
+            border-radius:18px; padding:28px 36px; margin-bottom:28px;
+            position:relative; overflow:hidden;
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
+        }
+        .header::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600));
+        }
+        .wo-number { font-size:13px; font-weight:700; color:var(--gold-400); letter-spacing:.5px; margin-bottom:4px; }
+        .wo-title  { font-size:26px; font-weight:900; }
+        .wo-client { font-size:14px; color:var(--text-secondary); margin-top:4px; display:flex; align-items:center; gap:8px; }
+        .header-right { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+        /* STATUS BADGE */
+        .badge {
+            display:inline-flex; align-items:center; gap:5px;
+            padding:5px 14px; border-radius:7px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px;
+        }
+        .badge-pending   { background:rgba(96,165,250,.12); color:var(--blue-400); }
+        .badge-active    { background:rgba(52,211,153,.12);  color:var(--green-400); }
+        .badge-completed { background:rgba(167,139,250,.12); color:var(--purple-400); }
+        .badge-cancelled { background:rgba(255,255,255,.06); color:var(--text-muted); }
+
+        /* ── STATUS UPDATE FORM ── */
+        .status-bar {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:14px; padding:18px 24px; margin-bottom:24px;
+            display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+        }
+        .status-label { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+        .status-select {
+            padding:9px 14px; background:rgba(255,255,255,.05);
+            border:1px solid var(--border-strong); border-radius:8px;
+            color:var(--text-primary); font-size:13px; font-family:inherit; outline:none; colorscheme:dark;
+        }
+        .status-select option { background:#1c1f2e; }
+
+        /* ── DETAIL GRID ── */
+        .detail-grid {
+            display:grid; grid-template-columns:2fr 1fr;
+            gap:20px; margin-bottom:24px;
+        }
+
+        /* INFO CARD */
+        .info-card {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:16px; padding:28px;
+        }
+        .card-title {
+            font-size:14px; font-weight:800; color:var(--text-secondary);
+            text-transform:uppercase; letter-spacing:.6px; margin-bottom:20px;
+            padding-bottom:12px; border-bottom:1px solid var(--border);
+            display:flex; align-items:center; gap:8px;
+        }
+        .info-row {
+            display:flex; justify-content:space-between; align-items:flex-start;
+            padding:12px 0; border-bottom:1px solid var(--border);
+            gap:16px;
+        }
+        .info-row:last-child { border-bottom:none; }
+        .info-key   { font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.4px; min-width:130px; flex-shrink:0; }
+        .info-value { font-size:14px; color:var(--text-primary); font-weight:600; text-align:right; }
+
+        /* FINANCIAL CARD */
+        .finance-card {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:16px; padding:28px; display:flex; flex-direction:column; gap:20px;
+        }
+        .fin-item { display:flex; flex-direction:column; gap:6px; }
+        .fin-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); }
+        .fin-value { font-size:28px; font-weight:900; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
+        .fin-value.gold     { color:var(--gold-400); }
+        .fin-value.green    { color:var(--green-400); }
+        .fin-value.red      { color:var(--red-400); }
+        .fin-value.orange   { color:var(--orange-400); }
+
+        /* PROGRESS */
+        .progress-wrap { margin-top:4px; }
+        .progress-label { font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+        .progress-track { width:100%; height:10px; background:rgba(255,255,255,.08); border-radius:99px; overflow:hidden; }
+        .progress-fill  { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--gold-600),var(--gold-400)); transition:width .5s ease; }
+        .progress-pct   { font-size:18px; font-weight:900; color:var(--gold-400); margin-top:6px; }
+
+        /* DESCRIPTION BOX */
+        .desc-card {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:16px; padding:24px 28px; margin-bottom:24px;
+        }
+
+        /* ── REVENUE TABLE ── */
+        .revenue-card {
+            background:var(--card-bg); border:1px solid var(--border);
+            border-radius:18px; overflow:hidden; margin-bottom:24px;
+        }
+        .rev-head {
+            padding:20px 28px; border-bottom:1px solid var(--border-strong);
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+        }
+        .rev-head-title { font-size:15px; font-weight:800; display:flex; align-items:center; gap:8px; }
+        .rev-total {
+            font-size:20px; font-weight:900; color:var(--green-400);
+            font-variant-numeric:tabular-nums;
+        }
+
+        table { width:100%; border-collapse:collapse; }
+        thead tr { background:rgba(52,211,153,.06); }
+        th {
+            padding:13px 18px; font-size:11px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.6px; color:var(--green-400);
+            text-align:left; border-bottom:1px solid var(--border-strong);
+        }
+        th.right { text-align:right; }
+        td { padding:14px 18px; font-size:13px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        td.right { text-align:right; font-variant-numeric:tabular-nums; }
+        tbody tr:hover { background:rgba(255,255,255,.02); }
+        tbody tr:last-child td { border-bottom:none; }
+
+        .pay-tag {
+            display:inline-block; padding:3px 9px; border-radius:5px; font-size:10px; font-weight:700;
+        }
+        .pay-cash { background:rgba(52,211,153,.1);  color:var(--green-400); }
+        .pay-upi  { background:rgba(96,165,250,.1);  color:var(--blue-400); }
+        .pay-bank { background:rgba(255,255,255,.06);color:var(--text-secondary); }
+
+        .cat-badge {
+            display:inline-block; padding:3px 9px; border-radius:5px; font-size:10px; font-weight:700;
+        }
+        .cat-contract { background:rgba(245,158,11,.12); color:var(--gold-400); }
+        .cat-labour   { background:rgba(96,165,250,.12);  color:var(--blue-400); }
+        .cat-material { background:rgba(167,139,250,.12); color:var(--purple-400); }
+        .cat-other    { background:rgba(255,255,255,.06); color:var(--text-secondary); }
+
+        .empty-state { padding:50px; text-align:center; color:var(--text-muted); font-size:14px; }
+
+        /* EDIT LINK */
+        .edit-link {
+            display:inline-flex; align-items:center; gap:6px;
+            padding:8px 16px; background:rgba(245,158,11,.1); color:var(--gold-400);
+            border:1px solid rgba(245,158,11,.2); border-radius:8px;
+            font-size:12px; font-weight:700; text-decoration:none; transition:all .2s;
+        }
+        .edit-link:hover { background:rgba(245,158,11,.2); }
+
+        @media(max-width:900px) { .detail-grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div>
+            <div class="wo-number">{{ wo.wo_number }}</div>
+            <div class="wo-title">{{ wo.project_name }}</div>
+            <div class="wo-client">
+                👤 {{ wo.client_name }}
+                {% if wo.client_contact %}
+                &nbsp;·&nbsp; 📞 {{ wo.client_contact }}
+                {% endif %}
+                &nbsp;·&nbsp; 📍 {{ wo.location }}
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="badge badge-{{ wo.status }}">{{ wo.get_status_display }}</span>
+            <a href="{% url 'king:workorder_edit' wo.id %}" class="edit-link">✏ Edit</a>
+            <a href="{% url 'king:workorder_dashboard' %}" class="btn-ghost">← Work Orders</a>
+        </div>
+    </div>
+
+    <!-- QUICK STATUS UPDATE -->
+    <form method="post" action="{% url 'king:workorder_status_update' wo.id %}" class="status-bar">
+        {% csrf_token %}
+        <span class="status-label">⚡ Quick Status Update</span>
+        <select name="status" class="status-select">
+            <option value="pending"   {% if wo.status == 'pending'   %}selected{% endif %}>Pending</option>
+            <option value="active"    {% if wo.status == 'active'    %}selected{% endif %}>Active</option>
+            <option value="completed" {% if wo.status == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="cancelled" {% if wo.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+        <button type="submit" class="btn-ghost" style="padding:9px 18px;font-size:13px;">Update Status</button>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">
+            Created: {{ wo.created_at|date:"d M Y" }}
+        </span>
+    </form>
+
+    <!-- DETAIL + FINANCIALS -->
+    <div class="detail-grid">
+
+        <!-- LEFT — Work Order Info -->
+        <div class="info-card">
+            <div class="card-title">📋 Work Order Details</div>
+
+            <div class="info-row">
+                <span class="info-key">WO Number</span>
+                <span class="info-value" style="color:var(--gold-400);font-size:16px;font-weight:900;">{{ wo.wo_number }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Client Name</span>
+                <span class="info-value">{{ wo.client_name }}</span>
+            </div>
+            {% if wo.client_contact %}
+            <div class="info-row">
+                <span class="info-key">Client Contact</span>
+                <span class="info-value">{{ wo.client_contact }}</span>
+            </div>
+            {% endif %}
+            <div class="info-row">
+                <span class="info-key">Project Name</span>
+                <span class="info-value">{{ wo.project_name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Location</span>
+                <span class="info-value">📍 {{ wo.location }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Start Date</span>
+                <span class="info-value">{{ wo.start_date|date:"d M Y" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">End Date</span>
+                <span class="info-value">{{ wo.end_date|date:"d M Y" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Status</span>
+                <span class="info-value">
+                    <span class="badge badge-{{ wo.status }}">{{ wo.get_status_display }}</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Created By</span>
+                <span class="info-value">{{ wo.created_by.username }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-key">Created On</span>
+                <span class="info-value">{{ wo.created_at|date:"d M Y, h:i A" }}</span>
+            </div>
+        </div>
+
+        {% if wo.gst_number %}
+        <div class="info-row">
+            <span class="info-key">GST Number</span>
+            <span class="info-value" style="font-family:monospace;letter-spacing:.5px;">
+                {{ wo.gst_number }}
+            </span>
+        </div>
+        {% endif %}
+
+        <!-- RIGHT — Financials -->
+        <div class="finance-card">
+            <div class="card-title">💰 Financial Summary</div>
+
+            <div class="fin-item">
+                <div class="fin-label">Order Value</div>
+                <div class="fin-value gold">₹{{ wo.order_value|floatformat:0 }}</div>
+            </div>
+
+            <div class="fin-item">
+                <div class="fin-label">Revenue Received</div>
+                <div class="fin-value green">₹{{ total_received|floatformat:0 }}</div>
+            </div>
+
+            <div class="fin-item">
+                <div class="fin-label">Balance Remaining</div>
+                <div class="fin-value {% if balance > 0 %}orange{% else %}green{% endif %}">
+                    ₹{{ balance|floatformat:0 }}
+                </div>
+            </div>
+
+            <div class="fin-item">
+                <div class="fin-label">Completion</div>
+                <div class="progress-wrap">
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width:{{ completion_pct }}%"></div>
+                    </div>
+                    <div class="progress-pct">{{ completion_pct }}%</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- DESCRIPTION -->
+    {% if wo.description %}
+    <div class="desc-card">
+        <div class="card-title">📝 Scope of Work</div>
+        <p style="font-size:14px;color:var(--text-secondary);line-height:1.8;margin-top:8px;">
+            {{ wo.description }}
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- REVENUE PAYMENTS LINKED TO THIS WO -->
+    <div class="revenue-card">
+        <div class="rev-head">
+            <div class="rev-head-title">💹 Revenue Payments Received</div>
+            <div class="rev-total">₹{{ total_received|floatformat:0 }} of ₹{{ wo.order_value|floatformat:0 }}</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Category</th>
+                    <th>Payment Mode</th>
+                    <th class="right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rev in revenues %}
+                <tr>
+                    <td style="font-weight:600;">{{ rev.date|date:"d M Y" }}</td>
+                    <td>{{ rev.source }}</td>
+                    <td>
+                        <span class="cat-badge cat-{{ rev.category }}">
+                            {{ rev.get_category_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="pay-tag pay-{{ rev.payment_mode }}">
+                            {{ rev.get_payment_mode_display }}
+                        </span>
+                    </td>
+                    <td class="right" style="font-weight:800;color:var(--green-400);">
+                        ₹{{ rev.amount|floatformat:0 }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        No revenue linked to this work order yet.
+                        <a href="{% url 'king:revenue_dashboard' %}" style="color:var(--gold-400);font-weight:600;margin-left:6px;">
+                            Add Revenue →
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

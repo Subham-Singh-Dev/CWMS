@@ -1,10 +1,16 @@
-// Global Theme Handler
-(function() {
+// Global Theme Handler - Robust Version
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTheme);
+} else {
+    initTheme();
+}
+
+function initTheme() {
     const theme = localStorage.getItem('theme');
     if (theme === 'dark') {
         document.body.setAttribute('data-theme', 'dark');
     }
-})();
+}
 
 function toggleTheme() {
     const isDark = document.body.hasAttribute('data-theme');

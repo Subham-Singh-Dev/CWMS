@@ -31,6 +31,7 @@ class Attendance(models.Model):
                 name='unique_employee_attendance'
             )
         ]
+        
 
     def clean(self):
         today = timezone.now().date()

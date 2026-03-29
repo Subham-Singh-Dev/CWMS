@@ -13,6 +13,7 @@ from xhtml2pdf import pisa
 from django.db import transaction
 from datetime import datetime
 from django.http import HttpResponseForbidden
+from django.http import JsonResponse
 
 
 from employees.models import Employee
@@ -26,6 +27,8 @@ from django.db.models import Sum, Count, Q
 import json
 from datetime import datetime, date, timedelta
 from django.db.models import Sum, Count, Q
+from analytics.services.audit_service import recent_activity_items_for_manager
+from analytics.services.audit_service import create_audit_log
 
 # =========================================
 # 👷 WORKER PORTAL VIEWS
@@ -63,11 +66,35 @@ def portal_login(request):
                 messages.error(request, "Invalid credentials.")
             else:
                 login(request, user)
+                create_audit_log(
+                    user=user,
+                    username=user.username,
+                    activity='user',
+                    action='login',
+                    entity_type='User',
+                    entity_id=user.id,
+                    entity_name=user.username,
+                    details=f"Portal login ({login_type})",
+                    request=request,
+                )
                 if is_manager:
                     messages.success(request, "Welcome back, Manager.")
                     return redirect('manager_dashboard')
                 return redirect('worker_dashboard')
         else:
+            create_audit_log(
+                user=None,
+                username=login_id or 'UNKNOWN',
+                activity='user',
+                action='login',
+                entity_type='User',
+                entity_id=0,
+                entity_name=login_id or 'UNKNOWN',
+                details=f"Failed portal login ({login_type})",
+                status='error',
+                error_message='Invalid ID or password',
+                request=request,
+            )
             messages.error(request, "Invalid ID or Password.")
 
     return render(request, 'portal/login.html')
@@ -86,6 +113,18 @@ def worker_dashboard(request):
     return render(request, 'portal/dashboard.html', {'employee': employee, 'salaries': salaries})
 
 def worker_logout(request):
+    if request.user.is_authenticated:
+        create_audit_log(
+            user=request.user,
+            username=request.user.username,
+            activity='user',
+            action='logout',
+            entity_type='User',
+            entity_id=request.user.id,
+            entity_name=request.user.username,
+            details='Portal logout',
+            request=request,
+        )
     logout(request)
     return redirect('portal_login')
 
@@ -242,9 +281,18 @@ def manager_dashboard(request, viewing_as_owner=False):
         "financials": financials,
         "outstanding_liability": outstanding_liability,
         "advances_given": advances_given,
+        "recent_activities": recent_activity_items_for_manager(limit=8),
     })
 
     return render(request, "portal/manager_dashboard.html", context)
+
+
+@manager_required
+def manager_recent_activity_api(request):
+    """Real-time activity feed endpoint for manager dashboard."""
+    return JsonResponse({
+        "activities": recent_activity_items_for_manager(limit=8)
+    })
 
 
 @manager_required

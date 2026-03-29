@@ -14,6 +14,7 @@ urlpatterns = [
 
     # --- NEW: Manager Dashboard Path ---
     path('manager/dashboard/', views.manager_dashboard, name='manager_dashboard'),
+    path('manager/dashboard/recent-activity/', views.manager_recent_activity_api, name='manager_recent_activity_api'),
 
     # ✅ THIS WAS MISSING. ADD IT NOW:
     path('manager/attendance/bulk/', views.bulk_attendance, name='bulk_attendance'),

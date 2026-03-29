@@ -1,0 +1,175 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Audit Trail | CWMS</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #2563eb;
+            --success: #10b981;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+        }
+        [data-theme="dark"] {
+            --bg: #0a0d14;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+        }
+        body { font-family: "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .wrap { max-width: 1300px; margin: 0 auto; }
+        .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+        .title { font-size: 24px; font-weight: 800; }
+        .sub { color: var(--muted); font-size: 13px; }
+        .btn { display: inline-block; text-decoration: none; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 13px; }
+        .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .theme-toggle { width: 40px; height: 40px; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 10px; font-size: 18px; cursor: pointer; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(6, minmax(120px,1fr)); gap: 10px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+        .field input, .field select { border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; font-size: 13px; background: var(--card); color: var(--text); }
+        input[type="date"] { color-scheme: light; }
+        .actions { display: flex; gap: 10px; align-items: end; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+        th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+        .b-success { background: rgba(16,185,129,.15); color: #047857; }
+        .b-warning { background: rgba(245,158,11,.15); color: #b45309; }
+        .b-danger { background: rgba(239,68,68,.15); color: #b91c1c; }
+        .b-info { background: rgba(59,130,246,.15); color: #1d4ed8; }
+        .muted { color: var(--muted); }
+        .pager { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 10px; flex-wrap: wrap; }
+        .links { display: flex; gap: 8px; }
+        @media (max-width: 900px) { .filter-grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="head">
+        <div>
+            <div class="title">System Audit Trail</div>
+            <div class="sub">{% if is_king_view %}Owner scope: full system visibility{% else %}Manager scope: operational visibility{% endif %}</div>
+        </div>
+        <div class="links">
+            <button type="button" class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <button type="button" class="btn" onclick="window.location.reload()">🔄 Refresh</button>
+            {% if is_king_view %}
+                <a class="btn" href="{% url 'king:king_dashboard' %}">Back to King Dashboard</a>
+                <a class="btn" href="{% url 'king_audit_export_pdf' %}?activity={{ current_filters.activity }}&action={{ current_filters.action }}&username={{ current_filters.username }}&from_date={{ current_filters.from_date }}&to_date={{ current_filters.to_date }}">Export PDF</a>
+                <a class="btn primary" href="{% url 'king_audit_export_csv' %}?activity={{ current_filters.activity }}&action={{ current_filters.action }}&username={{ current_filters.username }}&from_date={{ current_filters.from_date }}&to_date={{ current_filters.to_date }}">Export CSV</a>
+            {% else %}
+                <a class="btn" href="{% url 'manager_dashboard' %}">Back to Manager Dashboard</a>
+                <a class="btn" href="{% url 'manager_audit_export_pdf' %}?activity={{ current_filters.activity }}&action={{ current_filters.action }}&username={{ current_filters.username }}&from_date={{ current_filters.from_date }}&to_date={{ current_filters.to_date }}">Export PDF</a>
+                <a class="btn primary" href="{% url 'manager_audit_export_csv' %}?activity={{ current_filters.activity }}&action={{ current_filters.action }}&username={{ current_filters.username }}&from_date={{ current_filters.from_date }}&to_date={{ current_filters.to_date }}">Export CSV</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="get">
+            <div class="filter-grid">
+                <div class="field">
+                    <label>Activity</label>
+                    <select name="activity">
+                        <option value="">All</option>
+                        {% for value, label in activities %}
+                            <option value="{{ value }}" {% if current_filters.activity == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Action</label>
+                    <select name="action">
+                        <option value="">All</option>
+                        {% for value, label in actions %}
+                            <option value="{{ value }}" {% if current_filters.action == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{ current_filters.username }}" placeholder="contains...">
+                </div>
+                <div class="field">
+                    <label>From Date</label>
+                    <input type="date" name="from_date" value="{{ current_filters.from_date }}">
+                </div>
+                <div class="field">
+                    <label>To Date</label>
+                    <input type="date" name="to_date" value="{{ current_filters.to_date }}">
+                </div>
+                <div class="actions">
+                    <button type="submit" class="btn primary">Apply</button>
+                    <a class="btn" href="">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>User</th>
+                    <th>Activity</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in log_rows %}
+                <tr>
+                    <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                    <td>{{ log.username }}<br><span class="muted">{{ log.user_role }}</span></td>
+                    <td>{{ log.activity_display }}</td>
+                    <td>{{ log.action_display }}</td>
+                    <td>{{ log.entity_name }}<br><span class="muted">{{ log.entity_type }} #{{ log.entity_id }}</span></td>
+                    <td>{{ log.details|default:"-" }}</td>
+                    <td>
+                        {% if log.status == 'success' %}
+                            <span class="badge b-success">Success</span>
+                        {% else %}
+                            <span class="badge b-danger">Error</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.ip_address|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="muted">No audit records found for current filters.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pager">
+            <div class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} | {{ page_obj.paginator.count }} records</div>
+            <div class="links">
+                {% if page_obj.has_previous %}
+                    <a class="btn" href="?page={{ page_obj.previous_page_number }}&activity={{ current_filters.activity }}&action={{ current_filters.action }}&username={{ current_filters.username }}&from_date={{ current_filters.from_date }}&to_date={{ current_filters.to_date }}">Previous</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a class="btn" href="?page={{ page_obj.next_page_number }}&activity={{ current_filters.activity }}&action={{ current_filters.action }}&username={{ current_filters.username }}&from_date={{ current_filters.from_date }}&to_date={{ current_filters.to_date }}">Next</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

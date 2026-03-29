@@ -124,14 +124,14 @@
             font-weight:800; font-size:14px; color:#000;
         }
         .user-role-tag { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gold-400); }
-        .king-theme-toggle, .logout-btn {
+        .king-theme-toggle, .king-refresh-btn, .logout-btn {
             height:40px; padding:0 14px;
             background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
             border-radius:11px; cursor:pointer; font-size:13px; font-weight:600;
             color:var(--text-primary); transition:all .2s;
             display:flex; align-items:center; gap:6px; text-decoration:none;
         }
-        .king-theme-toggle:hover, .logout-btn:hover {
+        .king-theme-toggle:hover, .king-refresh-btn:hover, .logout-btn:hover {
             background:rgba(245,158,11,.15); border-color:var(--gold-600);
         }
 
@@ -365,6 +365,8 @@
                     <div class="user-role-tag">Owner</div>
                 </div>
             </div>
+            <button class="king-refresh-btn" onclick="window.location.reload()" title="Refresh dashboard">🔄</button>
+            
             <button class="king-theme-toggle" onclick="toggleKingTheme()">🌙</button>
             <a href="{% url 'king:king_logout' %}" class="logout-btn">🚪 Logout</a>
         </div>
@@ -747,6 +749,11 @@
         <div class="action-title">Manager View</div>
         <div class="action-desc">Daily operations</div>
     </a>
+    <a href="{% url 'king_audit_history' %}" class="action-card">
+        <div class="action-icon">🧾</div>
+        <div class="action-title">Audit Trail</div>
+        <div class="action-desc">Full compliance log</div>
+    </a>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
@@ -754,7 +761,7 @@
 ══════════════════════════════════════════════════════════════ -->
 <div class="zone-label">🕒 Recent Activity</div>
 <div class="activity-card">
-    <div class="activity-list">
+    <div class="activity-list" id="kingActivityList">
         {% for activity in recent_activities %}
         <div class="activity-item">
             <div class="activity-dot {{ activity.type }}">{{ activity.icon }}</div>
@@ -888,9 +895,51 @@ function switchChart(type, btn) {
     window.financialChart.update();
 }
 
+function renderKingActivities(activities) {
+    const listEl = document.getElementById('kingActivityList');
+    if (!listEl) return;
+
+    if (!activities || activities.length === 0) {
+        listEl.innerHTML = `
+        <div class="activity-item">
+            <div class="activity-dot info">ℹ️</div>
+            <div>
+                <div class="activity-text">No recent activity yet</div>
+                <div class="activity-time">System is running</div>
+            </div>
+        </div>`;
+        return;
+    }
+
+    listEl.innerHTML = activities.map((activity) => `
+        <div class="activity-item">
+            <div class="activity-dot ${activity.type}">${activity.icon}</div>
+            <div>
+                <div class="activity-text">${activity.text}</div>
+                <div class="activity-time">${activity.time}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function refreshKingActivities() {
+    try {
+        const response = await fetch('{% url "king:king_recent_activity_api" %}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        renderKingActivities(payload.activities || []);
+    } catch (error) {
+        console.debug('Recent activity refresh skipped:', error);
+    }
+}
+
 // Initialize charts on page load
 window.addEventListener('DOMContentLoaded', () => {
     initializeCharts();
+    refreshKingActivities();
+    setInterval(refreshKingActivities, 15000);
 });
 </script>
 </body>

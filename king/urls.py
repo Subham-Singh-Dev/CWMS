@@ -8,6 +8,7 @@ urlpatterns = [
     path('secure/owner-x7k2/', views.king_login, name='king_login'),
     
     path('dashboard/', views.king_dashboard, name='king_dashboard'),
+    path('dashboard/recent-activity/', views.king_recent_activity_api, name='king_recent_activity_api'),
 
     path('logout/', views.king_logout, name='king_logout'),
 

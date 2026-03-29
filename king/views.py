@@ -3,7 +3,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models.functions import TruncMonth, Coalesce
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -30,6 +30,8 @@ from portal.decorators import king_required
 import logging
 from payroll.models   import MonthlySalary, Advance
 from django.utils import timezone
+from analytics.services.audit_service import recent_activity_items_for_king
+from analytics.services.audit_service import create_audit_log
 
 
 
@@ -96,6 +98,19 @@ def king_login(request):
             logger.warning(
                 f"King login: Failed authentication for {username} from {client_ip}"
             )
+            create_audit_log(
+                user=None,
+                username=username or 'UNKNOWN',
+                activity='user',
+                action='login',
+                entity_type='User',
+                entity_id=0,
+                entity_name=username or 'UNKNOWN',
+                details='Failed King login',
+                status='error',
+                error_message='Invalid username or password',
+                request=request,
+            )
             messages.error(request, "Invalid username or password.")
             return render(request, 'king/king_login.html')
         
@@ -128,6 +143,18 @@ def king_login(request):
             login(request, user)
             request.session['king_authenticated'] = True
             request.session.set_expiry(3600)  # 1 hour session timeout for security
+
+            create_audit_log(
+                user=user,
+                username=user.username,
+                activity='user',
+                action='login',
+                entity_type='User',
+                entity_id=user.id,
+                entity_name=user.username,
+                details='King login success',
+                request=request,
+            )
             
             logger.info(
                 f"King login: Successful authentication for {username} from {client_ip}"
@@ -578,45 +605,8 @@ def king_dashboard(request):
     role_labels = [r['role__name'] or 'Unknown' for r in role_qs]
     role_counts = [r['count'] for r in role_qs]
 
-    # ── Recent Activity ───────────────────────────────────────────
-    recent_activities = []
-
-    # Last 5 attendance marks (TODAY AND PAST FOR TESTING)
-    
-    for att in Attendance.objects.select_related('employee').order_by('-date')[:4]:
-        status_emoji = {'P': '✓ Present', 'A': '✗ Absent', 'H': '⚠️ Half-day'}.get(att.status, att.status)
-        recent_activities.append({
-            'icon': '👤', 'type': 'info',
-            'text': f"Attendance marked — {att.employee.name} ({status_emoji})",
-            'time': str(att.date),
-        })
-    
-    # Last 5 salary payments
-    for s in MonthlySalary.objects.filter(is_paid=True).select_related('employee').order_by('-month')[:3]:
-        recent_activities.append({
-            'icon': '💵', 'type': 'success',
-            'text': f"Salary paid — {s.employee.name}",
-            'time': str(s.month.strftime('%b %Y')),
-        })
-
-    # Last 3 expenses
-    for e in Expense.objects.order_by('-created_at')[:3]:
-        recent_activities.append({
-            'icon': '💸', 'type': 'warning',
-            'text': f"{e.get_category_display()} expense — ₹{e.amount}",
-            'time': str(e.date),
-        })
-
-    # Last 3 bills
-    for b in Bill.objects.order_by('-created_at')[:3]:
-        recent_activities.append({
-            'icon': '📄', 'type': 'info',
-            'text': f"Bill {'paid' if b.is_paid else 'pending'} — ₹{b.amount}",
-            'time': str(b.created_at.strftime('%Y-%m-%d')),
-        })
-
-    # Sort by most recent (basic, since time formats differ)
-    recent_activities = recent_activities[:8]
+    # ── Recent Activity (Audit Log) ───────────────────────────────
+    recent_activities = recent_activity_items_for_king(limit=8)
 
     # ── Context ───────────────────────────────────────────────────
     return render(request, 'king/king_dashboard.html', {
@@ -687,6 +677,14 @@ def king_dashboard(request):
     })
 
 
+@king_required
+def king_recent_activity_api(request):
+    """Real-time activity feed endpoint for King dashboard."""
+    return JsonResponse({
+        'activities': recent_activity_items_for_king(limit=8)
+    })
+
+
 def king_logout(request):
     """
     Production-grade King/Owner logout function.
@@ -708,6 +706,19 @@ def king_logout(request):
     
     username = request.user.username if request.user.is_authenticated else 'Unknown'
     client_ip = request.META.get('REMOTE_ADDR', 'Unknown')
+
+    if request.user.is_authenticated:
+        create_audit_log(
+            user=request.user,
+            username=request.user.username,
+            activity='user',
+            action='logout',
+            entity_type='User',
+            entity_id=request.user.id,
+            entity_name=request.user.username,
+            details='King logout',
+            request=request,
+        )
     
     # Clear king authentication flag
     request.session.pop('king_authenticated', None)

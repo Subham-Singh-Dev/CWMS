@@ -609,6 +609,56 @@
         .action-card:nth-child(3) { animation-delay: 0.45s; }
         .action-card:nth-child(4) { animation-delay: 0.5s; }
 
+        .activity-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+        }
+
+        .activity-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        .activity-dot.success { background: rgba(16,185,129,.16); }
+        .activity-dot.warning { background: rgba(245,158,11,.16); }
+        .activity-dot.info { background: rgba(59,130,246,.16); }
+
+        .activity-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .activity-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
         /* ============================================
            RESPONSIVE DESIGN
            ============================================ */
@@ -887,7 +937,39 @@
                 <div class="action-description">View all registered employees</div>
             </a>
 
+            <a href="{% url 'manager_audit_history' %}" class="action-card">
+                <div class="action-icon">🧾</div>
+                <div class="action-text">Audit Trail</div>
+                <div class="action-description">Filtered compliance logs</div>
+            </a>
 
+
+        </div>
+    </div>
+
+    <div class="section-header">
+        <div class="section-title">Recent Activity</div>
+        <div class="month-badge">Live updates</div>
+    </div>
+    <div class="activity-card">
+        <div class="activity-list" id="managerActivityList">
+            {% for activity in recent_activities %}
+            <div class="activity-item">
+                <div class="activity-dot {{ activity.type }}">{{ activity.icon }}</div>
+                <div>
+                    <div class="activity-text">{{ activity.text }}</div>
+                    <div class="activity-time">{{ activity.time }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="activity-item">
+                <div class="activity-dot info">ℹ️</div>
+                <div>
+                    <div class="activity-text">No recent activity yet</div>
+                    <div class="activity-time">System is running</div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
 
@@ -996,6 +1078,46 @@ function calculateDerivedMetrics() {
     }
 }
 
+function renderManagerActivities(activities) {
+    const listEl = document.getElementById('managerActivityList');
+    if (!listEl) return;
+
+    if (!activities || activities.length === 0) {
+        listEl.innerHTML = `
+        <div class="activity-item">
+            <div class="activity-dot info">ℹ️</div>
+            <div>
+                <div class="activity-text">No recent activity yet</div>
+                <div class="activity-time">System is running</div>
+            </div>
+        </div>`;
+        return;
+    }
+
+    listEl.innerHTML = activities.map((activity) => `
+        <div class="activity-item">
+            <div class="activity-dot ${activity.type}">${activity.icon}</div>
+            <div>
+                <div class="activity-text">${activity.text}</div>
+                <div class="activity-time">${activity.time}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function refreshManagerActivities() {
+    try {
+        const response = await fetch('{% url "manager_recent_activity_api" %}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        renderManagerActivities(payload.activities || []);
+    } catch (error) {
+        console.debug('Manager activity refresh skipped:', error);
+    }
+}
+
 // ============================================
 // INITIALIZATION
 // ============================================
@@ -1004,6 +1126,8 @@ window.addEventListener('DOMContentLoaded', () => {
     updateCurrentDate();
     animateCounters();
     calculateDerivedMetrics();
+    refreshManagerActivities();
+    setInterval(refreshManagerActivities, 15000);
     
     console.log(
         '%c🚀 CWMS Manager Console',

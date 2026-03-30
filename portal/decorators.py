@@ -4,7 +4,6 @@ from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
-from django.contrib import messages
 import logging
 
 logger = logging.getLogger(__name__)
@@ -170,5 +169,4 @@ def king_required(view_func):
             )
             raise PermissionDenied("⛔ Owner Access Only. Unauthorized.")
     
-    return wrapper
     return wrapper

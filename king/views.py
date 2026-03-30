@@ -9,7 +9,6 @@ from datetime import date as date_class
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.db.models import Sum, Count, Q
-from django.db.models import Sum as DSum
 from django.db.models.functions import TruncMonth, Coalesce
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -27,8 +26,7 @@ from payroll.models import MonthlySalary, Advance
 from portal.decorators import king_required
 
 from .models import WorkOrder, Revenue, LedgerEntry
-from analytics.services.audit_service import recent_activity_items_for_king
-from analytics.services.audit_service import create_audit_log
+from analytics.services.audit_service import recent_activity_items_for_king, create_audit_log
 
 
 
@@ -368,9 +366,6 @@ def king_dashboard(request):
     def get_todays_daily_salary():
         """Get total salary generated today for all employees using database aggregation"""
         
-        # Use single database query with aggregation instead of looping
-        from django.db.models import Case, When, F, DecimalField
-        
         today_attendance = Attendance.objects.filter(
             date=today
         ).select_related('employee__role')
@@ -403,8 +398,7 @@ def king_dashboard(request):
     # ── Helper function: Get today's attendance status (OPTIMIZED) ──
     def get_todays_attendance_status(total_emp_count):
         """Get attendance count for today using single database query"""
-        from django.db.models import Count, Q
-        
+
         # Single query to get all counts at once
         today_stats = Attendance.objects.filter(date=today).aggregate(
             present=Count('id', filter=Q(status='P')),

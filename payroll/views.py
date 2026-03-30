@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
+import csv
 from .models import MonthlySalary
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -15,8 +16,7 @@ from django.http import Http404
 from django.shortcuts import redirect
 from django.contrib import messages
 
-from payroll.services import generate_monthly_salary
-from payroll.services import SalaryAlreadyGeneratedError
+from payroll.services import generate_monthly_salary, SalaryAlreadyGeneratedError
 
 from portal.decorators import manager_required
 from django.core.exceptions import ValidationError
@@ -199,32 +199,19 @@ def payroll_batch_summary(request, viewing_as_owner=False):
 
 @manager_required
 def salary_list_view(request):
-    
-    from django.utils.timezone import now
-    from datetime import datetime
-
     selected_month = request.GET.get("month")
 
     if not selected_month:
         # Default to current month
-        today = now().date()
+        today = timezone.now().date()
         month_date = today.replace(day=1)
         selected_month = month_date.strftime("%Y-%m")
-    else:
-        try:
-            month_date = datetime.strptime(selected_month, "%Y-%m")
-        except ValueError:
-            raise Http404("Invalid month format. Expected YYYY-MM")
-        
 
-    from datetime import datetime
     try:
         month_date = datetime.strptime(selected_month, "%Y-%m").date()
     except ValueError:
         raise Http404("Invalid month format")
 
-    # All employees
-    from employees.models import Employee
     employees = Employee.objects.all()
 
     # Salaries already generated for this month
@@ -263,17 +250,14 @@ def generate_employee_salary(request):
     if not employee_id or not selected_month:
         raise Http404("Invalid request")
 
-    from datetime import datetime
     try:
         month_date = datetime.strptime(selected_month, "%Y-%m").date()
     except ValueError:
         raise Http404("Invalid month format")
 
-    from employees.models import Employee
     employee = get_object_or_404(Employee, id=employee_id)
 
-    from django.utils.timezone import now
-    timestamp = now().strftime("%d %b %Y %H:%M")
+    timestamp = timezone.now().strftime("%d %b %Y %H:%M")
 
     try:
         salary = generate_monthly_salary(employee, month_date)
@@ -329,9 +313,8 @@ def mark_salary_paid(request):
             f"/payroll/manager/payroll/salaries/?month={selected_month}"
         )
 
-    from django.utils.timezone import now
     salary.is_paid = True
-    salary.paid_on = now()
+    salary.paid_on = timezone.now()
     salary.save(update_fields=["is_paid", "paid_on"])
 
     timestamp = salary.paid_on.strftime("%d %b %Y %H:%M")
@@ -353,7 +336,6 @@ def export_salary_list_csv(request):
     if not selected_month:
         raise Http404("Month required")
 
-    from datetime import datetime
     try:
         month_date = datetime.strptime(selected_month, "%Y-%m").date()
     except ValueError:
@@ -365,9 +347,6 @@ def export_salary_list_csv(request):
         .filter(month=month_date)
         .order_by("employee__name")
     )
-
-    import csv
-    from django.http import HttpResponse
 
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = (

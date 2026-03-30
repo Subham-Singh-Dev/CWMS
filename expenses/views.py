@@ -1,14 +1,12 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from decimal import Decimal
 from django.contrib import messages
-from urllib3 import request
 from .models import Expense
 from portal.decorators import manager_required
 from datetime import date, timedelta
 from django.db.models import Sum
 import csv
 from django.http import HttpResponse
-from datetime import date
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 import io
@@ -17,9 +15,8 @@ from django.views.decorators.http import require_POST
 EDIT_LOCK_DAYS = 7
 
 
-from datetime import date, timedelta
-
-lock_date = date.today() - timedelta(days=EDIT_LOCK_DAYS)
+def get_lock_date():
+    return date.today() - timedelta(days=EDIT_LOCK_DAYS)
 
 @manager_required
 def expense_dashboard(request, viewing_as_owner=False):
@@ -52,8 +49,6 @@ def expense_dashboard(request, viewing_as_owner=False):
         messages.success(request, "Expense added successfully.")
         return redirect("expenses:expense_dashboard")
 
-    from datetime import date
-    
     selected_date = request.GET.get("date")
     
     try:
@@ -129,14 +124,14 @@ def expense_dashboard(request, viewing_as_owner=False):
         "weekly_category_totals": weekly_category_totals,
         "monthly_total": monthly_total,
         "monthly_category_totals": monthly_category_totals,
-        "lock_date": lock_date,
+        "lock_date": get_lock_date(),
     })
 
 @manager_required
 @require_POST
 def delete_expense(request, expense_id):
     expense = Expense.objects.get(id=expense_id)
-    lock_date = date.today() - timedelta(days=EDIT_LOCK_DAYS)
+    lock_date = get_lock_date()
 
     if expense.date < lock_date:
         messages.error(
@@ -148,11 +143,8 @@ def delete_expense(request, expense_id):
         messages.success(request, "Expense deleted Successfully.")
     return redirect("expenses:expense_dashboard")
 
-from datetime import timedelta
-
 @manager_required
 def edit_expense(request, expense_id):
-    from django.shortcuts import get_object_or_404
     expense = get_object_or_404(Expense, id=expense_id)
 
     if request.method == "POST":
@@ -183,7 +175,7 @@ def edit_expense(request, expense_id):
         messages.success(request, "Expense updated.")
         return redirect("expenses:expense_dashboard")
     
-    lock_date = date.today() - timedelta(days=EDIT_LOCK_DAYS)
+    lock_date = get_lock_date()
 
     if expense.date < lock_date:
         messages.error(

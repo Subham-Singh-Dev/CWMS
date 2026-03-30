@@ -15,6 +15,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import get_template
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from xhtml2pdf import pisa
 
 from employees.models import Employee
@@ -840,6 +841,7 @@ def workorder_edit(request, wo_id):
 
 
 @king_required
+@require_POST
 def workorder_status_update(request, wo_id):
     """Quick status toggle from dashboard."""
     wo = get_object_or_404(WorkOrder, id=wo_id)
@@ -906,25 +908,24 @@ def revenue_dashboard(request):
 
 
 @king_required
+@require_POST
 def revenue_add(request):
-    if request.method == 'POST':
-        wo_id = request.POST.get('work_order')
-        Revenue.objects.create(
-            date         = request.POST.get('date'),
-            amount       = Decimal(request.POST.get('amount')),
-            source       = request.POST.get('source'),
-            category     = request.POST.get('category'),
-            payment_mode = request.POST.get('payment_mode'),
-            work_order   = WorkOrder.objects.get(id=wo_id) if wo_id else None,
-            created_by   = request.user,
-        )
-        messages.success(request, 'Revenue entry added.')
-        return redirect('king:revenue_dashboard')
-
+    wo_id = request.POST.get('work_order')
+    Revenue.objects.create(
+        date         = request.POST.get('date'),
+        amount       = Decimal(request.POST.get('amount')),
+        source       = request.POST.get('source'),
+        category     = request.POST.get('category'),
+        payment_mode = request.POST.get('payment_mode'),
+        work_order   = WorkOrder.objects.get(id=wo_id) if wo_id else None,
+        created_by   = request.user,
+    )
+    messages.success(request, 'Revenue entry added.')
     return redirect('king:revenue_dashboard')
 
 
 @king_required
+@require_POST
 def revenue_delete(request, rev_id):
     rev = get_object_or_404(Revenue, id=rev_id)
     rev.delete()
@@ -980,26 +981,26 @@ def ledger_view(request):
 
 
 @king_required
+@require_POST
 def ledger_add_entry(request):
-    if request.method == 'POST':
-        debit  = request.POST.get('debit')  or '0'
-        credit = request.POST.get('credit') or '0'
+    debit  = request.POST.get('debit')  or '0'
+    credit = request.POST.get('credit') or '0'
 
-        LedgerEntry.objects.create(
-            date        = request.POST.get('date'),
-            entry_type  = request.POST.get('entry_type'),
-            voucher_no  = request.POST.get('voucher_no') or None,
-            particulars = request.POST.get('particulars'),
-            debit       = Decimal(debit),
-            credit      = Decimal(credit),
-            created_by  = request.user,
-        )
-        messages.success(request, 'Ledger entry added.')
-
+    LedgerEntry.objects.create(
+        date        = request.POST.get('date'),
+        entry_type  = request.POST.get('entry_type'),
+        voucher_no  = request.POST.get('voucher_no') or None,
+        particulars = request.POST.get('particulars'),
+        debit       = Decimal(debit),
+        credit      = Decimal(credit),
+        created_by  = request.user,
+    )
+    messages.success(request, 'Ledger entry added.')
     return redirect('king:ledger')
 
 
 @king_required
+@require_POST
 def ledger_delete_entry(request, entry_id):
     entry = get_object_or_404(LedgerEntry, id=entry_id)
     entry.delete()

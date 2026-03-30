@@ -12,6 +12,7 @@ from datetime import date
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 import io
+from django.views.decorators.http import require_POST
 
 EDIT_LOCK_DAYS = 7
 
@@ -132,6 +133,7 @@ def expense_dashboard(request, viewing_as_owner=False):
     })
 
 @manager_required
+@require_POST
 def delete_expense(request, expense_id):
     expense = Expense.objects.get(id=expense_id)
     lock_date = date.today() - timedelta(days=EDIT_LOCK_DAYS)

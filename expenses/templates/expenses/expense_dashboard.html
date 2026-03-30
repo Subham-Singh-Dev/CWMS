@@ -773,7 +773,10 @@
                             {% if expense.date >= lock_date %}
                                 <div class="action-links">
                                     <a href="{% url 'expenses:edit_expense' expense.id %}" class="action-link action-edit">Edit</a>
-                                    <a href="{% url 'expenses:delete_expense' expense.id %}" class="action-link action-delete" onclick="return confirm('Delete this expense?');">Delete</a>
+                                    <form method="post" action="{% url 'expenses:delete_expense' expense.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="action-link action-delete" style="background:none;border:none;padding:0;cursor:pointer;" onclick="return confirm('Delete this expense?');">Delete</button>
+                                    </form>
                                 </div>
                             {% else %}
                                 <span class="locked-badge" title="Locked after 7 days">🔒 Locked</span>

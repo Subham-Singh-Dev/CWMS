@@ -23,6 +23,7 @@ from django.core.exceptions import ValidationError
 from employees.models import Employee
 from .services import issue_advance
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 
 @login_required
@@ -254,10 +255,8 @@ def salary_list_view(request):
     )
 
 @manager_required
+@require_POST
 def generate_employee_salary(request):
-    if request.method != "POST":
-        raise Http404()
-
     employee_id = request.POST.get("employee_id")
     selected_month = request.POST.get("month")
 
@@ -310,10 +309,8 @@ def generate_employee_salary(request):
     )
 
 @manager_required
+@require_POST
 def mark_salary_paid(request):
-    if request.method != "POST":
-        raise Http404()
-
     salary_id = request.POST.get("salary_id")
     selected_month = request.POST.get("month")
 

@@ -28,13 +28,13 @@ class ExpensePermissionTests(TestCase):
 	def test_delete_expense_denies_non_manager_user(self):
 		self.client.login(username='worker-exp', password='pass1234')
 
-		response = self.client.get(reverse('expenses:delete_expense', args=[self.expense.id]))
+		response = self.client.post(reverse('expenses:delete_expense', args=[self.expense.id]))
 
 		self.assertEqual(response.status_code, 403)
 		self.assertTrue(Expense.objects.filter(id=self.expense.id).exists())
 
 	def test_delete_expense_requires_login(self):
-		response = self.client.get(reverse('expenses:delete_expense', args=[self.expense.id]))
+		response = self.client.post(reverse('expenses:delete_expense', args=[self.expense.id]))
 
 		self.assertEqual(response.status_code, 302)
 		self.assertTrue(Expense.objects.filter(id=self.expense.id).exists())
@@ -60,7 +60,15 @@ class ExpensePermissionTests(TestCase):
 	def test_delete_expense_allows_manager_user(self):
 		self.client.login(username='manager-exp', password='pass1234')
 
-		response = self.client.get(reverse('expenses:delete_expense', args=[self.expense.id]))
+		response = self.client.post(reverse('expenses:delete_expense', args=[self.expense.id]))
 
 		self.assertEqual(response.status_code, 302)
 		self.assertFalse(Expense.objects.filter(id=self.expense.id).exists())
+
+	def test_delete_expense_get_returns_method_not_allowed(self):
+		self.client.login(username='manager-exp', password='pass1234')
+
+		response = self.client.get(reverse('expenses:delete_expense', args=[self.expense.id]))
+
+		self.assertEqual(response.status_code, 405)
+		self.assertTrue(Expense.objects.filter(id=self.expense.id).exists())

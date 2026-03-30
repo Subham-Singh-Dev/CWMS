@@ -1,35 +1,31 @@
 # king/views.py
 from decimal import ROUND_HALF_UP, Decimal
+import io
+import json
+import logging
+from datetime import date, datetime, timedelta
+from datetime import date as date_class
 
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.db.models import Sum, Count, Q
+from django.db.models import Sum as DSum
 from django.db.models.functions import TruncMonth, Coalesce
-
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from portal.decorators import king_required
-from django.db.models import Sum, Count, Q
-from .models import WorkOrder, Revenue
-from datetime import date, timedelta
-from .models import LedgerEntry
 from django.template.loader import get_template
+from django.utils import timezone
 from xhtml2pdf import pisa
-import io
-from datetime import date as date_class
-from king.models import Revenue as ManualRevenue
-from django.db.models import Sum as DSum
-from datetime import date, datetime, timedelta
-import json
 
 from employees.models import Employee
-from attendance.models import   Attendance
+from attendance.models import Attendance
 from billing.models import Bill
 from expenses.models import Expense
-from .models import WorkOrder, Revenue, LedgerEntry
+from king.models import Revenue as ManualRevenue
+from payroll.models import MonthlySalary, Advance
 from portal.decorators import king_required
-import logging
-from payroll.models   import MonthlySalary, Advance
-from django.utils import timezone
+
+from .models import WorkOrder, Revenue, LedgerEntry
 from analytics.services.audit_service import recent_activity_items_for_king
 from analytics.services.audit_service import create_audit_log
 

@@ -1,6 +1,9 @@
 from decimal import Decimal
+import json
+from datetime import datetime, date, timedelta
+
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -11,22 +14,12 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from xhtml2pdf import pisa
 from django.db import transaction
-from datetime import datetime
-from django.http import HttpResponseForbidden
-from django.http import JsonResponse
-
 
 from employees.models import Employee
 from payroll.models import MonthlySalary, Advance
 from attendance.models import Attendance
 from .decorators import manager_required, worker_required
 from .decorators import king_required
-import json
-from datetime import datetime, date, timedelta
-from django.db.models import Sum, Count, Q
-import json
-from datetime import datetime, date, timedelta
-from django.db.models import Sum, Count, Q
 from analytics.services.audit_service import recent_activity_items_for_manager
 from analytics.services.audit_service import create_audit_log
 
@@ -194,9 +187,6 @@ def download_payslip(request, salary_id):
 # =========================================
 # 📊 MANAGER PORTAL VIEWS
 # =========================================
-from django.utils import timezone
-from datetime import datetime
-
 @manager_required
 def manager_dashboard(request, viewing_as_owner=False):
     """

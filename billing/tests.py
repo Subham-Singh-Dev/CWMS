@@ -45,3 +45,36 @@ class BillingFlowTests(TestCase):
 
 		self.assertEqual(response.status_code, 302)
 		self.assertEqual(Bill.objects.count(), 0)
+
+	def test_toggle_bill_status_requires_login(self):
+		bill = Bill.objects.create(description='Raw Material', amount=Decimal('100.00'))
+		self.client.logout()
+
+		response = self.client.post(reverse('billing:toggle_bill_status', args=[bill.id]))
+
+		self.assertEqual(response.status_code, 302)
+		bill.refresh_from_db()
+		self.assertFalse(bill.is_paid)
+
+	def test_toggle_bill_status_denies_non_manager_user(self):
+		bill = Bill.objects.create(description='Raw Material', amount=Decimal('100.00'))
+		worker = User.objects.create_user(username='worker-no-manager', password='pass1234')
+		self.client.logout()
+		self.client.login(username='worker-no-manager', password='pass1234')
+
+		response = self.client.post(reverse('billing:toggle_bill_status', args=[bill.id]))
+
+		self.assertEqual(response.status_code, 403)
+		bill.refresh_from_db()
+		self.assertFalse(bill.is_paid)
+
+	def test_delete_bill_denies_non_manager_user(self):
+		bill = Bill.objects.create(description='Machine Repair', amount=Decimal('500.00'))
+		worker = User.objects.create_user(username='worker-delete', password='pass1234')
+		self.client.logout()
+		self.client.login(username='worker-delete', password='pass1234')
+
+		response = self.client.post(reverse('billing:delete_bill', args=[bill.id]))
+
+		self.assertEqual(response.status_code, 403)
+		self.assertTrue(Bill.objects.filter(id=bill.id).exists())

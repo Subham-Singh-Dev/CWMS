@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from decimal import Decimal
+from django.views.decorators.http import require_POST
 
 from portal.decorators import manager_required
 from .models import Bill
@@ -75,10 +76,7 @@ def billing_dashboard(request, viewing_as_owner=False):
 
     return render(request, "billing/billing_dashboard.html", context)
 
-from django.shortcuts import redirect, get_object_or_404
-from django.contrib import messages
-from django.views.decorators.http import require_POST
-
+@manager_required
 @require_POST
 def toggle_bill_status(request, bill_id):
     bill = get_object_or_404(Bill, id=bill_id)
@@ -93,6 +91,7 @@ def toggle_bill_status(request, bill_id):
     return redirect("billing:billing_dashboard")
 
 
+@manager_required
 @require_POST
 def delete_bill(request, bill_id):
     bill = get_object_or_404(Bill, id=bill_id)

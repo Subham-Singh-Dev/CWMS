@@ -21,7 +21,7 @@
 
 ## Overview
 
-CWMS replaces paper registers, Excel sheets, and WhatsApp notes used by local contractors to manage 50–200+ daily-wage workers. It provides a deterministic, auditable, rule-based payroll engine with full financial visibility.
+CWMS replaces paper registers, Excel sheets, and ad-hoc workflows used by contractors to manage 50-200+ daily-wage workers. It provides a deterministic, auditable payroll workflow with attendance, advances, expenses, billing, owner reporting, and exportable documents.
 
 ---
 
@@ -40,27 +40,28 @@ CWMS replaces paper registers, Excel sheets, and WhatsApp notes used by local co
 
 | Role | Access | Capabilities |
 |------|--------|-------------|
-| **Manager** | Full Control | Attendance, payroll, advances, billing, expenses |
+| **Manager** | Operational Control | Attendance, payroll actions, advances, billing, expenses, employee records |
 | **Worker** | Read-Only | View own attendance, salary, download payslips |
-| **King (Owner)** | Strategic View | Business analytics, cash flow, aggregate reports, inventory |
+| **King (Owner)** | Strategic + Financial Control | Owner dashboard, work orders, revenue ledger, full audit visibility |
 
 ---
 
 ## Features
 
 ### 📊 Payroll Engine
-- Monthly & bulk payroll generation
-- **Mid-month salary generation** for individual employees (on-demand, partial payout)
+- Monthly salary generation per employee
+- Manager payroll dashboard summary and salary list
 - FIFO-based advance deduction (oldest debt first)
 - Immutable salary snapshots (audit-safe)
 - Paid leave logic (first 2 absences = paid leave)
 - Overtime calculation by role
+- CSV export of salary list
 
 ### 📅 Attendance System
 - Daily tracking: Present / Half Day / Absent
 - Bulk attendance UI (spreadsheet-style for 100+ workers)
 - Overtime hours per record
-- Historical view for any past date
+- Validation rules for future date / previous month marking
 
 ### 💰 Advance Management
 - Issue cash loans to workers
@@ -70,16 +71,16 @@ CWMS replaces paper registers, Excel sheets, and WhatsApp notes used by local co
 - Managed within the `payroll` app — no separate module required
 
 ### 👥 Employee Management
-- Add/deactivate employees
-- Auto-generated employee codes
+- Add/edit/deactivate employees
+- Auto-generated user IDs (`EMPxxxxx`) with temporary password
 - Role assignment (Worker / Manager)
-- Worker login credentials (phone number + password) assigned by superuser or manager
+- Worker login by phone number + password
 
 ### 📄 Billing Module
 - Upload vendor bills (PDF)
 - Mark Paid / Unpaid toggle
-- Auto-generated bill numbers (BILL-001 format)
-- CSV export for accountants
+- Payment date auto-tracking (`paid_on`)
+- Manager-only delete and status toggle with POST-only mutation safety
 
 ### 💸 Daily Expenses
 - Categories: Food, Fuel, Travel, Material, Misc
@@ -87,28 +88,25 @@ CWMS replaces paper registers, Excel sheets, and WhatsApp notes used by local co
 - Daily / Weekly / Monthly aggregates
 - 7-day edit lock (accounting safety)
 - CSV and PDF export
+- POST-only delete action for safer mutation handling
 
 ### 📑 Document Generation
 - PDF payslips (xhtml2pdf)
 - Expense PDF reports
-- CSV exports across all modules
+- Audit trail PDF exports
+- CSV exports across payroll, expenses, and audit modules
 
 ### 🔍 Audit Log
 - Full activity trail across all modules (who did what, when)
-- Tamper-proof log entries for payroll, advances, and attendance changes
+- Scope-aware views (King full scope, Manager filtered scope)
 - Accessible to Manager and King roles
+- CSV/PDF exports for both roles
 
 ### 👑 King Dashboard
 - Aggregate business analytics and cash flow overview
-- Cross-site financial visibility (future: multi-site)
-- Inventory management integration
+- Work order lifecycle management
+- Revenue tracking and ledger management
 - Strategic reports for owner-level decision making
-
-### 📦 Inventory Management
-- Track materials and equipment on-site
-- Stock-in / stock-out records
-- Low stock alerts
-- Linked to daily expenses for material cost tracking
 
 ---
 
@@ -116,37 +114,42 @@ CWMS replaces paper registers, Excel sheets, and WhatsApp notes used by local co
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python 3.10+, Django 4.x/5.x |
+| Backend | Python 3.11.x, Django 5.2.x |
 | Database (Dev) | SQLite3 |
-| Database (Prod) | PostgreSQL |
+| Database (Prod) | PostgreSQL (via `psycopg2-binary`) |
 | PDF Generation | xhtml2pdf |
+| PDF Rendering Compatibility | reportlab `<4` |
 | Frontend | Django Templates, Vanilla JS, CSS3 |
 | Typography | Inter (Google Fonts) |
 | Financial Arithmetic | Python Decimal (zero float errors) |
 | Transaction Safety | `transaction.atomic()`, `select_for_update()` |
+| CI | GitHub Actions (`manage.py check` + `manage.py test`) |
 
 ---
 
 ## Project Structure
 
 ```
-cwms/
+CWMS/
 ├── manage.py
 ├── requirements.txt
-├── worker_data_final.csv       # Seed data for worker import
-├── db.sqlite3                  # Development database
-├── config/                     # Project settings
+├── .env.example                # Environment template
+├── db.sqlite3                  # Local development database
+├── config/                     # Project config + root URL routing
 │   ├── settings.py
 │   ├── urls.py
 │   └── wsgi.py
-├── attendance/                 # Daily attendance tracking
+├── analytics/                  # Audit history views + CSV/PDF exports
+├── attendance/                 # Daily attendance tracking models
 ├── billing/                    # Vendor bill management
-├── employees/                  # Employee management
+├── employees/                  # Employee + role management
 ├── expenses/                   # Daily expense tracking
-├── payroll/                    # Payroll engine, salary logic & advance management
-├── portal/                     # Worker portal (read-only, phone + password login)
+├── king/                       # Owner dashboard, workorders, revenue, ledger
+├── payroll/                    # Payroll engine + advances + payslip export
+├── portal/                     # Worker and manager portal views
 ├── static/                     # CSS, JS, fonts
-└── media/                      # Uploaded bills & documents
+├── media/                      # Uploaded bills/documents
+└── .github/workflows/ci.yml    # CI pipeline
 ```
 
 ---
@@ -154,7 +157,7 @@ cwms/
 ## Setup & Installation
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.11+
 - SQLite3 (development) or PostgreSQL (production)
 - pip
 
@@ -163,7 +166,7 @@ cwms/
 ```bash
 # 1. Clone the repository
 git clone https://github.com/yourusername/cwms.git
-cd cwms
+cd CWMS
 
 # 2. Create and activate virtual environment
 python -m venv venv
@@ -174,7 +177,7 @@ venv\Scripts\activate           # Windows
 pip install -r requirements.txt
 
 # 4. Configure environment variables
-cp .env.example .env
+cp .env.example .env            # Windows PowerShell: Copy-Item .env.example .env
 # Edit .env with your database credentials and SECRET_KEY
 
 # 5. Run migrations
@@ -192,7 +195,7 @@ python manage.py runserver
 SECRET_KEY=your-secret-key
 DEBUG=True
 DATABASE_URL=sqlite:///db.sqlite3
-ALLOWED_HOSTS=localhost,127.0.0.1
+ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 ```
 
 ---
@@ -202,70 +205,106 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 ### Authentication
 | Method | URL | Description |
 |--------|-----|-------------|
-| POST | `/worker_login/` | Worker login (phone number + password) |
-| POST | `/manager_login/` | Manager login |
-| POST | `/logout/` | Logout |
+| GET/POST | `/portal/login/` | Worker/Manager portal login |
+| GET | `/portal/logout/` | Worker/Manager portal logout |
+| GET/POST | `/king/secure/owner-x7k2/` | King secure login |
+| GET | `/king/logout/` | King logout |
+
+### Employees
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/manager/employees/` | Employee list with filters |
+| GET/POST | `/manager/employees/add/` | Add employee + create linked user |
+| GET/POST | `/manager/employees/edit/<employee_id>/` | Edit employee |
 
 ### Manager
 | Method | URL | Description |
 |--------|-----|-------------|
-| GET | `/manager/dashboard/` | Manager dashboard |
-| GET/POST | `/manager/employees/` | List / add employees |
-| GET/POST | `/manager/attendance/bulk/` | Bulk attendance |
-| POST | `/manager/payroll/generate/` | Generate payroll |
-| POST | `/manager/payroll/generate/mid-month/<id>/` | Mid-month salary for individual employee |
-| GET | `/manager/payroll/summary/` | Payroll summary |
-| GET | `/manager/salary-list/` | Salary list |
-| POST | `/manager/salary/mark-paid/<id>/` | Mark salary paid |
-| POST | `/manager/advance/add/` | Issue advance |
+| GET | `/portal/manager/dashboard/` | Manager dashboard |
+| GET | `/portal/manager/dashboard/recent-activity/` | Recent activity JSON feed |
+| GET/POST | `/portal/manager/attendance/bulk/` | Bulk attendance entry |
+| POST | `/portal/manager/run-payroll/` | Trigger month payroll run |
+| GET/POST | `/portal/manager/advances/issue/` | Issue worker advance |
+
+### Payroll
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/payroll/summary/` | Payroll batch summary |
+| GET | `/payroll/manager/payroll/salaries/` | Salary list for selected month |
+| POST | `/payroll/manager/payroll/salaries/generate/` | Generate one employee salary |
+| POST | `/payroll/manager/payroll/salaries/mark-paid/` | Mark salary paid |
+| GET | `/payroll/manager/payroll/salaries/export/` | Salary CSV export |
+| GET | `/payroll/payslip/<salary_id>/` | Payslip download (role scoped) |
 
 ### Billing
 | Method | URL | Description |
 |--------|-----|-------------|
-| GET/POST | `/billing/` | Dashboard / upload bill |
-| POST | `/billing/toggle/<id>/` | Toggle paid status |
-| GET | `/billing/export/csv/` | Export CSV |
+| GET/POST | `/manager/billing/` | Billing dashboard / upload bill |
+| POST | `/toggle_bill_status/<bill_id>/` | Toggle paid/unpaid |
+| POST | `/delete_bill/<bill_id>/` | Delete bill |
 
 ### Expenses
 | Method | URL | Description |
 |--------|-----|-------------|
-| GET/POST | `/expenses/` | Dashboard / add expense |
-| POST | `/expenses/edit/<id>/` | Edit expense (7-day lock) |
-| GET | `/expenses/export/csv/` | CSV export |
-| GET | `/expenses/export/pdf/` | PDF export |
+| GET/POST | `/manager/expenses/` | Expenses dashboard / add expense |
+| GET/POST | `/manager/expenses/edit/<expense_id>/` | Edit expense (7-day lock) |
+| POST | `/manager/expenses/delete/<expense_id>/` | Delete expense (POST-only) |
+| GET | `/manager/expenses/export/` | CSV export |
+| GET | `/manager/expenses/pdf/` | PDF export |
 
 ### Worker Portal
 | Method | URL | Description |
 |--------|-----|-------------|
 | GET | `/portal/dashboard/` | Worker home |
+| GET | `/portal/profile/` | Worker profile |
 | GET | `/portal/attendance/` | View attendance |
-| GET | `/portal/salary/` | View salary history |
-| GET | `/portal/payslip/download/<id>/` | Download payslip PDF |
+| GET | `/portal/download-payslip/<salary_id>/` | Download payslip PDF |
 
-### King Dashboard
+### King (Owner)
 | Method | URL | Description |
 |--------|-----|-------------|
 | GET | `/king/dashboard/` | Business analytics overview |
-| GET | `/king/inventory/` | Inventory management |
-| GET | `/king/audit-log/` | Full audit trail |
+| GET | `/king/dashboard/recent-activity/` | Recent activity JSON feed |
+| GET | `/king/workorders/` | Work order dashboard |
+| GET/POST | `/king/workorders/add/` | Add work order |
+| GET | `/king/workorders/<wo_id>/` | Work order detail |
+| GET/POST | `/king/workorders/<wo_id>/edit/` | Edit work order |
+| POST | `/king/workorders/<wo_id>/status/` | Update work order status |
+| GET | `/king/revenue/` | Revenue dashboard |
+| POST | `/king/revenue/add/` | Add revenue entry |
+| POST | `/king/revenue/delete/<rev_id>/` | Delete revenue entry |
+| GET | `/king/ledger/` | Ledger view |
+| POST | `/king/ledger/add/` | Add ledger entry |
+| POST | `/king/ledger/delete/<entry_id>/` | Delete ledger entry |
+| GET | `/king/ledger/pdf/` | Ledger PDF export |
+
+### Audit History
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/king/audit/` | King audit history page |
+| GET | `/king/audit/export/csv/` | King audit CSV export |
+| GET | `/king/audit/export/pdf/` | King audit PDF export |
+| GET | `/portal/manager/audit/` | Manager audit history page |
+| GET | `/portal/manager/audit/export/csv/` | Manager audit CSV export |
+| GET | `/portal/manager/audit/export/pdf/` | Manager audit PDF export |
 
 ---
 
 ## Authentication
 
-**Manager Login:** Username + Password (Django default auth), session-based, protected by `@manager_required` decorator.
+**Manager Login:** Portal login (username + password path), session-based, protected by `@manager_required` decorator.
 
-**Worker Login:** Phone number + Password — credentials are created and assigned by the superuser or manager. Read-only access enforced at the view level via the `portal` app.
+**Worker Login:** Phone number + password via portal login. Worker access is read-only and enforced via `@worker_required`.
 
-**King Login:** Superuser-level credentials, session-based, protected by `@king_required` decorator.
+**King Login:** Dedicated secure URL with explicit `King` group checks and session flag (`king_authenticated`), enforced via `@king_required`.
 
 **Security:**
 - CSRF tokens on all forms
-- IDOR protection (users access only their own data)
-- Password hashing (pbkdf2_sha256)
-- Session hijacking prevention
-- No sensitive data in URLs
-- Full audit log for all critical actions
+- IDOR protection for worker payslip access
+- Session-based auth with Django password hashing
+- Role-isolation guards between Manager and King flows
+- POST-only enforcement on critical mutation endpoints
+- Full audit log for critical operations + export actions
 
 ---
 
@@ -284,6 +323,14 @@ Storage:  20GB minimum
 
 ### Cloud Option
 Railway / Render / DigitalOcean with managed PostgreSQL and AWS S3 / Cloudflare R2 for media storage.
+
+### CI Pipeline
+- GitHub Actions workflow (`.github/workflows/ci.yml`)
+- Runs on pushes and pull requests to `main`
+- Steps:
+	- Install dependencies
+	- `python manage.py check`
+	- `python manage.py test`
 
 ---
 

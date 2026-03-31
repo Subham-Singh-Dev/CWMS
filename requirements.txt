@@ -3,6 +3,7 @@ Django>=5.2,<5.3
 
 # ── PDF Generation ────────────────────────────────────────────
 xhtml2pdf==0.2.13
+reportlab<4
 
 # ── Database ──────────────────────────────────────────────────
 psycopg2-binary>=2.9        # PostgreSQL (production)

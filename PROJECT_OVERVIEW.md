@@ -1,0 +1,583 @@
+# CWMS Project Overview
+
+## 1. Executive Summary
+CWMS (Contractor Workforce Management System) is a Django monolith for workforce operations in construction/contracting workflows. It manages attendance, payroll, advances, billing, expenses, owner analytics, and audit history in one integrated system.
+
+Primary outcomes of this codebase:
+- Daily worker operations via manager-facing pages.
+- Worker self-service portal for attendance and payslip visibility.
+- Owner-level (King) financial and operational dashboard.
+- Auditable actions across financial and HR-impacting workflows.
+
+---
+
+## 2. Business Scope and User Roles
+### Scope
+CWMS supports day-to-day workforce and finance tracking for contractor operations:
+- Employee onboarding and profile maintenance.
+- Daily attendance with overtime.
+- Monthly payroll with advance deduction.
+- Expense and bill recording.
+- Owner dashboards for revenue/ledger/work orders.
+
+### Roles
+- Manager:
+  - Manages employees, attendance, payroll, expenses, and billing.
+- Worker:
+  - Reads own profile, attendance, salary, and downloads payslip.
+- King (Owner):
+  - Accesses owner dashboard, work orders, revenue, ledger, and full audit history.
+
+---
+
+## 3. Technology Stack and Dependencies
+### Runtime and Framework
+- Python 3.11 (local virtual environment observed in workspace).
+- Django 5.2.x.
+- SQLite (default local database in settings).
+
+### Key Python Dependencies
+From requirements:
+- Django>=5.2,<5.3
+- xhtml2pdf==0.2.13
+- reportlab<4
+- python-decouple==3.8
+- psycopg2-binary>=2.9
+- Pillow>=10.0
+
+### Notable Compatibility Pin
+- reportlab is pinned to <4 to remain compatible with xhtml2pdf==0.2.13.
+
+---
+
+## 4. High-Level Architecture
+CWMS is an app-modular Django monolith with app responsibilities separated by domain.
+
+Installed apps:
+- employees
+- attendance
+- payroll
+- portal
+- billing
+- expenses
+- analytics
+- king
+
+Architecture characteristics:
+- Template-rendered server-side views (no DRF API architecture).
+- Centralized payroll financial rules in services layer.
+- Decorator-based authorization gates for role control.
+- Audit logging service used from business views.
+
+---
+
+## 5. Project Structure and Module Responsibilities
+### Root-level files
+- manage.py: Django management entry point.
+- requirements.txt: dependency lock guidance.
+- db.sqlite3: local database.
+- populate_database.py: data seeding utility.
+- TESTING_SCRIPTS.py: custom consolidated test automation script.
+- Documentation files: setup, API docs, security, production checklist.
+
+### App responsibilities
+- employees:
+  - Employee and Role data models.
+  - Employee CRUD views and CSV import command.
+- attendance:
+  - Attendance model and validation rules.
+- payroll:
+  - Advance and MonthlySalary models.
+  - Salary generation service and payroll command.
+- portal:
+  - Unified login flow (manager/worker), worker portal, manager dashboard, bulk attendance, payroll trigger.
+- billing:
+  - Bill records, payment toggle, deletion, dashboard metrics.
+- expenses:
+  - Expense records, edit/delete lock policy, CSV/PDF export.
+- analytics:
+  - AuditLog model, audit history pages, audit exports, request context middleware, pruning command.
+- king:
+  - Owner authentication and dashboard.
+  - Work orders, revenue, ledger management.
+
+---
+
+## 6. Data Model and Relationships
+### employees app
+- Role:
+  - name (unique)
+  - overtime_rate_per_hour
+  - is_active
+- Employee:
+  - OneToOne -> auth.User (on_delete=PROTECT)
+  - FK -> Role (on_delete=PROTECT)
+  - identity and compliance fields (phone, email, aadhar, bank, etc.)
+  - daily_wage, join_date, is_active
+
+### attendance app
+- Attendance:
+  - FK -> Employee (PROTECT)
+  - date, status (P/A/H), overtime_hours, marked_at
+  - unique constraint on (employee, date)
+  - clean() enforces:
+    - no future date
+    - no previous-month attendance marking
+    - overtime non-negative
+    - overtime only when status is present
+
+### payroll app
+- Advance:
+  - FK -> Employee (PROTECT)
+  - amount, remaining_amount, issued_date, settled, created_at
+  - FIFO ordering by issued_date
+  - validation prevents invalid remaining balance
+- MonthlySalary:
+  - FK -> Employee (PROTECT)
+  - month (first day of month enforced)
+  - attendance breakdown and financial snapshot fields
+  - unique constraint on (employee, month)
+  - paid status with paid_on auto-fill behavior
+
+### billing app
+- Bill:
+  - description, amount, pdf_file, is_paid, created_at, paid_on
+  - paid_on is synchronized with is_paid in save()
+
+### expenses app
+- Expense:
+  - date, category, description, amount, payment_mode, created_by, created_at
+  - category and payment_mode are choice fields
+
+### analytics app
+- AuditLog:
+  - who/what/when/where metadata for events
+  - activity and action type dimensions
+  - entity pointers (type/id/name)
+  - status/error fields
+  - indexed for timestamp, user, activity, and entity lookups
+
+### king app
+- WorkOrder:
+  - project/client contract metadata and status lifecycle
+  - autogenerated WO number
+- Revenue:
+  - dated revenue entries, category, payment_mode, optional work_order link
+- LedgerEntry:
+  - manual ledger debit/credit entries with voucher metadata
+
+---
+
+## 7. URL Topology and Routing
+Root URL config includes app routes as follows:
+- /admin/
+- /payroll/...
+- /portal/...
+- /king/...
+- plus empty-prefix includes for billing, expenses, employees, analytics.
+
+### Important endpoint groups
+- Portal and manager:
+  - /portal/login/
+  - /portal/dashboard/
+  - /portal/manager/dashboard/
+  - /portal/manager/attendance/bulk/
+  - /portal/manager/run-payroll/
+- Employees:
+  - /manager/employees/
+  - /manager/employees/add/
+  - /manager/employees/edit/<id>/
+- Payroll:
+  - /payroll/summary/
+  - /payroll/manager/payroll/salaries/
+  - /payroll/manager/payroll/salaries/generate/
+  - /payroll/manager/payroll/salaries/mark-paid/
+  - /payroll/payslip/<salary_id>/
+- Billing:
+  - /manager/billing/
+  - /toggle_bill_status/<bill_id>/
+  - /delete_bill/<bill_id>/
+- Expenses:
+  - /manager/expenses/
+  - /manager/expenses/edit/<expense_id>/
+  - /manager/expenses/delete/<expense_id>/
+  - /manager/expenses/export/
+  - /manager/expenses/pdf/
+- Analytics (audit):
+  - /king/audit/
+  - /king/audit/export/csv/
+  - /king/audit/export/pdf/
+  - /portal/manager/audit/
+- King domain:
+  - /king/secure/owner-x7k2/
+  - /king/dashboard/
+  - /king/workorders/... 
+  - /king/revenue/... 
+  - /king/ledger/... 
+
+---
+
+## 8. Authentication and Authorization Model
+### Authentication style
+- Django session authentication.
+- Combined portal login view supports manager and worker login type selection.
+- Dedicated king login endpoint for owner flow.
+
+### Authorization gates
+Implemented primarily with custom decorators:
+- manager_required:
+  - allows Manager and optionally King read-only manager-view mode.
+- worker_required:
+  - blocks managers/superusers from worker-only pages.
+- king_required:
+  - strict checks:
+    - authenticated user required
+    - king_authenticated session flag required
+    - explicit manager rejection
+    - explicit King group membership required
+
+### Group naming caveat
+- Business logic expects groups named Manager and King in most authorization checks.
+- Utility scripts in repository also create lowercase/plural groups (managers, kings, Worker), which can lead to role assignment mismatch unless normalized.
+
+---
+
+## 9. Core Business Logic Flows
+### Attendance flow
+- Manager marks attendance in bulk.
+- System validates date and overtime rules.
+- Existing entries are updated or created per employee/date.
+
+### Payroll flow
+- Triggered from manager payroll action.
+- For each active employee, salary generation:
+  - attendance aggregates calculated
+  - paid leave rule applied (first two absences)
+  - overtime applied by role rate
+  - FIFO advance deduction executed atomically
+  - immutable monthly snapshot stored
+
+### Advance flow
+- Advance issuance records principal and remaining amount.
+- Recoveries happen automatically during payroll generation.
+
+### Billing and expenses flow
+- Bill upload with PDF attachment and amount validation.
+- Expense creation/edit/delete with 7-day edit/delete lock policy.
+- Export options for operational accounting.
+
+### King analytics flow
+- Owner dashboard composes payroll, expenses, revenue, attendance, and liability metrics.
+- Work orders and revenue provide project-level financial tracking.
+- Ledger provides explicit debit/credit entries.
+
+---
+
+## 10. Service Layer and Domain Logic Placement
+### payroll/services.py
+This is the authoritative financial rules engine.
+
+Key characteristics:
+- Guardrails for month validity, employee eligibility, and duplicates.
+- Decimal-based calculations with explicit quantization.
+- Atomic transaction and row-level locking for advance deduction.
+- Domain exceptions (for example SalaryAlreadyGeneratedError).
+
+### analytics/services/audit_service.py
+- infer_user_role(user): resolves role label for logs.
+- create_audit_log(...): standard event ingestion with IP extraction.
+- recent activity item formatters for dashboard cards.
+
+Design outcome:
+- Views orchestrate request/response.
+- Services own critical business rules.
+
+---
+
+## 11. Audit, Logging, and Observability
+### Audit model coverage
+AuditLog captures:
+- actor identity (user, username, role)
+- activity/action dimensions
+- target entity metadata
+- status/error payload
+- source IP and timestamp
+
+### Audit UI
+- Separate owner and manager audit history pages.
+- Filtering by activity/action/username/date range.
+- Pagination and CSV/PDF exports.
+
+### Operational logging
+- Authorization decorators and king login include explicit security logging for suspicious access attempts.
+
+### Data retention tooling
+- analytics management command supports pruning old audit logs with dry-run mode.
+
+---
+
+## 12. Management Commands and Utility Scripts
+### Django management commands
+- analytics: prune_audit_logs
+  - deletes logs older than retention days, supports dry-run.
+- payroll: generate_payroll <year> <month>
+  - batch payroll generation with summary counts.
+- employees: import_workers <csv_file>
+  - CSV import with validation, transaction safety, and deterministic ID generation.
+
+### Standalone scripts
+- populate_database.py:
+  - seeds users, employees, attendance, payroll, expenses, and bills for testing/demo.
+- TESTING_SCRIPTS.py:
+  - custom interactive and flag-driven test routines.
+
+---
+
+## 13. Frontend, Templates, and Static Assets
+### Rendering model
+- Django template rendering across all user journeys.
+
+### Template layout by app
+- portal templates for login, manager dashboard, worker pages.
+- payroll templates including payslip PDF template.
+- billing, expenses, analytics, king templates for each dashboard/function.
+
+### Static assets
+- static/js/theme.js and static/js/king_theme.js for theme behavior.
+
+### Media handling
+- Uploaded bill PDFs stored under media/billing/billing_pdfs.
+- MEDIA_URL and MEDIA_ROOT configured and exposed in development via static() helper.
+
+---
+
+## 14. Configuration and Environment Management
+### Current settings profile
+- Single settings module in config/settings.py.
+- DEBUG currently true.
+- ALLOWED_HOSTS currently permissive (includes wildcard).
+- DATABASE default is sqlite3.
+
+### Environment configuration artifacts
+- .env.example exists and lists expected variables.
+- python-decouple is present in dependencies, but settings currently include hardcoded secret/debug/database defaults.
+
+### Deployment implication
+Before production, migrate critical settings to environment variables:
+- SECRET_KEY
+- DEBUG
+- ALLOWED_HOSTS
+- DATABASE_URL or DB connection tuple
+- secure cookie and HTTPS headers
+
+---
+
+## 15. Database, Migrations, and Data Integrity
+### Migrations
+Each app includes migration history in app/migrations.
+
+### Integrity controls
+- relational protection via on_delete=PROTECT for finance-critical records.
+- unique constraints:
+  - attendance uniqueness by employee/date
+  - salary uniqueness by employee/month
+- model clean()/save() guards in attendance, payroll models.
+
+### Transactional safety
+- payroll generation and advance deduction rely on transaction.atomic and select_for_update to reduce race-condition risk.
+
+---
+
+## 16. Testing and Quality Status
+### App-level tests present
+- attendance/tests.py
+- billing/tests.py
+- expenses/tests.py
+- payroll/tests.py
+- analytics/tests.py
+- king/tests.py
+
+### Placeholder test modules
+- employees/tests.py contains scaffold only.
+- portal/tests.py contains scaffold only.
+
+### Covered themes
+- role access control around mutation endpoints.
+- method safety (for example POST-only behavior where enforced).
+- payroll generation and duplicate prevention.
+- audit log service behavior.
+
+### CI workflow
+- GitHub Actions pipeline runs Django check and test suite on push/PR to main.
+
+---
+
+## 17. Security Posture, Gaps, and Risk Notes
+### Implemented strengths
+- CSRF middleware enabled.
+- Role decorators across manager/worker/king surfaces.
+- Strict king session and group controls.
+- Audit trail for key actions.
+- POST enforcement added for many mutation endpoints.
+
+### Current gaps to address for production
+- SECRET_KEY currently hardcoded in settings.
+- DEBUG currently true.
+- ALLOWED_HOSTS currently wildcarded.
+- Group naming inconsistency across scripts versus authorization checks may cause privilege misconfiguration.
+- Mixed route namespaces and path patterns increase risk of integration mistakes in custom scripts and tests.
+
+### Priority remediation order
+1. Externalize secrets/settings and harden deployment config.
+2. Normalize role group names across all scripts and checks.
+3. Expand tests for employees and portal apps.
+4. Add negative-path and regression tests for all security boundaries.
+
+---
+
+## 18. Deployment and Operations Guide (Repository Reality)
+### Local run sequence
+1. Create and activate virtualenv.
+2. Install requirements.
+3. Run migrations.
+4. Create admin/role users.
+5. Start server.
+
+### Operational documents present
+- SETUP.md
+- QUICK_START.md
+- API_DOCS.md
+- SECURITY_IMPLEMENTATION.md
+- PRODUCTION_DEPLOYMENT_CHECKLIST.md
+
+### Production checklist highlights
+- set DEBUG=False
+- secure SECRET_KEY and host policies
+- configure static/media serving
+- enforce HTTPS and secure cookies
+- run migration and backup strategy
+- enable monitoring/alerts
+
+---
+
+## 19. Glossary and Quick Reference
+### Domain terms
+- Advance: Cash loan to worker, recovered via payroll FIFO.
+- Gross Pay: Salary before deductions.
+- Net Pay: Salary after advance deduction.
+- Paid Leave Rule: Up to first two absences treated as paid leave in payroll logic.
+- King: Owner role with strategic dashboards and financial controls.
+
+### Frequently used commands
+- python manage.py migrate
+- python manage.py runserver
+- python manage.py test
+- python manage.py check
+- python manage.py generate_payroll <year> <month>
+- python manage.py prune_audit_logs --days 365 --dry-run
+
+---
+
+## Appendix: Known Inconsistencies to Track
+- Some docs and helper scripts reference legacy endpoints that do not exactly match current route map.
+- Test helper scripts and seed scripts use lowercase/plural group names in places, while authorization checks usually expect singular title-case group names.
+- Single settings profile is development-first and needs environment split/hardening for deployment.
+
+This document reflects the repository state currently present in workspace and is intended as a technical baseline for onboarding, refactoring, and production hardening work.
+
+---
+
+## Appendix B: Endpoint Matrix (Normalized)
+This matrix is generated from current `urls.py` + view implementations.
+
+| Scope | Method | Path | View | Access Control | Notes |
+|---|---|---|---|---|---|
+| Admin | GET | /admin/ | Django admin | Django admin auth | Built-in admin site |
+| Portal Auth | GET, POST | /portal/login/ | portal_login | Public | Unified manager/worker login |
+| Worker | GET | /portal/dashboard/ | worker_dashboard | worker_required | Worker salary overview |
+| Worker | GET | /portal/logout/ | worker_logout | Authenticated session if present | Creates audit logout log |
+| Worker | GET | /portal/profile/ | worker_profile | worker_required | Worker profile page |
+| Worker | GET | /portal/attendance/ | worker_attendance | worker_required | Recent attendance |
+| Worker | GET | /portal/download-payslip/<salary_id>/ | portal.download_payslip | worker_required + ownership checks | Worker/manager payslip PDF |
+| Manager | GET | /portal/manager/dashboard/ | manager_dashboard | manager_required | Main manager dashboard |
+| Manager | GET | /portal/manager/dashboard/recent-activity/ | manager_recent_activity_api | manager_required | JSON activity feed |
+| Manager | GET, POST | /portal/manager/attendance/bulk/ | bulk_attendance | manager_required | Attendance form + save |
+| Manager | GET, POST | /portal/manager/run-payroll/ | run_payroll | manager_required | Payroll orchestration form + run |
+| Manager | GET, POST | /portal/manager/advances/issue/ | issue_advance_view | login_required + manager_required | Advance issuance |
+| Payroll | GET | /payroll/payslip/<salary_id>/ | payroll.download_payslip | login_required + checks | Manager/worker/admin guarded |
+| Payroll | GET | /payroll/summary/ | payroll_batch_summary | manager_required | Batch payroll summary |
+| Payroll | GET | /payroll/manager/payroll/salaries/ | salary_list_view | manager_required | Per-employee salary rows |
+| Payroll | POST | /payroll/manager/payroll/salaries/generate/ | generate_employee_salary | manager_required + require_POST | Generate one employee salary |
+| Payroll | POST | /payroll/manager/payroll/salaries/mark-paid/ | mark_salary_paid | manager_required + require_POST | Mark salary paid |
+| Payroll | GET | /payroll/manager/payroll/salaries/export/ | export_salary_list_csv | manager_required | CSV export |
+| Billing | GET, POST | /manager/billing/ | billing_dashboard | manager_required | Dashboard + bill create |
+| Billing | POST | /toggle_bill_status/<bill_id>/ | toggle_bill_status | manager_required + require_POST | Paid/unpaid toggle |
+| Billing | POST | /delete_bill/<bill_id>/ | delete_bill | manager_required + require_POST | Delete bill |
+| Expenses | GET, POST | /manager/expenses/ | expense_dashboard | manager_required | Dashboard + add expense |
+| Expenses | POST | /manager/expenses/delete/<expense_id>/ | delete_expense | manager_required + require_POST | Lock-window protected delete |
+| Expenses | GET, POST | /manager/expenses/edit/<expense_id>/ | edit_expense | manager_required | Edit form + save |
+| Expenses | GET | /manager/expenses/export/ | export_expenses_csv | manager_required | CSV export |
+| Expenses | GET | /manager/expenses/pdf/ | daily_expense_pdf | manager_required | PDF export |
+| Employees | GET, POST | /manager/employees/add/ | add_employee_view | login_required + manager_required | Add employee |
+| Employees | GET, POST | /manager/employees/edit/<employee_id>/ | edit_employee_view | login_required + manager_required | Edit employee |
+| Employees | GET | /manager/employees/ | employee_list_view | login_required + manager_required | Employee directory |
+| Audit | GET | /king/audit/ | king_audit_history | king_required | Full audit history |
+| Audit | GET | /king/audit/export/csv/ | king_audit_export_csv | king_required | CSV export |
+| Audit | GET | /king/audit/export/pdf/ | king_audit_export_pdf | king_required | PDF export |
+| Audit | GET | /portal/manager/audit/ | manager_audit_history | manager_required | Scoped audit history |
+| Audit | GET | /portal/manager/audit/export/csv/ | manager_audit_export_csv | manager_required | Scoped CSV export |
+| Audit | GET | /portal/manager/audit/export/pdf/ | manager_audit_export_pdf | manager_required | Scoped PDF export |
+| King Auth | GET, POST | /king/secure/owner-x7k2/ | king_login | Public | Owner login page |
+| King | GET | /king/dashboard/ | king_dashboard | king_required | Owner dashboard |
+| King | GET | /king/dashboard/recent-activity/ | king_recent_activity_api | king_required | JSON activity feed |
+| King | GET | /king/logout/ | king_logout | king_required | Owner logout |
+| King Workorders | GET | /king/workorders/ | workorder_dashboard | king_required | Workorder list |
+| King Workorders | GET, POST | /king/workorders/add/ | workorder_add | king_required | Create workorder |
+| King Workorders | GET | /king/workorders/<wo_id>/ | workorder_detail | king_required | Workorder detail |
+| King Workorders | GET, POST | /king/workorders/<wo_id>/edit/ | workorder_edit | king_required | Edit workorder |
+| King Workorders | POST | /king/workorders/<wo_id>/status/ | workorder_status_update | king_required + require_POST | Status update |
+| King Revenue | GET | /king/revenue/ | revenue_dashboard | king_required | Revenue dashboard |
+| King Revenue | POST | /king/revenue/add/ | revenue_add | king_required + require_POST | Add revenue |
+| King Revenue | POST | /king/revenue/delete/<rev_id>/ | revenue_delete | king_required + require_POST | Delete revenue |
+| King Ledger | GET | /king/ledger/ | ledger_view | king_required | Ledger page |
+| King Ledger | POST | /king/ledger/add/ | ledger_add_entry | king_required + require_POST | Add ledger entry |
+| King Ledger | POST | /king/ledger/delete/<entry_id>/ | ledger_delete_entry | king_required + require_POST | Delete ledger entry |
+| King Ledger | GET | /king/ledger/pdf/ | ledger_pdf | king_required | Ledger PDF export |
+
+---
+
+## Appendix C: ER Relationship Matrix (Textual)
+
+Primary entity relationships:
+
+- `auth.User` 1:1 `employees.Employee`
+  - `Employee.user` is `OneToOneField(PROTECT)`.
+- `employees.Role` 1:N `employees.Employee`
+  - `Employee.role` is `ForeignKey(PROTECT)`.
+- `employees.Employee` 1:N `attendance.Attendance`
+  - `Attendance.employee` with unique `(employee, date)` constraint.
+- `employees.Employee` 1:N `payroll.Advance`
+  - `Advance.employee` and FIFO business ordering by `issued_date`.
+- `employees.Employee` 1:N `payroll.MonthlySalary`
+  - Unique `(employee, month)` monthly payroll snapshot.
+- `auth.User` 1:N `expenses.Expense`
+  - `Expense.created_by` is `ForeignKey(CASCADE)`.
+- `auth.User` 1:N `analytics.AuditLog`
+  - `AuditLog.user` is nullable `ForeignKey(SET_NULL)`.
+- `auth.User` 1:N `king.WorkOrder`
+  - `WorkOrder.created_by` is `ForeignKey(CASCADE)`.
+- `king.WorkOrder` 1:N `king.Revenue`
+  - `Revenue.work_order` is nullable `ForeignKey(SET_NULL, related_name='revenues')`.
+- `auth.User` 1:N `king.Revenue`
+  - `Revenue.created_by` is `ForeignKey(CASCADE)`.
+- `auth.User` 1:N `king.LedgerEntry`
+  - `LedgerEntry.created_by` is `ForeignKey(CASCADE)`.
+
+Pseudo-ER chain for operations:
+
+- User -> Employee -> Attendance -> MonthlySalary
+- User -> Employee -> Advance -> MonthlySalary (deduction)
+- User -> Expense
+- User -> WorkOrder -> Revenue
+- User -> LedgerEntry
+- User -> AuditLog (observability layer across all domains)

@@ -14,6 +14,23 @@ from analytics.services.audit_service import create_audit_log
 from portal.decorators import king_required, manager_required
 
 
+def _current_filters(request):
+    return {
+        'activity': request.GET.get('activity', ''),
+        'action': request.GET.get('action', ''),
+        'username': request.GET.get('username', ''),
+        'from_date': request.GET.get('from_date', ''),
+        'to_date': request.GET.get('to_date', ''),
+    }
+
+
+def _filtered_queryset(request, is_king_view):
+    queryset = AuditLog.objects.all().order_by('-timestamp')
+    if not is_king_view:
+        queryset = _manager_scope(queryset, request)
+    return _apply_audit_filters(queryset, request)
+
+
 def _apply_audit_filters(queryset, request):
     activity = request.GET.get('activity', '').strip()
     action = request.GET.get('action', '').strip()
@@ -80,55 +97,45 @@ def _serialize_logs(logs, is_king_view):
     return rows
 
 
-@king_required
-def king_audit_history(request):
-    queryset = AuditLog.objects.all().order_by('-timestamp')
-    queryset = _apply_audit_filters(queryset, request)
+def _render_audit_history(request, is_king_view):
+    queryset = _filtered_queryset(request, is_king_view=is_king_view)
 
     paginator = Paginator(queryset, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
-    log_rows = _serialize_logs(page_obj.object_list, is_king_view=True)
+    log_rows = _serialize_logs(page_obj.object_list, is_king_view=is_king_view)
 
     return render(request, 'analytics/audit_history.html', {
         'page_obj': page_obj,
         'log_rows': log_rows,
-        'is_king_view': True,
+        'is_king_view': is_king_view,
         'activities': AuditLog.ACTIVITY_CHOICES,
         'actions': AuditLog.ACTION_CHOICES,
-        'current_filters': {
-            'activity': request.GET.get('activity', ''),
-            'action': request.GET.get('action', ''),
-            'username': request.GET.get('username', ''),
-            'from_date': request.GET.get('from_date', ''),
-            'to_date': request.GET.get('to_date', ''),
-        }
+        'current_filters': _current_filters(request),
     })
+
+
+def _create_export_audit_log(request, entity_name, exported_rows):
+    create_audit_log(
+        user=request.user,
+        username=request.user.username,
+        activity='system',
+        action='export',
+        entity_type='AuditLog',
+        entity_id=0,
+        entity_name=entity_name,
+        details=f"Exported {exported_rows} rows",
+        request=request,
+    )
+
+
+@king_required
+def king_audit_history(request):
+    return _render_audit_history(request, is_king_view=True)
 
 
 @manager_required
 def manager_audit_history(request):
-    queryset = AuditLog.objects.all().order_by('-timestamp')
-    queryset = _manager_scope(queryset, request)
-    queryset = _apply_audit_filters(queryset, request)
-
-    paginator = Paginator(queryset, 20)
-    page_obj = paginator.get_page(request.GET.get('page'))
-    log_rows = _serialize_logs(page_obj.object_list, is_king_view=False)
-
-    return render(request, 'analytics/audit_history.html', {
-        'page_obj': page_obj,
-        'log_rows': log_rows,
-        'is_king_view': False,
-        'activities': AuditLog.ACTIVITY_CHOICES,
-        'actions': AuditLog.ACTION_CHOICES,
-        'current_filters': {
-            'activity': request.GET.get('activity', ''),
-            'action': request.GET.get('action', ''),
-            'username': request.GET.get('username', ''),
-            'from_date': request.GET.get('from_date', ''),
-            'to_date': request.GET.get('to_date', ''),
-        }
-    })
+    return _render_audit_history(request, is_king_view=False)
 
 
 def _audit_csv_response(filename, queryset):
@@ -192,77 +199,31 @@ def _audit_pdf_response(filename, rows, request, is_king_view):
 
 @king_required
 def king_audit_export_csv(request):
-    queryset = AuditLog.objects.all().order_by('-timestamp')
-    queryset = _apply_audit_filters(queryset, request)
-    create_audit_log(
-        user=request.user,
-        username=request.user.username,
-        activity='system',
-        action='export',
-        entity_type='AuditLog',
-        entity_id=0,
-        entity_name='King Audit CSV Export',
-        details=f"Exported {queryset.count()} rows",
-        request=request,
-    )
+    queryset = _filtered_queryset(request, is_king_view=True)
+    _create_export_audit_log(request, 'King Audit CSV Export', queryset.count())
     return _audit_csv_response('king_audit_log.csv', queryset)
 
 
 @king_required
 def king_audit_export_pdf(request):
-    queryset = AuditLog.objects.all().order_by('-timestamp')
-    queryset = _apply_audit_filters(queryset, request)
+    queryset = _filtered_queryset(request, is_king_view=True)
     rows = _serialize_logs(queryset, is_king_view=True)
 
-    create_audit_log(
-        user=request.user,
-        username=request.user.username,
-        activity='system',
-        action='export',
-        entity_type='AuditLog',
-        entity_id=0,
-        entity_name='King Audit PDF Export',
-        details=f"Exported {len(rows)} rows",
-        request=request,
-    )
+    _create_export_audit_log(request, 'King Audit PDF Export', len(rows))
     return _audit_pdf_response('king_audit_log.pdf', rows, request, is_king_view=True)
 
 
 @manager_required
 def manager_audit_export_csv(request):
-    queryset = AuditLog.objects.all().order_by('-timestamp')
-    queryset = _manager_scope(queryset, request)
-    queryset = _apply_audit_filters(queryset, request)
-    create_audit_log(
-        user=request.user,
-        username=request.user.username,
-        activity='system',
-        action='export',
-        entity_type='AuditLog',
-        entity_id=0,
-        entity_name='Manager Audit CSV Export',
-        details=f"Exported {queryset.count()} rows",
-        request=request,
-    )
+    queryset = _filtered_queryset(request, is_king_view=False)
+    _create_export_audit_log(request, 'Manager Audit CSV Export', queryset.count())
     return _audit_csv_response('manager_audit_log.csv', queryset)
 
 
 @manager_required
 def manager_audit_export_pdf(request):
-    queryset = AuditLog.objects.all().order_by('-timestamp')
-    queryset = _manager_scope(queryset, request)
-    queryset = _apply_audit_filters(queryset, request)
+    queryset = _filtered_queryset(request, is_king_view=False)
     rows = _serialize_logs(queryset, is_king_view=False)
 
-    create_audit_log(
-        user=request.user,
-        username=request.user.username,
-        activity='system',
-        action='export',
-        entity_type='AuditLog',
-        entity_id=0,
-        entity_name='Manager Audit PDF Export',
-        details=f"Exported {len(rows)} rows",
-        request=request,
-    )
+    _create_export_audit_log(request, 'Manager Audit PDF Export', len(rows))
     return _audit_pdf_response('manager_audit_log.pdf', rows, request, is_king_view=False)

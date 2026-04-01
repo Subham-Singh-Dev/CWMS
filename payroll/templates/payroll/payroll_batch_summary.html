@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Payroll Summary | CWMS</title>
+    <title>Payroll Summary | {{ BRAND_SHORT_NAME }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -436,7 +436,7 @@
     <div class="header">
         <div class="header-top">
             <div class="header-left">
-                <div class="header-company">Sakuntalam India Services</div>
+                <div class="header-company">{{ BRAND_COMPANY_NAME }}</div>
                 <h1>💰 Payroll Summary</h1>
                 <p>Monitor and manage monthly payroll expenses</p>
             </div>
@@ -479,7 +479,7 @@
     <div class="header">
         <div class="header-top">
             <div class="header-left">
-                <div class="header-company">Sakuntalam India Services</div>
+                <div class="header-company">{{ BRAND_COMPANY_NAME }}</div>
                 <h1>💰 Payroll Summary</h1>
                 <p>Monitor and manage monthly payroll expenses</p>
             </div>
@@ -733,7 +733,7 @@ initPayrollTrendChart('6m');
 
 // Console Log
 console.log(
-    '%c💰 CWMS Payroll Summary',
+    '%c💰 {{ BRAND_SHORT_NAME }} Payroll Summary',
     'background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px;'
 );
 console.log('%c✓ Dashboard Loaded', 'color: #10b981; font-weight: bold;');

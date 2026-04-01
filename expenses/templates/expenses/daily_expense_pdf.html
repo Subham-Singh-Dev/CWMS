@@ -192,7 +192,7 @@
 
     <!-- ═══════════════ HEADER ═══════════════ -->
     <div class="header">
-        <div class="company-name">CWMS — Contractor Workforce</div>
+        <div class="company-name">{{ BRAND_SHORT_NAME|default:"CWMS" }} — {{ BRAND_PRODUCT_NAME|default:"Contractor Workforce" }}</div>
         <div class="doc-title">Daily Expense Report</div>
     </div>
 
@@ -307,7 +307,7 @@
 
     <!-- ═══════════════ FOOTER ═══════════════ -->
     <div class="footer">
-        This is a system-generated report from CWMS &nbsp;|&nbsp;
+        This is a system-generated report from {{ BRAND_SHORT_NAME|default:"CWMS" }} &nbsp;|&nbsp;
         Report Date: {{ report_date }} &nbsp;|&nbsp;
         Generated: {{ generated_at }} &nbsp;|&nbsp;
         All amounts in Indian Rupees (₹)

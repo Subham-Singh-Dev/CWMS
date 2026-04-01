@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -80,6 +81,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'config.context_processors.branding',
             ],
         },
     },
@@ -148,3 +150,9 @@ LOGIN_REDIRECT_URL = 'portal_login' # <--- Where to go after login (we handle th
 # Media files (uploads)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Global branding
+BRAND_COMPANY_NAME = os.getenv("BRAND_COMPANY_NAME", "Sakuntalam India Services")
+BRAND_SHORT_NAME = os.getenv("BRAND_SHORT_NAME", "CWMS")
+BRAND_PRODUCT_NAME = os.getenv("BRAND_PRODUCT_NAME", "Construction Workforce Management")
+BRAND_ACCOUNT_NAME = os.getenv("BRAND_ACCOUNT_NAME", BRAND_COMPANY_NAME.upper())

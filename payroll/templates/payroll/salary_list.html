@@ -893,7 +893,7 @@
         </div>
 
         <div class="header-middle">
-            <div class="brand-title">Sakuntalam India Services</div>
+            <div class="brand-title">{{ BRAND_COMPANY_NAME }}</div>
             <div class="payroll-cycle-badge">
                 <span class="k">Payroll Cycle</span>
                 <span class="v">{{ selected_month_display|default:selected_month }}</span>
@@ -1225,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStats();
     
     console.log(
-        '%c💼 CWMS Salary List',
+        '%c💼 {{ BRAND_SHORT_NAME }} Salary List',
         'background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 8px 16px; font-size: 12px; font-weight: bold; border-radius: 4px;'
     );
     console.log('%c✓ Financial Interface Loaded', 'color: #10b981; font-weight: bold;');

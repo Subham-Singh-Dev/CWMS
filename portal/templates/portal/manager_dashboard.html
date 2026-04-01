@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Manager Console | CWMS</title>
+    <title>Manager Console | {{ BRAND_SHORT_NAME }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
@@ -767,10 +767,10 @@
             </div>
             {% else %}
             <div class="brand">🚀 Manager Console</div>
-            <div class="brand-subtitle">Construction Workforce Management</div>
+            <div class="brand-subtitle">{{ BRAND_PRODUCT_NAME }}</div>
             {% endif %}
         </div>
-        <div class="company-center-title">Sakuntalam India Services</div>
+        <div class="company-center-title">{{ BRAND_COMPANY_NAME }}</div>
         <div class="header-controls">
             <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Toggle Theme">🌙</button>
             <div class="user-info">
@@ -1148,7 +1148,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshManagerActivities, 15000);
     
     console.log(
-        '%c🚀 CWMS Manager Console',
+        '%c🚀 {{ BRAND_SHORT_NAME }} Manager Console',
         'background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px;'
     );
     console.log('%c✓ Dashboard Loaded', 'color: #10b981; font-weight: bold;');

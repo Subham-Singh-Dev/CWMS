@@ -125,11 +125,11 @@
 </head>
 <body>
 
-    <div class="co-name">Sakuntalam India Services</div>
+    <div class="co-name">{{ BRAND_COMPANY_NAME|default:"Sakuntalam India Services" }}</div>
     <hr class="thin">
     <div class="ledger-word">L E D G E R</div>
     <div class="date-range">( From {{ from_date|date:"d/m/Y" }} to {{ to_date|date:"d/m/Y" }} )</div>
-    <div class="account-line">Account : SAKUNTALAM INDIA SERVICES</div>
+    <div class="account-line">Account : {{ BRAND_ACCOUNT_NAME|default:"SAKUNTALAM INDIA SERVICES" }}</div>
     <hr class="thick">
 
     <table>
@@ -205,8 +205,8 @@
 
     <div class="footer">
         Generated on {% now "d M Y, h:i A" %} &nbsp;|&nbsp;
-        Sakuntalam India Services &nbsp;|&nbsp;
-        CWMS — Contractor Workforce Management System
+        {{ BRAND_COMPANY_NAME|default:"Sakuntalam India Services" }} &nbsp;|&nbsp;
+        {{ BRAND_SHORT_NAME|default:"CWMS" }} — {{ BRAND_PRODUCT_NAME|default:"Contractor Workforce Management System" }}
     </div>
 
 </body>

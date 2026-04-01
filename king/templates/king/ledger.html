@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ledger | Sakuntalam India Services</title>
+    <title>Ledger | {{ BRAND_COMPANY_NAME }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -287,7 +287,7 @@
     <div class="header">
         <div class="header-left">
             <div class="title">📒 Ledger</div>
-            <div class="sub">Sakuntalam India Services — Full transaction record</div>
+            <div class="sub">{{ BRAND_COMPANY_NAME }} — Full transaction record</div>
         </div>
         <div class="header-right">
             <a href="{% url 'king:ledger_pdf' %}?from_date={{ from_date|date:'Y-m-d' }}&to_date={{ to_date|date:'Y-m-d' }}"
@@ -307,10 +307,10 @@
 
     <!-- COMPANY IDENTITY BANNER -->
     <div class="company-banner">
-        <div class="co-name">Sakuntalam India Services</div>
+        <div class="co-name">{{ BRAND_COMPANY_NAME }}</div>
         <div class="ledger-word">L E D G E R</div>
         <div class="date-range">( From {{ from_date|date:"d/m/Y" }} &nbsp;to&nbsp; {{ to_date|date:"d/m/Y" }} )</div>
-        <div class="account-line">Account : SAKUNTALAM INDIA SERVICES</div>
+        <div class="account-line">Account : {{ BRAND_ACCOUNT_NAME }}</div>
         <div class="generated-at">Generated on {{ now|date:"d M Y, h:i A" }}</div>
     </div>
 
@@ -403,7 +403,7 @@
     <div class="table-card">
         <div class="table-head">
             <div class="table-head-title">
-                📋 Account: Sakuntalam India Services
+                📋 Account: {{ BRAND_COMPANY_NAME }}
             </div>
             <span class="entry-count">{{ ledger_rows|length }} entr{{ ledger_rows|length|pluralize:"y,ies" }}</span>
         </div>

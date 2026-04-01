@@ -12,7 +12,12 @@ def create_employee_with_user(
     role,
     daily_wage,
     join_date,
-    is_active=True
+    is_active=True,
+    employment_type='LOCAL',
+    pf_applicable=False,
+    esic_applicable=False,
+    pf_rate='0.1200',
+    esic_rate='0.0075',
 ):
     with transaction.atomic():
 
@@ -46,6 +51,11 @@ def create_employee_with_user(
             phone_number=phone_number,
             role=role,
             daily_wage=daily_wage,
+            employment_type=employment_type,
+            pf_applicable=pf_applicable,
+            esic_applicable=esic_applicable,
+            pf_rate=pf_rate,
+            esic_rate=esic_rate,
             join_date=join_date,
             is_active=is_active
         )

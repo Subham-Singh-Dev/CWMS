@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Payroll Summary | CWMS</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --neutral-50: #f8fafc;
@@ -109,6 +110,14 @@
             background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -.5px;
+        }
+        .header-company {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: #facc15;
+            margin-bottom: 4px;
         }
         .header-left p {
             font-size: 14px;
@@ -364,6 +373,10 @@
             padding: 32px;
             border: 2px dashed var(--border-strong);
         }
+        .chart-canvas-wrap {
+            height: 340px;
+            position: relative;
+        }
         .chart-placeholder .icon {
             font-size: 64px;
             margin-bottom: 16px;
@@ -423,6 +436,7 @@
     <div class="header">
         <div class="header-top">
             <div class="header-left">
+                <div class="header-company">Sakuntalam India Services</div>
                 <h1>💰 Payroll Summary</h1>
                 <p>Monitor and manage monthly payroll expenses</p>
             </div>
@@ -465,6 +479,7 @@
     <div class="header">
         <div class="header-top">
             <div class="header-left">
+                <div class="header-company">Sakuntalam India Services</div>
                 <h1>💰 Payroll Summary</h1>
                 <p>Monitor and manage monthly payroll expenses</p>
             </div>
@@ -530,8 +545,11 @@
         <div class="stat-card deductions">
             <div class="stat-icon">📉</div>
             <div class="stat-label">Total Deductions</div>
-            <div class="stat-value" data-value="{{ aggregates.total_deductions }}">₹0</div>
-            <div class="stat-subtext">All deductions combined</div>
+            <div class="stat-value" data-value="{{ total_deductions }}">₹0</div>
+            <div class="stat-subtext">Advance + PF + ESIC</div>
+            <div class="stat-subtext" style="margin-top:4px; font-size:11px;">
+                PF: ₹{{ total_pf_deduction|floatformat:0 }} | ESIC: ₹{{ total_esic_deduction|floatformat:0 }}
+            </div>
         </div>
         
         <div class="stat-card net">
@@ -561,22 +579,13 @@
         <div class="chart-header">
             <h2>📈 Payroll Trends</h2>
             <div class="chart-tabs">
-                <button class="chart-tab active">6 Months</button>
-                <button class="chart-tab">12 Months</button>
-                <button class="chart-tab">Year View</button>
+                <button class="chart-tab active" data-range="6m">6 Months</button>
+                <button class="chart-tab" data-range="12m">12 Months</button>
+                <button class="chart-tab" data-range="year">Year View</button>
             </div>
         </div>
-        <div class="chart-placeholder">
-            <div class="icon">📊</div>
-            <div>
-                <strong>Charts Coming in Phase 4</strong><br>
-                <small style="display: block; margin-top: 8px;">
-                    Monthly Payroll Cost • Payment Status Trends • Advance Recovery
-                </small>
-                <small style="display: block; margin-top: 6px; opacity: 0.7;">
-                    Use Chart.js or ApexCharts integration
-                </small>
-            </div>
+        <div class="chart-canvas-wrap">
+            <canvas id="payrollTrendChart"></canvas>
         </div>
     </div>
     {% endif %}
@@ -585,6 +594,114 @@
 <script>
 // Animate Currency Values (only if has_payroll)
 {% if has_payroll %}
+const chartData6 = {{ chart_6|safe }};
+const chartData12 = {{ chart_12|safe }};
+const chartDataYear = {{ chart_year|safe }};
+
+const chartDataByRange = {
+    '6m': chartData6,
+    '12m': chartData12,
+    'year': chartDataYear,
+};
+
+let payrollTrendChart;
+
+function getChartColors() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+        tick: isDark ? '#94a3b8' : '#64748b',
+        grid: isDark ? 'rgba(148,163,184,.15)' : 'rgba(100,116,139,.15)',
+    };
+}
+
+function buildTrendDatasets(source) {
+    return [
+        {
+            label: 'Gross Pay',
+            data: source.gross,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,.12)',
+            tension: .35,
+            fill: false,
+            borderWidth: 2,
+        },
+        {
+            label: 'Total Deductions',
+            data: source.deductions,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,.12)',
+            tension: .35,
+            fill: false,
+            borderWidth: 2,
+        },
+        {
+            label: 'Net Pay',
+            data: source.net,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,.12)',
+            tension: .35,
+            fill: false,
+            borderWidth: 2,
+        },
+        {
+            label: 'Unpaid Liability',
+            data: source.liability,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,.12)',
+            tension: .35,
+            fill: false,
+            borderWidth: 2,
+        }
+    ];
+}
+
+function initPayrollTrendChart(defaultRange) {
+    const source = chartDataByRange[defaultRange];
+    const colors = getChartColors();
+    payrollTrendChart = new Chart(document.getElementById('payrollTrendChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: source.labels,
+            datasets: buildTrendDatasets(source),
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: Rs ${Number(ctx.raw || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: colors.tick },
+                    grid: { color: colors.grid },
+                },
+                y: {
+                    ticks: {
+                        color: colors.tick,
+                        callback: (v) => `Rs ${Number(v).toLocaleString('en-IN')}`
+                    },
+                    grid: { color: colors.grid },
+                }
+            }
+        }
+    });
+}
+
+function switchTrendRange(range) {
+    const source = chartDataByRange[range];
+    if (!source || !payrollTrendChart) return;
+    payrollTrendChart.data.labels = source.labels;
+    payrollTrendChart.data.datasets = buildTrendDatasets(source);
+    payrollTrendChart.update();
+}
+
 document.querySelectorAll('.stat-value[data-value]').forEach(el => {
     const target = parseFloat(el.dataset.value) || 0;
     const duration = 1000;
@@ -605,10 +722,13 @@ document.querySelectorAll('.chart-tab').forEach(tab => {
     tab.addEventListener('click', function() {
         document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
         this.classList.add('active');
+        switchTrendRange(this.dataset.range);
         this.style.transform = 'scale(0.95)';
         setTimeout(() => this.style.transform = 'scale(1)', 100);
     });
 });
+
+initPayrollTrendChart('6m');
 {% endif %}
 
 // Console Log

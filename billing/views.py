@@ -3,6 +3,8 @@ from django.contrib import messages
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from decimal import Decimal
+from django.utils.dateparse import parse_date
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from portal.decorators import manager_required
@@ -57,6 +59,18 @@ def billing_dashboard(request, viewing_as_owner=False):
 
     unpaid_count = bills.filter(is_paid=False).count()
 
+    # Monthly summary cards (default: current month)
+    today = timezone.now().date()
+    monthly_bills = bills.filter(created_at__year=today.year, created_at__month=today.month)
+    monthly_bill_count = monthly_bills.count()
+    taxable_amount = monthly_bills.aggregate(
+        total=Coalesce(Sum("amount"), Decimal("0.00"))
+    )["total"]
+
+    gst_rate = Decimal("0.18")
+    gst_amount = (taxable_amount * gst_rate).quantize(Decimal("0.01"))
+    total_amount_with_gst = (taxable_amount + gst_amount).quantize(Decimal("0.01"))
+
     # percentages (safe)
     total_amount = total_paid + total_unpaid
     paid_percentage = int((total_paid / total_amount) * 100) if total_amount else 0
@@ -72,6 +86,11 @@ def billing_dashboard(request, viewing_as_owner=False):
         "paid_percentage": paid_percentage,
         "unpaid_percentage": unpaid_percentage,
         "unpaid_bill_percentage": unpaid_bill_percentage,
+        "monthly_bill_count": monthly_bill_count,
+        "taxable_amount": taxable_amount,
+        "gst_amount": gst_amount,
+        "total_amount_with_gst": total_amount_with_gst,
+        "today_date": today.isoformat(),
     }
 
     return render(request, "billing/billing_dashboard.html", context)
@@ -80,8 +99,17 @@ def billing_dashboard(request, viewing_as_owner=False):
 @require_POST
 def toggle_bill_status(request, bill_id):
     bill = get_object_or_404(Bill, id=bill_id)
-    bill.is_paid = not bill.is_paid
-    bill.save()
+
+    if bill.is_paid:
+        bill.is_paid = False
+        bill.paid_on = None
+        bill.save(update_fields=["is_paid", "paid_on"])
+    else:
+        selected_date_raw = request.POST.get("paid_on", "").strip()
+        selected_date = parse_date(selected_date_raw) if selected_date_raw else None
+        bill.is_paid = True
+        bill.paid_on = selected_date or timezone.localdate()
+        bill.save(update_fields=["is_paid", "paid_on"])
 
     if bill.is_paid:
         messages.success(request, "Bill marked as PAID.")

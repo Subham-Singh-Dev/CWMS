@@ -21,7 +21,7 @@
 
 ## Overview
 
-CWMS replaces paper registers, Excel sheets, and ad-hoc workflows used by contractors to manage 50-200+ daily-wage workers. It provides a deterministic, auditable payroll workflow with attendance, advances, expenses, billing, owner reporting, and exportable documents.
+CWMS replaces paper registers, Excel sheets, and ad-hoc workflows used by contractors to manage 100-400+ daily-wage workers. It provides a deterministic, auditable payroll workflow with attendance, advances, expenses, billing, owner reporting, and exportable documents.
 
 ---
 

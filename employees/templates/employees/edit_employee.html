@@ -97,6 +97,13 @@
             background: linear-gradient(90deg, var(--primary-500), var(--purple-500));
         }
         .brand-section { display: flex; flex-direction: column; gap: 2px; }
+        .company-name {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: #facc15;
+        }
         .brand {
             font-weight: 900;
             font-size: 24px;
@@ -357,6 +364,7 @@
     <!-- HEADER -->
     <div class="header">
         <div class="brand-section">
+            <div class="company-name">Sakuntalam India Services</div>
             <div class="brand">CWMS</div>
             <div class="brand-subtitle">👷 Add New Employee</div>
         </div>
@@ -408,6 +416,44 @@
                     ✅ Employee updated successfully.<br>
                 </div>
                 {% endif %}
+
+                <div class="form-group full-width">
+                    <label class="form-label">Employment Classification</label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Employment Type <span class="required">*</span></label>
+                    <select name="employment_type" id="employment_type" class="form-select" required>
+                        <option value="LOCAL" {% if employee.employment_type == 'LOCAL' %}selected{% endif %}>Local</option>
+                        <option value="PERMANENT" {% if employee.employment_type == 'PERMANENT' %}selected{% endif %}>Permanent</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="pf_applicable_group">
+                    <label class="form-label">PF Applicable</label>
+                    <label>
+                        <input type="checkbox" name="pf_applicable" id="pf_applicable" {% if employee.pf_applicable %}checked{% endif %}>
+                        Deduct PF during payroll generation
+                    </label>
+                </div>
+
+                <div class="form-group" id="esic_applicable_group">
+                    <label class="form-label">ESIC Applicable</label>
+                    <label>
+                        <input type="checkbox" name="esic_applicable" id="esic_applicable" {% if employee.esic_applicable %}checked{% endif %}>
+                        Deduct ESIC during payroll generation
+                    </label>
+                </div>
+
+                <div class="form-group" id="pf_rate_group">
+                    <label class="form-label">PF Rate</label>
+                    <input type="number" name="pf_rate" id="pf_rate" class="form-input" min="0" step="0.0001" value="{{ employee.pf_rate }}">
+                </div>
+
+                <div class="form-group" id="esic_rate_group">
+                    <label class="form-label">ESIC Rate</label>
+                    <input type="number" name="esic_rate" id="esic_rate" class="form-input" min="0" step="0.0001" value="{{ employee.esic_rate }}">
+                </div>
 
                 <!-- Name -->
                 <div class="form-group">
@@ -510,6 +556,31 @@
 document.querySelector('input[name="phone_number"]').addEventListener('input', function(e) {
     this.value = this.value.replace(/[^0-9]/g, '').substring(0, 10);
 });
+
+function toggleEmploymentFields() {
+    const employmentType = document.getElementById('employment_type').value;
+    const pfApplicableGroup = document.getElementById('pf_applicable_group');
+    const esicApplicableGroup = document.getElementById('esic_applicable_group');
+    const pfRateGroup = document.getElementById('pf_rate_group');
+    const esicRateGroup = document.getElementById('esic_rate_group');
+    const pfApplicable = document.getElementById('pf_applicable');
+    const esicApplicable = document.getElementById('esic_applicable');
+
+    const isPermanent = employmentType === 'PERMANENT';
+
+    pfApplicableGroup.style.display = isPermanent ? 'flex' : 'none';
+    esicApplicableGroup.style.display = isPermanent ? 'flex' : 'none';
+    pfRateGroup.style.display = isPermanent ? 'flex' : 'none';
+    esicRateGroup.style.display = isPermanent ? 'flex' : 'none';
+
+    if (!isPermanent) {
+        pfApplicable.checked = false;
+        esicApplicable.checked = false;
+    }
+}
+
+document.getElementById('employment_type').addEventListener('change', toggleEmploymentFields);
+document.addEventListener('DOMContentLoaded', toggleEmploymentFields);
 </script>
 <script src="{% static 'js/theme.js' %}"></script>
 </body>

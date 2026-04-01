@@ -105,9 +105,13 @@
         }
 
         .page-container {
-            max-width: 1400px;
-            margin: 32px auto;
-            padding: 0 24px;
+            width: 100%;
+            max-width: 100%;
+            margin: 10px auto;
+            padding: 0 10px;
+            min-height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
         }
 
         /* ============================================
@@ -119,7 +123,7 @@
             border: 1px solid var(--border-light);
             border-radius: 12px;
             padding: 24px 28px;
-            margin-bottom: 24px;
+            margin-bottom: 12px;
             box-shadow: var(--shadow-md);
             display: flex;
             justify-content: space-between;
@@ -134,6 +138,16 @@
             gap: 4px;
         }
 
+        .brand-title {
+            font-size: 30px;
+            font-weight: 900;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            color: #facc15;
+            text-shadow: 0 2px 10px rgba(250, 204, 21, 0.18);
+            line-height: 1.1;
+        }
+
         .page-title {
             font-size: 26px;
             font-weight: 800;
@@ -146,12 +160,117 @@
             color: var(--text-secondary);
             font-weight: 600;
         }
+        .header-middle {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            min-width: 220px;
+            gap: 10px;
+        }
+        .payroll-cycle-badge {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 26px;
+            border-radius: 14px;
+            border: 1px solid var(--border-medium);
+            background: linear-gradient(135deg, rgba(59,130,246,.1), rgba(16,185,129,.08));
+            min-width: 220px;
+        }
+        .payroll-cycle-badge .k {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            color: var(--text-muted);
+            font-weight: 800;
+        }
+        .payroll-cycle-badge .v {
+            font-size: 30px;
+            color: var(--text-primary);
+            font-weight: 900;
+            letter-spacing: -.4px;
+            line-height: 1.05;
+        }
+        .header-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .stat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-body);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+        .stat-chip .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--text-muted);
+        }
 
         .header-actions {
             display: flex;
             gap: 12px;
             align-items: center;
             flex-wrap: wrap;
+        }
+
+        .filter-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-right: 4px;
+        }
+        .filter-input {
+            border: 1px solid var(--border-medium);
+            background: var(--bg-body);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 180px;
+        }
+        .filter-btn {
+            border: 1px solid var(--border-medium);
+            background: var(--bg-body);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .filter-btn:hover,
+        .filter-input:focus {
+            border-color: var(--accent);
+            outline: none;
         }
 
         .header-link {
@@ -295,16 +414,10 @@
             border-radius: 12px;
             overflow: hidden;
             box-shadow: var(--shadow-lg);
-        }
-
-        /* Table Stats Summary Bar */
-        .table-stats {
-            padding: 16px 20px;
-            background: var(--bg-body);
-            border-bottom: 1px solid var(--border-light);
             display: flex;
-            gap: 32px;
-            flex-wrap: wrap;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
         }
 
         .stat-item {
@@ -330,7 +443,8 @@
         /* Table Wrapper for Scroll */
         .table-wrapper {
             overflow-x: auto;
-            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+            height: calc(100vh - 260px);
             position: relative;
         }
 
@@ -353,7 +467,7 @@
         }
 
         th {
-            padding: 16px 20px;
+            padding: 14px 12px;
             text-align: left;
             font-size: 12px;
             font-weight: 700;
@@ -386,15 +500,92 @@
         }
 
         td {
-            padding: 16px 20px;
+            padding: 14px 12px;
             color: var(--text-primary);
             font-size: 14px;
+        }
+
+        .sticky-col {
+            position: sticky;
+            z-index: 3;
+        }
+        .sticky-col-1 {
+            left: 0;
+            min-width: 140px;
+            max-width: 140px;
+            box-shadow: 1px 0 0 var(--border-light);
+        }
+        .sticky-col-2 {
+            left: 140px;
+            min-width: 190px;
+            max-width: 190px;
+            box-shadow: 1px 0 0 var(--border-light);
+        }
+        thead .sticky-col {
+            z-index: 12;
+            background: var(--bg-table-header);
+        }
+        tbody tr:nth-child(odd) .sticky-col {
+            background: var(--bg-card);
+        }
+        tbody tr:nth-child(even) .sticky-col {
+            background: var(--bg-row-even);
+        }
+        tbody tr:hover .sticky-col {
+            background: var(--bg-row-hover);
+        }
+        .sticky-right {
+            position: sticky;
+            right: 0;
+            z-index: 4;
+            min-width: 190px;
+            box-shadow: -1px 0 0 var(--border-light);
+        }
+        thead .sticky-right {
+            z-index: 13;
+            background: var(--bg-table-header);
+        }
+        tbody tr:nth-child(odd) .sticky-right {
+            background: var(--bg-card);
+        }
+        tbody tr:nth-child(even) .sticky-right {
+            background: var(--bg-row-even);
+        }
+        tbody tr:hover .sticky-right {
+            background: var(--bg-row-hover);
+        }
+
+        .employee-id {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
         }
 
         /* Employee Name Column */
         .employee-name {
             font-weight: 600;
             color: var(--text-primary);
+        }
+        .emp-type-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            text-transform: uppercase;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-body);
+            color: var(--text-secondary);
+        }
+        .emp-type-pill.permanent {
+            background: rgba(59,130,246,.12);
+            color: var(--accent);
+            border-color: rgba(59,130,246,.35);
         }
 
         /* Numeric Columns - Right Aligned */
@@ -601,13 +792,17 @@
                 font-size: 22px;
             }
 
-            .table-stats {
-                flex-direction: column;
-                gap: 12px;
+            .table-wrapper {
+                height: calc(100vh - 280px);
             }
 
-            .table-wrapper {
-                max-height: calc(100vh - 400px);
+            .header-middle {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .filter-input {
+                width: 100%;
             }
 
             th, td {
@@ -689,7 +884,20 @@
     <div class="page-header">
         <div class="header-title-section">
             <h1 class="page-title">💼 Salary List</h1>
-            <div class="month-display">{{ selected_month }}</div>
+            <div class="month-display">Salary Register</div>
+            <div class="header-meta-row">
+                <span class="stat-chip"><span class="label">Total</span> <span id="totalCount">{{ rows|length }}</span></span>
+                <span class="stat-chip"><span class="label">Paid</span> <span id="paidCount">0</span></span>
+                <span class="stat-chip"><span class="label">Pending</span> <span id="unpaidCount">0</span></span>
+            </div>
+        </div>
+
+        <div class="header-middle">
+            <div class="brand-title">Sakuntalam India Services</div>
+            <div class="payroll-cycle-badge">
+                <span class="k">Payroll Cycle</span>
+                <span class="v">{{ selected_month_display|default:selected_month }}</span>
+            </div>
         </div>
 
         <div class="header-actions">
@@ -724,48 +932,68 @@
         </ul>
     {% endif %}
 
+    <div class="filter-bar">
+        <span class="filter-title">Quick Filters</span>
+        <input id="filterSearch" class="filter-input" type="text" placeholder="Search by employee name or EMP ID" />
+        <select id="filterEmployment" class="filter-input">
+            <option value="all">Employment Type: All</option>
+            <option value="LOCAL">Local</option>
+            <option value="PERMANENT">Permanent</option>
+        </select>
+        <select id="filterStatus" class="filter-input">
+            <option value="all">Status: All</option>
+            <option value="paid">Paid</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="not-generated">Not Generated</option>
+        </select>
+        <select id="filterGenerated" class="filter-input">
+            <option value="all">Salary Record: All</option>
+            <option value="generated">Generated Only</option>
+            <option value="not-generated">Not Generated Only</option>
+        </select>
+        <button id="resetFilters" type="button" class="filter-btn">Reset</button>
+    </div>
+
     <!-- ============================================
          SALARY TABLE
          ============================================ -->
     <div class="table-container">
-        
-        <!-- Quick Stats Bar -->
-        <div class="table-stats">
-            <div class="stat-item">
-                <div class="stat-label">Total Entries</div>
-                <div class="stat-value" id="totalCount">{{ rows|length }}</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">Paid</div>
-                <div class="stat-value stat-paid" id="paidCount">0</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">Pending</div>
-                <div class="stat-value stat-unpaid" id="unpaidCount">0</div>
-            </div>
-        </div>
-
         <!-- Scrollable Table -->
         <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
-                        <th>Employee</th>
+                        <th class="sticky-col sticky-col-1">Employee ID</th>
+                        <th class="sticky-col sticky-col-2">Employee</th>
+                        <th>Employment Type</th>
                         <th class="col-numeric">Gross Pay</th>
                         <th class="col-numeric">Advance Deducted</th>
+                        <th class="col-numeric">PF Deduction</th>
+                        <th class="col-numeric">ESIC Deduction</th>
+                        <th class="col-numeric">Total Deductions</th>
                         <th class="col-numeric">Net Pay</th>
                         <th>Status</th>
                         <th>Paid On</th>
-                        <th>Action</th>
+                        <th class="sticky-right">Action</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     {% for row in rows %}
-                        <tr data-status="{% if row.salary %}{% if row.salary.is_paid %}paid{% else %}unpaid{% endif %}{% else %}not-generated{% endif %}">
+                        <tr data-status="{% if row.salary %}{% if row.salary.is_paid %}paid{% else %}unpaid{% endif %}{% else %}not-generated{% endif %}" data-employment="{{ row.employee.employment_type }}" data-generated="{% if row.salary %}generated{% else %}not-generated{% endif %}" data-name="{{ row.employee.name|lower }}" data-empid="{{ row.employee.user.username|lower }}">
+                            <td class="sticky-col sticky-col-1">
+                                <span class="employee-id">{{ row.employee.user.username|default:"—" }}</span>
+                            </td>
+
                             <!-- Employee Name -->
-                            <td>
+                            <td class="sticky-col sticky-col-2">
                                 <span class="employee-name">{{ row.employee.name }}</span>
+                            </td>
+
+                            <td>
+                                <span class="emp-type-pill {% if row.employee.employment_type == 'PERMANENT' %}permanent{% endif %}">
+                                    {{ row.employee.get_employment_type_display }}
+                                </span>
                             </td>
 
                             {% if row.salary %}
@@ -777,6 +1005,18 @@
                                 <!-- Advance Deducted -->
                                 <td class="col-numeric">
                                     <span class="currency">₹</span>{{ row.salary.advance_deducted|floatformat:0 }}
+                                </td>
+
+                                <td class="col-numeric">
+                                    <span class="currency">₹</span>{{ row.salary.pf_deduction|floatformat:0 }}
+                                </td>
+
+                                <td class="col-numeric">
+                                    <span class="currency">₹</span>{{ row.salary.esic_deduction|floatformat:0 }}
+                                </td>
+
+                                <td class="col-numeric">
+                                    <span class="currency">₹</span>{{ row.salary.total_deductions|floatformat:0 }}
                                 </td>
 
                                 <!-- Net Pay -->
@@ -809,7 +1049,7 @@
 
 
                                 <!-- Action -->
-                                <td>
+                                <td class="sticky-right">
                                     {% if not row.salary.is_paid %}
                                         <form method="post" action="{% url 'mark_salary_paid' %}" class="action-form">
                                             {% csrf_token %}
@@ -826,13 +1066,15 @@
 
                             {% else %}
                                 <!-- No Salary Generated -->
-                                <td colspan="3" class="empty-cell">—</td>
+                                <td colspan="6" class="empty-cell">—</td>
 
                                 <td>
                                     <span class="badge badge-not-generated">Not Generated</span>
                                 </td>
 
-                                <td>
+                                <td class="empty-cell">—</td>
+
+                                <td class="sticky-right">
                                     <form method="post" action="{% url 'generate_employee_salary' %}" class="action-form">
                                         {% csrf_token %}
                                         <input type="hidden" name="employee_id" value="{{ row.employee.id }}">
@@ -898,16 +1140,39 @@ themeToggle.addEventListener("click", () => {
 function updateStats() {
     const rows = document.querySelectorAll('tbody tr');
     let paidCount = 0;
-    let unpaidCount = 0;
+    let pendingCount = 0;
+    let totalVisible = 0;
     
     rows.forEach(row => {
+        if (row.style.display === 'none') return;
+        totalVisible++;
         const status = row.dataset.status;
         if (status === 'paid') paidCount++;
-        if (status === 'unpaid') unpaidCount++;
+        if (status === 'unpaid' || status === 'not-generated') pendingCount++;
     });
     
+    document.getElementById('totalCount').textContent = totalVisible;
     document.getElementById('paidCount').textContent = paidCount;
-    document.getElementById('unpaidCount').textContent = unpaidCount;
+    document.getElementById('unpaidCount').textContent = pendingCount;
+}
+
+function applyFilters() {
+    const searchTerm = (document.getElementById('filterSearch').value || '').trim().toLowerCase();
+    const employment = document.getElementById('filterEmployment').value;
+    const status = document.getElementById('filterStatus').value;
+    const generated = document.getElementById('filterGenerated').value;
+
+    document.querySelectorAll('tbody tr').forEach((row) => {
+        const nameText = row.dataset.name || '';
+        const empIdText = row.dataset.empid || '';
+        const matchSearch = !searchTerm || nameText.includes(searchTerm) || empIdText.includes(searchTerm);
+        const matchEmployment = employment === 'all' || row.dataset.employment === employment;
+        const matchStatus = status === 'all' || row.dataset.status === status;
+        const matchGenerated = generated === 'all' || row.dataset.generated === generated;
+        row.style.display = (matchSearch && matchEmployment && matchStatus && matchGenerated) ? '' : 'none';
+    });
+
+    updateStats();
 }
 
 // ============================================
@@ -945,6 +1210,18 @@ document.querySelectorAll('.action-btn').forEach(btn => {
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('filterSearch').addEventListener('input', applyFilters);
+    document.getElementById('filterEmployment').addEventListener('change', applyFilters);
+    document.getElementById('filterStatus').addEventListener('change', applyFilters);
+    document.getElementById('filterGenerated').addEventListener('change', applyFilters);
+    document.getElementById('resetFilters').addEventListener('click', () => {
+        document.getElementById('filterSearch').value = '';
+        document.getElementById('filterEmployment').value = 'all';
+        document.getElementById('filterStatus').value = 'all';
+        document.getElementById('filterGenerated').value = 'all';
+        applyFilters();
+    });
+
     updateStats();
     
     console.log(

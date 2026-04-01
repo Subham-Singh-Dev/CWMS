@@ -21,13 +21,13 @@ def get_lock_date():
 @manager_required
 def expense_dashboard(request, viewing_as_owner=False):
     if request.method == "POST":
-        date = request.POST.get("date")
+        expense_date_str = request.POST.get("date")
         category = request.POST.get("category")
         description = request.POST.get("description")
         amount = request.POST.get("amount")
         payment_mode = request.POST.get("payment_mode")
 
-        if not all([date, category, description, amount, payment_mode]):
+        if not all([expense_date_str, category, description, amount, payment_mode]):
             messages.error(request, "All fields are required.")
             return redirect("expenses:expense_dashboard")
 
@@ -38,7 +38,7 @@ def expense_dashboard(request, viewing_as_owner=False):
             return redirect("expenses:expense_dashboard")
         
         Expense.objects.create(
-            date=date,
+            date=expense_date_str,
             category=category,
             description=description,
             amount=expense_amount,

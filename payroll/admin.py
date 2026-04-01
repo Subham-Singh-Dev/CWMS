@@ -39,9 +39,41 @@ class MonthlySalaryAdmin(admin.ModelAdmin):
         'overtime_hours',
         'gross_pay',
         'advance_deducted',
+        'pf_deduction',
+        'esic_deduction',
+        'pf_rate_snapshot',
+        'esic_rate_snapshot',
+        'total_deductions',
         'net_pay',
         'remaining_advance',
+        'is_paid',
+        'paid_on',
         'generated_at',
+    )
+    fieldsets = (
+        ('Employee & Period', {
+            'fields': ('employee', 'month', 'generated_at')
+        }),
+        ('Attendance Snapshot', {
+            'fields': ('days_present', 'half_days', 'paid_leaves', 'overtime_hours')
+        }),
+        ('Financial Snapshot', {
+            'fields': (
+                'gross_pay',
+                'advance_deducted',
+                'pf_deduction',
+                'esic_deduction',
+                'total_deductions',
+                'net_pay',
+                'remaining_advance',
+            )
+        }),
+        ('Statutory Rate Snapshots', {
+            'fields': ('pf_rate_snapshot', 'esic_rate_snapshot')
+        }),
+        ('Payment Status', {
+            'fields': ('is_paid', 'paid_on')
+        }),
     )
 
     # 1. Prevent Manual Creation (Always True for Integrity)

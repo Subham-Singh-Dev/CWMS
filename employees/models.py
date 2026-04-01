@@ -2,6 +2,13 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth.models import User  # <--- The Security Import
+from decimal import Decimal
+
+
+EMPLOYMENT_TYPE_CHOICES = [
+    ('LOCAL', 'Local'),
+    ('PERMANENT', 'Permanent'),
+]
 
 class Role(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -27,6 +34,32 @@ class Employee(models.Model):
     # --- JOB DETAILS ---
     role = models.ForeignKey(Role, on_delete=models.PROTECT)
     daily_wage = models.DecimalField(max_digits=8, decimal_places=2)
+    employment_type = models.CharField(
+        max_length=10,
+        choices=EMPLOYMENT_TYPE_CHOICES,
+        default='LOCAL',
+        help_text="Local = daily wage only. Permanent = subject to PF/ESIC deductions."
+    )
+    pf_applicable = models.BooleanField(
+        default=False,
+        help_text="If True, PF will be deducted during payroll generation."
+    )
+    esic_applicable = models.BooleanField(
+        default=False,
+        help_text="If True, ESIC will be deducted during payroll generation."
+    )
+    pf_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal('0.1200'),
+        help_text="Employee PF contribution rate. Default 12% = 0.1200"
+    )
+    esic_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal('0.0075'),
+        help_text="Employee ESIC contribution rate. Default 0.75% = 0.0075"
+    )
     join_date = models.DateField()
     is_active = models.BooleanField(default=True)
 
@@ -52,6 +85,10 @@ class Employee(models.Model):
             raise ValidationError("Daily wage must be positive.")
         if self.join_date > timezone.now().date():
             raise ValidationError("Join date cannot be in the future.")
+        if self.employment_type == 'LOCAL' and (self.pf_applicable or self.esic_applicable):
+            raise ValidationError(
+                "Local employees cannot have PF or ESIC applicable. Set both flags to False."
+            )
 
     def __str__(self):
         return f"{self.name} ({self.role.name})"

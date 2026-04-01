@@ -44,6 +44,24 @@ class SalaryAlreadyGeneratedError(Exception):
      pass
 
 
+def _calculate_pf(gross_pay: Decimal, rate: Decimal) -> Decimal:
+    """
+    Calculate employee PF contribution.
+    Applied on gross pay at the given rate.
+    Uses ROUND_HALF_UP for statutory compliance.
+    """
+    return (gross_pay * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def _calculate_esic(gross_pay: Decimal, rate: Decimal) -> Decimal:
+    """
+    Calculate employee ESIC contribution.
+    Applied on gross pay at the given rate.
+    Uses ROUND_HALF_UP for statutory compliance.
+    """
+    return (gross_pay * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
 def generate_monthly_salary(employee, month):
     """
     Generate and persist a salary record for ONE employee for ONE month.
@@ -198,6 +216,24 @@ def generate_monthly_salary(employee, month):
             settled=False
         ).aggregate(total=Sum('remaining_amount'))['total'] or Decimal('0.00')
 
+        # --- PF Deduction ---
+        pf_deduction = Decimal('0.00')
+        pf_rate_used = Decimal('0.0000')
+        if employee.pf_applicable:
+            pf_rate_used = employee.pf_rate
+            pf_deduction = _calculate_pf(gross_pay, pf_rate_used)
+
+        # --- ESIC Deduction ---
+        esic_deduction = Decimal('0.00')
+        esic_rate_used = Decimal('0.0000')
+        if employee.esic_applicable:
+            esic_rate_used = employee.esic_rate
+            esic_deduction = _calculate_esic(gross_pay, esic_rate_used)
+
+        # --- Final Net Pay ---
+        total_deductions = total_advance_deducted + pf_deduction + esic_deduction
+        net_pay = gross_pay - total_deductions
+
         # ── STEP 6: Persist immutable salary snapshot ──────────
         salary = MonthlySalary.objects.create(
             employee=employee,
@@ -209,7 +245,12 @@ def generate_monthly_salary(employee, month):
             
             gross_pay=gross_pay,
             advance_deducted=total_advance_deducted,
-            net_pay=remaining_salary,
+            pf_deduction=pf_deduction,
+            pf_rate_snapshot=pf_rate_used,
+            esic_deduction=esic_deduction,
+            esic_rate_snapshot=esic_rate_used,
+            total_deductions=total_deductions,
+            net_pay=net_pay,
             remaining_advance=remaining_advance,
             
             is_paid=False,

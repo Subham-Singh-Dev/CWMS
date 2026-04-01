@@ -15,6 +15,7 @@ ARCHITECTURAL RULE:
 
 
 from django.db import models
+from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.utils import timezone
@@ -153,6 +154,36 @@ class MonthlySalary(models.Model):
     # Financial snapshot (immutable after generation)
     gross_pay = models.DecimalField(max_digits=10, decimal_places=2)
     advance_deducted = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    pf_deduction = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="PF amount deducted this month."
+    )
+    esic_deduction = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="ESIC amount deducted this month."
+    )
+    pf_rate_snapshot = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="PF rate in effect at time of payroll generation. For audit trail."
+    )
+    esic_rate_snapshot = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        help_text="ESIC rate in effect at time of payroll generation. For audit trail."
+    )
+    total_deductions = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Sum of advance + PF + ESIC deductions."
+    )
 
     net_pay = models.DecimalField(max_digits=10, decimal_places=2)
     remaining_advance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -177,9 +208,42 @@ class MonthlySalary(models.Model):
         ]
 
     def clean(self):
-        """Ensure month is always stored as the first day of the month."""
-        if self.month.day != 1:
+        """Ensure month consistency and financial integrity for admin/non-service writes."""
+        parent_clean = getattr(super(), 'clean', None)
+        if callable(parent_clean):
+            parent_clean()
+
+        if self.month and self.month.day != 1:
             raise ValidationError("Month must be the first day of the month.")
+
+        tolerance = Decimal('0.01')
+        zero = Decimal('0.00')
+
+        advance_value = getattr(self, 'advance_deducted', zero)
+        pf_value = getattr(self, 'pf_deduction', zero)
+        esic_value = getattr(self, 'esic_deduction', zero)
+        total_value = getattr(self, 'total_deductions', zero)
+        gross_value = getattr(self, 'gross_pay', zero)
+        net_value = getattr(self, 'net_pay', zero)
+
+        advance_value = advance_value if advance_value is not None else zero
+        pf_value = pf_value if pf_value is not None else zero
+        esic_value = esic_value if esic_value is not None else zero
+        total_value = total_value if total_value is not None else zero
+        gross_value = gross_value if gross_value is not None else zero
+        net_value = net_value if net_value is not None else zero
+
+        expected_total = advance_value + pf_value + esic_value
+        if abs(total_value - expected_total) > tolerance:
+            raise ValidationError({
+                'total_deductions': 'total_deductions must equal advance_deduction + pf_deduction + esic_deduction.'
+            })
+
+        expected_net = gross_value - total_value
+        if abs(net_value - expected_net) > tolerance:
+            raise ValidationError({
+                'net_pay': 'net_pay must equal gross_pay minus total_deductions.'
+            })
 
     def __str__(self):
         return f"{self.employee.name} - {self.month.strftime('%B %Y')}"

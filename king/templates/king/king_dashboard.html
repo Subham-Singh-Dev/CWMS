@@ -567,7 +567,12 @@
     </div>
     <div class="chart-card">
         <div class="chart-head">
-            <div class="chart-title">💸 Expense Breakdown</div>
+            <div>
+                <div class="chart-title">💸 Expense Breakdown</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+                    Payroll deductions included: PF ₹{{ monthly_pf_deduction|floatformat:0 }} | ESIC ₹{{ monthly_esic_deduction|floatformat:0 }}
+                </div>
+            </div>
         </div>
         <div class="chart-wrap"><canvas id="expenseCatChart"></canvas></div>
     </div>

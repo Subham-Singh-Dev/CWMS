@@ -49,11 +49,27 @@
                     <td class="amount">Included</td>
                 </tr>
                 <tr>
-                    <td>Less: Advance Deducted</td>
+                    <td>Advance Deduction</td>
                     <td class="amount" style="color: #d9534f;">- {{ salary.advance_deducted }}</td>
                 </tr>
+                {% if salary.pf_deduction > 0 %}
+                <tr>
+                    <td>PF Deduction</td>
+                    <td class="amount" style="color: #d9534f;">- {{ salary.pf_deduction }}</td>
+                </tr>
+                {% endif %}
+                {% if salary.esic_deduction > 0 %}
+                <tr>
+                    <td>ESIC Deduction</td>
+                    <td class="amount" style="color: #d9534f;">- {{ salary.esic_deduction }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td>Total Deductions</td>
+                    <td class="amount" style="color: #d9534f;">- {{ salary.total_deductions }}</td>
+                </tr>
                 <tr class="total-row">
-                    <td>NET PAYABLE</td>
+                    <td>Net Pay</td>
                     <td class="amount">₹ {{ salary.net_pay }}</td>
                 </tr>
             </tbody>

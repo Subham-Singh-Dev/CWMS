@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import date
 
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -78,3 +79,16 @@ class BillingFlowTests(TestCase):
 
 		self.assertEqual(response.status_code, 403)
 		self.assertTrue(Bill.objects.filter(id=bill.id).exists())
+
+	def test_mark_bill_paid_uses_selected_date(self):
+		bill = Bill.objects.create(description='Office Rent', amount=Decimal('1500.00'))
+
+		response = self.client.post(
+			reverse('billing:toggle_bill_status', args=[bill.id]),
+			data={'paid_on': '2026-03-31'},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		bill.refresh_from_db()
+		self.assertTrue(bill.is_paid)
+		self.assertEqual(bill.paid_on, date(2026, 3, 31))

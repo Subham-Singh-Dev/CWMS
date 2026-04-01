@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 import csv
+import json
 from .models import MonthlySalary
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -118,6 +119,82 @@ def payroll_batch_summary(request, viewing_as_owner=False):
         month__year=month_date.year,
         month__month=month_date.month
     )
+
+    # Helpers for rolling month calculations
+    def shift_month(base_month, delta):
+        idx = (base_month.year * 12 + base_month.month - 1) + delta
+        year = idx // 12
+        month = (idx % 12) + 1
+        return date(year, month, 1)
+
+    months_6 = [shift_month(month_date.replace(day=1), -i) for i in range(5, -1, -1)]
+    months_12 = [shift_month(month_date.replace(day=1), -i) for i in range(11, -1, -1)]
+
+    trend_start = months_12[0]
+    trend_end = shift_month(month_date.replace(day=1), 1)
+
+    trend_qs = (
+        MonthlySalary.objects
+        .filter(month__gte=trend_start, month__lt=trend_end)
+        .values("month")
+        .annotate(
+            total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
+            total_deductions=Coalesce(Sum("total_deductions"), Decimal("0.00")),
+            total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
+            unpaid_liability=Coalesce(Sum("net_pay", filter=Q(is_paid=False)), Decimal("0.00")),
+        )
+    )
+
+    trend_map = {item["month"]: item for item in trend_qs}
+
+    def build_chart_series(month_points):
+        labels = []
+        gross = []
+        deductions = []
+        net = []
+        liability = []
+
+        for point in month_points:
+            labels.append(point.strftime("%b %y"))
+            data = trend_map.get(point)
+            gross.append(float(data["total_gross"]) if data else 0.0)
+            deductions.append(float(data["total_deductions"]) if data else 0.0)
+            net.append(float(data["total_net"]) if data else 0.0)
+            liability.append(float(data["unpaid_liability"]) if data else 0.0)
+
+        return {
+            "labels": labels,
+            "gross": gross,
+            "deductions": deductions,
+            "net": net,
+            "liability": liability,
+        }
+
+    chart_6 = build_chart_series(months_6)
+    chart_12 = build_chart_series(months_12)
+
+    year_start = date(month_date.year, 1, 1)
+    months_year = [date(month_date.year, m, 1) for m in range(1, month_date.month + 1)]
+    trend_year_qs = (
+        MonthlySalary.objects
+        .filter(month__gte=year_start, month__lt=trend_end)
+        .values("month")
+        .annotate(
+            total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
+            total_deductions=Coalesce(Sum("total_deductions"), Decimal("0.00")),
+            total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
+            unpaid_liability=Coalesce(Sum("net_pay", filter=Q(is_paid=False)), Decimal("0.00")),
+        )
+    )
+    trend_year_map = {item["month"]: item for item in trend_year_qs}
+
+    chart_year = {
+        "labels": [point.strftime("%b") for point in months_year],
+        "gross": [float(trend_year_map.get(point, {}).get("total_gross", 0.0)) for point in months_year],
+        "deductions": [float(trend_year_map.get(point, {}).get("total_deductions", 0.0)) for point in months_year],
+        "net": [float(trend_year_map.get(point, {}).get("total_net", 0.0)) for point in months_year],
+        "liability": [float(trend_year_map.get(point, {}).get("unpaid_liability", 0.0)) for point in months_year],
+    }
     
     batch_generated_at = salaries_qs.order_by("generated_at").values_list(
         "generated_at", flat=True
@@ -163,6 +240,9 @@ def payroll_batch_summary(request, viewing_as_owner=False):
         total_employees=Count("id"),
         total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
         total_advance_deducted=Coalesce(Sum("advance_deducted"), Decimal("0.00")),
+        total_pf_deduction=Coalesce(Sum("pf_deduction"), Decimal("0.00")),
+        total_esic_deduction=Coalesce(Sum("esic_deduction"), Decimal("0.00")),
+        total_deductions=Coalesce(Sum("total_deductions"), Decimal("0.00")),
         total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
         paid_count=Count("id", filter=Q(is_paid=True)),
         unpaid_count=Count("id", filter=Q(is_paid=False)),
@@ -184,10 +264,16 @@ def payroll_batch_summary(request, viewing_as_owner=False):
         "unpaid_count": aggregates["unpaid_count"],
         "total_gross": aggregates["total_gross"],
         "total_advance_deducted": aggregates["total_advance_deducted"],
+        "total_pf_deduction": aggregates["total_pf_deduction"],
+        "total_esic_deduction": aggregates["total_esic_deduction"],
+        "total_deductions": aggregates["total_deductions"],
         "total_net": aggregates["total_net"],
         "total_liability": unpaid_liability,
         "generated_at": batch_generated_at,
         "has_payroll": True,
+        "chart_6": json.dumps(chart_6),
+        "chart_12": json.dumps(chart_12),
+        "chart_year": json.dumps(chart_year),
     }
     
     return render(
@@ -212,7 +298,7 @@ def salary_list_view(request):
     except ValueError:
         raise Http404("Invalid month format")
 
-    employees = Employee.objects.all()
+    employees = Employee.objects.select_related("user").all()
 
     # Salaries already generated for this month
     salaries = MonthlySalary.objects.filter(
@@ -232,6 +318,7 @@ def salary_list_view(request):
 
     context = {
         "selected_month": selected_month,
+        "selected_month_display": month_date.strftime("%B %Y"),
         "rows": rows,
     }
 
@@ -356,8 +443,12 @@ def export_salary_list_csv(request):
     writer = csv.writer(response)
     writer.writerow([
         "Employee Name",
+        "Employment Type",
         "Gross Pay",
         "Advance Deducted",
+        "PF Deduction",
+        "ESIC Deduction",
+        "Total Deductions",
         "Net Pay",
         "Status",
         "Paid On"
@@ -366,8 +457,12 @@ def export_salary_list_csv(request):
     for salary in salaries:
         writer.writerow([
             salary.employee.name,
+            salary.employee.employment_type,
             salary.gross_pay,
             salary.advance_deducted,
+            salary.pf_deduction,
+            salary.esic_deduction,
+            salary.total_deductions,
             salary.net_pay,
             "Paid" if salary.is_paid else "Unpaid",
             salary.paid_on.strftime("%d-%b-%Y %H:%M") if salary.paid_on else ""

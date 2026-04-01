@@ -1,7 +1,9 @@
 from django.shortcuts import render
+from django.db.models import Q
 from portal.decorators import manager_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from decimal import Decimal, InvalidOperation
 from .models import Role, Employee
 from .services import create_employee_with_user
 
@@ -18,7 +20,12 @@ def add_employee_view(request):
         role_id = request.POST.get("role")
         daily_wage = request.POST.get("daily_wage")
         join_date = request.POST.get("join_date")
-        is_active = request.POST.get("is_active") == "True"
+        is_active = (request.POST.get("is_active") or "").lower() == "true"
+        employment_type = request.POST.get("employment_type", "LOCAL")
+        pf_applicable = request.POST.get("pf_applicable") == "on"
+        esic_applicable = request.POST.get("esic_applicable") == "on"
+        pf_rate = request.POST.get("pf_rate") or "0.1200"
+        esic_rate = request.POST.get("esic_rate") or "0.0075"
         father_name       = request.POST.get("father_name")
         email             = request.POST.get("email") or None
         current_address   = request.POST.get("current_address")
@@ -43,6 +50,23 @@ def add_employee_view(request):
 
         role = Role.objects.get(id=role_id)
 
+        if employment_type == 'LOCAL':
+            pf_applicable = False
+            esic_applicable = False
+
+        try:
+            pf_rate = Decimal(pf_rate).quantize(Decimal('0.0001'))
+            esic_rate = Decimal(esic_rate).quantize(Decimal('0.0001'))
+        except InvalidOperation:
+            return render(
+                request,
+                "employees/add_employee.html",
+                {
+                    "roles": roles,
+                    "error": "Invalid PF/ESIC rate format."
+                }
+            )
+
         try:
             employee, temp_password = create_employee_with_user(
                 name=name,
@@ -50,8 +74,26 @@ def add_employee_view(request):
                 role=role,
                 daily_wage=daily_wage,
                 join_date=join_date,
-                is_active=is_active
+                is_active=is_active,
+                employment_type=employment_type,
+                pf_applicable=pf_applicable,
+                esic_applicable=esic_applicable,
+                pf_rate=pf_rate,
+                esic_rate=esic_rate,
             )
+
+            employee.father_name = father_name
+            employee.email = email
+            employee.current_address = current_address
+            employee.permanent_address = permanent_address
+            employee.working_location = working_location
+            employee.aadhar_number = aadhar_number
+            employee.pan_number = pan_number
+            employee.uan_number = uan_number
+            employee.esic_number = esic_number
+            employee.bank_account_no = bank_account_no
+            employee.full_clean()
+            employee.save()
 
             return render(
                 request,
@@ -95,6 +137,11 @@ def edit_employee_view(request, employee_id):
         daily_wage = request.POST.get("daily_wage")
         join_date = request.POST.get("join_date")
         is_active = request.POST.get("is_active") == "true"
+        employment_type = request.POST.get("employment_type", "LOCAL")
+        pf_applicable = request.POST.get("pf_applicable") == "on"
+        esic_applicable = request.POST.get("esic_applicable") == "on"
+        pf_rate = request.POST.get("pf_rate") or "0.1200"
+        esic_rate = request.POST.get("esic_rate") or "0.0075"
 
         # Duplicate phone check (exclude current employee)
         if phone and Employee.objects.filter(phone_number=phone).exclude(id=employee.id).exists():
@@ -106,11 +153,30 @@ def edit_employee_view(request, employee_id):
 
         role = Role.objects.get(id=role_id)
 
+        if employment_type == 'LOCAL':
+            pf_applicable = False
+            esic_applicable = False
+
+        try:
+            pf_rate = Decimal(pf_rate).quantize(Decimal('0.0001'))
+            esic_rate = Decimal(esic_rate).quantize(Decimal('0.0001'))
+        except InvalidOperation:
+            return render(request, "employees/edit_employee.html", {
+                "roles": roles,
+                "employee": employee,
+                "error": "Invalid PF/ESIC rate format."
+            })
+
         try:
             employee.name = name
             employee.phone_number = phone
             employee.role = role
             employee.daily_wage = daily_wage
+            employee.employment_type = employment_type
+            employee.pf_applicable = pf_applicable
+            employee.esic_applicable = esic_applicable
+            employee.pf_rate = pf_rate
+            employee.esic_rate = esic_rate
             employee.join_date = join_date
             employee.is_active = is_active
 
@@ -149,9 +215,13 @@ def employee_list_view(request, viewing_as_owner=False):
     search = request.GET.get("search")
     role_id = request.GET.get("role")
     status = request.GET.get("status")
+    employment_type = request.GET.get("employment_type")
 
     if search:
-        employees = employees.filter(name__icontains=search)
+        employees = employees.filter(
+            Q(name__icontains=search) |
+            Q(user__username__icontains=search)
+        )
 
     if role_id:
         employees = employees.filter(role_id=role_id)
@@ -161,7 +231,17 @@ def employee_list_view(request, viewing_as_owner=False):
     elif status == "inactive":
         employees = employees.filter(is_active=False)
 
+    if employment_type in {"LOCAL", "PERMANENT"}:
+        employees = employees.filter(employment_type=employment_type)
+
+    total_count = employees.count()
+    active_count = employees.filter(is_active=True).count()
+    inactive_count = employees.filter(is_active=False).count()
+
     return render(request, "employees/employee_list.html", {
         "employees": employees,
-        "roles": roles
+        "roles": roles,
+        "total_count": total_count,
+        "active_count": active_count,
+        "inactive_count": inactive_count,
     })

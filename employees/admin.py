@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django import forms
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db import models  # <--- THIS WAS MISSING
@@ -8,6 +9,25 @@ import secrets
 
 from .models import Employee, Role
 
+
+class EmployeeAdminForm(forms.ModelForm):
+    class Meta:
+        model = Employee
+        exclude = ('user',)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('employment_type') == 'LOCAL':
+            if cleaned_data.get('pf_applicable') is True:
+                raise forms.ValidationError({
+                    'pf_applicable': 'Local employees cannot have PF deduction enabled.'
+                })
+            if cleaned_data.get('esic_applicable') is True:
+                raise forms.ValidationError({
+                    'esic_applicable': 'Local employees cannot have ESIC deduction enabled.'
+                })
+        return cleaned_data
+
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
     list_display = ('name', 'overtime_rate_per_hour', 'is_active')
@@ -16,10 +36,58 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
+    form = EmployeeAdminForm
     exclude = ('user',)
-    list_display = ('name', 'role', 'phone_number', 'get_system_id', 'is_active')
+    list_display = (
+        'name',
+        'role',
+        'phone_number',
+        'employment_type',
+        'pf_applicable',
+        'esic_applicable',
+        'get_system_id',
+        'is_active',
+    )
     search_fields = ('name', 'phone_number', 'user__username')
     list_filter = ('is_active', 'role')
+    fieldsets = (
+        ('Personal Details', {
+            'fields': (
+                'name',
+                'phone_number',
+                'father_name',
+                'email',
+                'join_date',
+                'is_active',
+            )
+        }),
+        ('Employment Classification & Statutory Settings', {
+            'fields': (
+                'employment_type',
+                'pf_applicable',
+                'esic_applicable',
+                'pf_rate',
+                'esic_rate',
+            )
+        }),
+        ('Work & Financial Details', {
+            'fields': (
+                'role',
+                'daily_wage',
+                'working_location',
+                'current_address',
+                'permanent_address',
+                'aadhar_number',
+                'pan_number',
+                'uan_number',
+                'esic_number',
+                'bank_account_no',
+            )
+        }),
+    )
+
+    class Media:
+        js = ('admin/js/employee_classification.js',)
 
     def get_system_id(self, obj):
         return obj.user.username if obj.user else "-"

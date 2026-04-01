@@ -158,6 +158,22 @@
             font-weight: 500;
         }
 
+        .company-center-title {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 34px;
+            font-weight: 900;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #facc15;
+            text-shadow: 0 4px 16px rgba(250, 204, 21, 0.25);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 1;
+        }
+
         .header-controls {
             display: flex;
             align-items: center;
@@ -677,6 +693,16 @@
             }
             
             .brand { font-size: 20px; }
+            .company-center-title {
+                position: static;
+                transform: none;
+                font-size: 20px;
+                width: 100%;
+                text-align: center;
+                margin-top: 6px;
+                margin-bottom: 2px;
+                order: 2;
+            }
             .metric-value { font-size: 28px; }
             .section-title { font-size: 18px; }
             
@@ -744,6 +770,7 @@
             <div class="brand-subtitle">Construction Workforce Management</div>
             {% endif %}
         </div>
+        <div class="company-center-title">Sakuntalam India Services</div>
         <div class="header-controls">
             <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Toggle Theme">🌙</button>
             <div class="user-info">
@@ -904,20 +931,11 @@
                 <div class="action-description">Employee salary list</div>
             </a>
 
-
-            {% if payroll_exists %}
-                <a href="{% url 'payroll_batch_summary' %}?month={{ selected_month }}" class="action-card">
-                    <div class="action-icon">📑</div>
-                    <div class="action-text">Payroll Summary</div>
-                    <div class="action-description">View generated payroll summary</div>
-                </a>
-            {% else %}
-                <div class="action-card disabled" title="Generate payroll first">
-                    <div class="action-icon">📑</div>
-                    <div class="action-text">Payroll Summary</div>
-                    <div class="action-description">Generate payroll to view summary</div>
-                </div>
-            {% endif %}
+            <a href="{% url 'payroll_batch_summary' %}?month={{ selected_month }}" class="action-card">
+                <div class="action-icon">📑</div>
+                <div class="action-text">Payroll Summary</div>
+                <div class="action-description">View payroll summary and status</div>
+            </a>
 
             <a href="{% url 'billing:billing_dashboard' %}" class="action-card">
                 <div class="action-icon">📄</div>

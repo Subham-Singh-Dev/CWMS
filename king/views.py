@@ -495,6 +495,22 @@ def king_dashboard(request):
         dummy = Expense(category=item['category'])
         expense_cat_labels.append(dummy.get_category_display())
         expense_cat_data.append(float(item['total']))
+
+    payroll_deductions = MonthlySalary.objects.filter(month=month_start).aggregate(
+        total_pf=Coalesce(Sum('pf_deduction'), Decimal('0.00')),
+        total_esic=Coalesce(Sum('esic_deduction'), Decimal('0.00')),
+    )
+
+    monthly_pf_deduction = payroll_deductions['total_pf']
+    monthly_esic_deduction = payroll_deductions['total_esic']
+
+    if monthly_pf_deduction > 0:
+        expense_cat_labels.append('PF Deduction (Payroll)')
+        expense_cat_data.append(float(monthly_pf_deduction))
+
+    if monthly_esic_deduction > 0:
+        expense_cat_labels.append('ESIC Deduction (Payroll)')
+        expense_cat_data.append(float(monthly_esic_deduction))
     
     # Replace cur_revenue with yearly manual revenue only
     year_start = date(today.year, 1, 1)
@@ -631,6 +647,8 @@ def king_dashboard(request):
         'role_counts':         json.dumps(role_counts),
         'expense_cat_labels':  json.dumps(expense_cat_labels),
         'expense_cat_data':    json.dumps(expense_cat_data),
+        'monthly_pf_deduction': monthly_pf_deduction,
+        'monthly_esic_deduction': monthly_esic_deduction,
 
         # Alerts
         'pending_bills_count':  pending_bills_count,

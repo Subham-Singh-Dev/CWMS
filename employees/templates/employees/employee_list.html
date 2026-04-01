@@ -60,11 +60,18 @@
             background: var(--bg-body);
             color: var(--text-primary);
             line-height: 1.6;
-            padding: 20px;
+            padding: 10px;
             transition: background-color .2s ease, color .2s ease;
             -webkit-font-smoothing: antialiased;
         }
-        .container { max-width: 1400px; margin: 0 auto; }
+        .container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            min-height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
+        }
         
         /* HEADER */
         .header {
@@ -90,6 +97,13 @@
             background: linear-gradient(90deg, var(--primary-500), var(--purple-500));
         }
         .brand-section { display: flex; flex-direction: column; gap: 2px; }
+        .company-name {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            color: #facc15;
+        }
         .brand {
             font-weight: 900;
             font-size: 24px;
@@ -208,7 +222,7 @@
         }
         .filter-form {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr auto;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
             gap: 12px;
             align-items: end;
         }
@@ -282,7 +296,7 @@
         }
         .table-wrap {
             overflow-x: auto;
-            max-height: 600px;
+            height: calc(100vh - 320px);
             overflow-y: auto;
         }
         table {
@@ -335,16 +349,67 @@
             background: var(--neutral-100);
             color: var(--text-secondary);
         }
+        .emp-type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 11px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            text-transform: uppercase;
+            border: 1px solid var(--border-strong);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+        .emp-type-badge.permanent {
+            background: rgba(59,130,246,.12);
+            color: var(--primary-600);
+            border-color: rgba(59,130,246,.35);
+        }
+        [data-theme="dark"] .emp-type-badge.permanent {
+            color: #93c5fd;
+        }
+        .statutory-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+        .statutory-badge.on {
+            background: var(--success-50);
+            color: var(--success-600);
+            border-color: var(--success-500);
+        }
+        [data-theme="dark"] .statutory-badge.on {
+            background: rgba(16,185,129,.18);
+            color: #6ee7b7;
+            border-color: rgba(16,185,129,.35);
+        }
         [data-theme="dark"] .role-badge {
             background: var(--neutral-700);
         }
         .system-id {
             font-family: 'Courier New', monospace;
             font-size: 13px;
-            color: var(--text-muted);
-            background: var(--bg-secondary);
-            padding: 2px 8px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            color: var(--text-primary);
+            background: var(--primary-50);
+            border: 1px solid var(--border-strong);
+            padding: 3px 9px;
             border-radius: 4px;
+        }
+        [data-theme="dark"] .system-id {
+            color: #bfdbfe;
+            background: rgba(59, 130, 246, 0.18);
+            border-color: rgba(96, 165, 250, 0.5);
         }
         .status-active {
             display: inline-flex;
@@ -411,7 +476,7 @@
         /* RESPONSIVE */
         @media (max-width: 968px) {
             .filter-form {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr 1fr 1fr;
             }
             .filter-group:first-child {
                 grid-column: 1 / -1;
@@ -432,6 +497,7 @@
     <!-- HEADER -->
     <div class="header">
         <div class="brand-section">
+            <div class="company-name">Sakuntalam India Services</div>
             <div class="brand">CWMS</div>
             <div class="brand-subtitle">👥 Employee Management</div>
         </div>
@@ -452,7 +518,7 @@
                 <span class="metric-badge badge-primary">Total</span>
             </div>
             <div class="metric-label">Total Employees</div>
-            <div class="metric-value">{{ employees|length }}</div>
+            <div class="metric-value">{{ total_count }}</div>
         </div>
         
         <div class="metric-card active">
@@ -461,7 +527,7 @@
                 <span class="metric-badge badge-success">Active</span>
             </div>
             <div class="metric-label">Active Workers</div>
-            <div class="metric-value">{{ employees|length }}</div>
+            <div class="metric-value">{{ active_count }}</div>
         </div>
         
         <div class="metric-card inactive">
@@ -470,7 +536,7 @@
                 <span class="metric-badge badge-neutral">Inactive</span>
             </div>
             <div class="metric-label">Inactive Workers</div>
-            <div class="metric-value">0</div>
+            <div class="metric-value">{{ inactive_count }}</div>
         </div>
     </div>
 
@@ -479,7 +545,7 @@
         <form method="get" class="filter-form">
             <div class="filter-group">
                 <label class="filter-label">Search</label>
-                <input type="text" name="search" class="filter-input" placeholder="Search by name..." value="{{ request.GET.search }}">
+                <input type="text" name="search" class="filter-input" placeholder="Search by name or system ID..." value="{{ request.GET.search }}">
             </div>
             
             <div class="filter-group">
@@ -504,6 +570,15 @@
             </div>
 
             <div class="filter-group">
+                <label class="filter-label">Employment Type</label>
+                <select name="employment_type" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="LOCAL" {% if request.GET.employment_type == "LOCAL" %}selected{% endif %}>Local</option>
+                    <option value="PERMANENT" {% if request.GET.employment_type == "PERMANENT" %}selected{% endif %}>Permanent</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
                 <button type="submit" class="btn-filter">🔍 Filter</button>
             </div>
         </form>
@@ -521,8 +596,10 @@
                 <thead>
                     <tr>
                         <th>Employee Name</th>
+                        <th>Employment Type</th>
                         <th>Role</th>
                         <th class="col-numeric">Daily Wage</th>
+                        <th>Statutory Profile</th>
                         <th>System ID</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -535,10 +612,24 @@
                             <span class="employee-name">{{ employee.name }}</span>
                         </td>
                         <td>
+                            <span class="emp-type-badge {% if employee.employment_type == 'PERMANENT' %}permanent{% endif %}">
+                                {{ employee.get_employment_type_display }}
+                            </span>
+                        </td>
+                        <td>
                             <span class="role-badge">{{ employee.role.name }}</span>
                         </td>
                         <td class="col-numeric">
                             <span style="font-size: 13px; opacity: 0.7; margin-right: 2px;">₹</span>{{ employee.daily_wage }}
+                        </td>
+                        <td>
+                            {% if employee.pf_applicable or employee.esic_applicable %}
+                                <span class="statutory-badge on">
+                                    {% if employee.pf_applicable %}PF{% endif %}{% if employee.pf_applicable and employee.esic_applicable %} + {% endif %}{% if employee.esic_applicable %}ESIC{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="statutory-badge">None</span>
+                            {% endif %}
                         </td>
                         <td>
                             <span class="system-id">{{ employee.user.username }}</span>

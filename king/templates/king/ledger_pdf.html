@@ -6,7 +6,7 @@
 <style>
     @page {
         size: A4;
-        margin: 15mm 12mm 12mm 12mm;
+        margin: 12mm 10mm 10mm 10mm;
     }
     body {
         font-family: Arial, sans-serif;
@@ -16,198 +16,169 @@
         padding: 0;
     }
 
-    /* ── HEADER ── */
-    .co-name {
+    .header {
         text-align: center;
-        font-size: 14px;
+        line-height: 1.25;
+        margin-bottom: 6px;
+    }
+    .co-name {
+        font-size: 24px;
         font-weight: bold;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
+    }
+    .co-address {
+        font-size: 11px;
+        margin-bottom: 1px;
+    }
+    .co-gstin {
+        font-size: 11px;
+        margin-bottom: 2px;
     }
     .ledger-word {
-        text-align: center;
-        font-size: 12px;
+        font-size: 30px;
         font-weight: bold;
-        letter-spacing: 5px;
-        margin: 5px 0 3px;
+        letter-spacing: 6px;
+        line-height: 1;
+        margin: 1px 0;
     }
     .date-range {
-        text-align: center;
-        font-size: 9px;
-        color: #555;
-        margin-bottom: 3px;
+        font-size: 11px;
+        margin-bottom: 1px;
     }
     .account-line {
-        text-align: center;
-        font-size: 10px;
+        font-size: 12px;
         font-weight: bold;
-        margin-bottom: 8px;
+        line-height: 1;
     }
-    hr.thick { border: none; border-top: 1.5px solid #111; margin: 4px 0; }
-    hr.thin  { border: none; border-top: 0.5px solid #999; margin: 4px 0; }
 
-    /* ── TABLE ── */
+    .rule {
+        border-top: 0.6px solid #777;
+        margin: 4px 0 8px;
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 6px;
     }
-
-    /* Column widths — must total 100% */
-    th.col-date   { width: 9%;  }
-    th.col-type   { width: 7%;  }
-    th.col-vch    { width: 13%; }
-    th.col-part   { width: 37%; }
-    th.col-debit  { width: 10%; }
-    th.col-credit { width: 10%; }
-    th.col-bal    { width: 14%; }
-
     thead th {
-        background-color: #ebebeb;
-        border: 1px solid #aaa;
+        border-bottom: 0.6px solid #777;
         padding: 5px 4px;
-        font-size: 9px;
+        font-size: 11px;
         font-weight: bold;
-        text-align: center;
+        text-align: left;
     }
-    thead th.left  { text-align: left; padding-left: 5px; }
-    thead th.right { text-align: right; padding-right: 5px; }
-
     tbody td {
-        border: 1px solid #ccc;
-        padding: 4px 4px;
-        font-size: 9px;
-        vertical-align: middle;
+        padding: 3px 4px;
+        font-size: 11px;
+        vertical-align: top;
     }
-    tbody td.right  { text-align: right;  padding-right: 5px; }
-    tbody td.center { text-align: center; }
-    tbody td.left   { text-align: left;   padding-left: 5px; }
 
-    tbody tr.even { background-color: #f9f9f9; }
+    .w-date { width: 10%; }
+    .w-type { width: 8%; }
+    .w-vch  { width: 14%; }
+    .w-part { width: 34%; }
+    .w-dr   { width: 11%; }
+    .w-cr   { width: 11%; }
+    .w-bal  { width: 12%; }
 
-    /* ── SUMMARY ROWS ── */
-    tr.row-total td {
-        background-color: #ececec;
-        font-weight: bold;
-        border-top: 1.5px solid #888;
-        padding: 5px 4px;
-        font-size: 9px;
+    .right { text-align: right; }
+    .center { text-align: center; }
+
+    .totals-wrap {
+        margin-top: 6px;
+        border-top: 0.6px solid #777;
+        padding-top: 6px;
     }
-    tr.row-balance td {
-        background-color: #f2f2ee;
-        font-weight: bold;
-        padding: 5px 4px;
-        font-size: 9px;
+    .totals-table {
+        width: 46%;
+        margin-left: auto;
+        border-collapse: collapse;
     }
-    tr.row-grand td {
-        background-color: #e2e2dc;
-        font-weight: bold;
-        border-top: 1.5px solid #333;
-        padding: 6px 4px;
-        font-size: 10px;
+    .totals-table td {
+        padding: 3px 4px;
+        font-size: 11px;
     }
-    .summary-label {
+    .totals-label {
         text-align: right;
-        padding-right: 6px;
         font-weight: bold;
-        color: #222;
+        width: 40%;
     }
-
-    /* ── FOOTER ── */
-    .footer {
-        margin-top: 14px;
-        font-size: 8px;
-        color: #999;
-        text-align: center;
-        border-top: 0.5px solid #ddd;
-        padding-top: 5px;
+    .totals-value {
+        text-align: right;
+        width: 30%;
     }
+    .line-under {
+        border-bottom: 0.6px solid #777;
+        padding-bottom: 2px;
+    }
+    .strong { font-weight: bold; }
 </style>
 </head>
 <body>
 
-    <div class="co-name">{{ BRAND_COMPANY_NAME|default:"Sakuntalam India Services" }}</div>
-    <hr class="thin">
-    <div class="ledger-word">L E D G E R</div>
-    <div class="date-range">( From {{ from_date|date:"d/m/Y" }} to {{ to_date|date:"d/m/Y" }} )</div>
-    <div class="account-line">Account : {{ BRAND_ACCOUNT_NAME|default:"SAKUNTALAM INDIA SERVICES" }}</div>
-    <hr class="thick">
+    <div class="header">
+        <div class="co-name">{{ company_name }}</div>
+        <div class="co-address">{{ company_address|default:"" }}</div>
+        <div class="co-gstin">GSTIN : {{ company_gstin|default:"" }}</div>
+        <div class="ledger-word">L E D G E R</div>
+        <div class="date-range">( From {{ from_date|date:"d/m/Y" }} to {{ to_date|date:"d/m/Y" }} )</div>
+        <div class="account-line">Account : {{ account_name }}</div>
+    </div>
+
+    <div class="rule"></div>
 
     <table>
         <thead>
             <tr>
-                <th class="col-date  left" >Date</th>
-                <th class="col-type  center">Type</th>
-                <th class="col-vch   center">Vch No.</th>
-                <th class="col-part  left" >Particulars</th>
-                <th class="col-debit  right">Debit(Rs.)</th>
-                <th class="col-credit right">Credit(Rs.)</th>
-                <th class="col-bal    right">Balance(Rs.)</th>
+                <th class="w-date">Date</th>
+                <th class="w-type center">Type</th>
+                <th class="w-vch center">Vch No.</th>
+                <th class="w-part">Particulars</th>
+                <th class="w-dr right">Debit(Rs.)</th>
+                <th class="w-cr right">Credit(Rs.)</th>
+                <th class="w-bal right">Balance(Rs.)</th>
             </tr>
         </thead>
         <tbody>
             {% for row in ledger_rows %}
-            <tr class="{% cycle 'odd' 'even' %}">
-                <td class="left">{{ row.entry.date|date:"d/m/Y" }}</td>
-                <td class="center">{{ row.entry.get_entry_type_display }}</td>
-                <td class="center" style="font-size:8px;">
-                    {{ row.entry.voucher_no|default:"" }}
-                </td>
-                <td class="left">{{ row.entry.particulars }}</td>
-                <td class="right">
-                    {% if row.entry.debit %}{{ row.entry.debit|floatformat:2 }}{% endif %}
-                </td>
-                <td class="right">
-                    {% if row.entry.credit %}{{ row.entry.credit|floatformat:2 }}{% endif %}
-                </td>
-                <td class="right">
-                    {{ row.balance|floatformat:2 }}
-                    <b>{{ row.balance_type }}</b>
-                </td>
+            <tr>
+                <td>{{ row.entry.date|date:"d/m/Y" }}</td>
+                <td class="center">{{ row.type_short }}</td>
+                <td class="center">{{ row.entry.voucher_number|default:"" }}</td>
+                <td>{{ row.particulars_with_prefix }}</td>
+                <td class="right">{{ row.debit_fmt }}</td>
+                <td class="right">{{ row.credit_fmt }}</td>
+                <td class="right">{{ row.balance_display }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" style="text-align:center;padding:16px;color:#999;">
-                    No entries for this period.
-                </td>
+                <td colspan="7" class="center" style="padding: 12px; color: #777;">No entries for this period.</td>
             </tr>
             {% endfor %}
-
-            {% if ledger_rows %}
-            <tr class="row-total">
-                <td colspan="4" class="summary-label">Total</td>
-                <td class="right">{{ total_debit|floatformat:2 }}</td>
-                <td class="right">{{ total_credit|floatformat:2 }}</td>
-                <td></td>
-            </tr>
-            <tr class="row-balance">
-                <td colspan="4" class="summary-label">{{ net_type }} Balance</td>
-                <td class="right">
-                    {% if net_type == 'Dr' %}<b>{{ net_balance|floatformat:2 }}</b>{% endif %}
-                </td>
-                <td class="right">
-                    {% if net_type == 'Cr' %}<b>{{ net_balance|floatformat:2 }}</b>{% endif %}
-                </td>
-                <td></td>
-            </tr>
-            <tr class="row-grand">
-                <td colspan="4" class="summary-label">Grand Total</td>
-                <td class="right">
-                    <b>{% if net_type == 'Dr' %}{{ total_credit|floatformat:2 }}{% else %}{{ total_debit|floatformat:2 }}{% endif %}</b>
-                </td>
-                <td class="right">
-                    <b>{% if net_type == 'Dr' %}{{ total_credit|floatformat:2 }}{% else %}{{ total_debit|floatformat:2 }}{% endif %}</b>
-                </td>
-                <td></td>
-            </tr>
-            {% endif %}
         </tbody>
     </table>
 
-    <div class="footer">
-        Generated on {% now "d M Y, h:i A" %} &nbsp;|&nbsp;
-        {{ BRAND_COMPANY_NAME|default:"Sakuntalam India Services" }} &nbsp;|&nbsp;
-        {{ BRAND_SHORT_NAME|default:"CWMS" }} — {{ BRAND_PRODUCT_NAME|default:"Contractor Workforce Management System" }}
+    {% if ledger_rows %}
+    <div class="totals-wrap">
+        <table class="totals-table">
+            <tr>
+                <td class="totals-label">Total</td>
+                <td class="totals-value">{{ total_debit_fmt }}</td>
+                <td class="totals-value">{{ total_credit_fmt }}</td>
+            </tr>
+            <tr>
+                <td class="totals-label">Debit Balance</td>
+                <td class="totals-value"></td>
+                <td class="totals-value line-under strong">{{ debit_balance_fmt }}</td>
+            </tr>
+            <tr>
+                <td class="totals-label">Grand Total</td>
+                <td class="totals-value line-under strong">{{ grand_total_fmt }}</td>
+                <td class="totals-value line-under strong">{{ grand_total_fmt }}</td>
+            </tr>
+        </table>
     </div>
+    {% endif %}
 
 </body>
 </html>

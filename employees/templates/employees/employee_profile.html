@@ -1,0 +1,936 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ employee.name }} - Employee Profile | {{ BRAND_SHORT_NAME }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --p500: #3b82f6; --p600: #2563eb; --p700: #1d4ed8;
+            --pu500: #8b5cf6; --pu600: #7c3aed;
+            --g400: #34d399; --g500: #10b981; --g600: #059669;
+            --r400: #f87171; --r500: #ef4444; --r600: #dc2626;
+            --a400: #fbbf24; --a500: #f59e0b; --a600: #d97706;
+            --cy400: #22d3ee;
+            --n50: #f8fafc; --n100: #f1f5f9; --n200: #e2e8f0;
+            --n300: #cbd5e1; --n400: #94a3b8; --n500: #64748b;
+            --n600: #475569; --n700: #334155; --n800: #1e293b; --n900: #0f172a;
+            --bg: #ffffff;
+            --bg2: #f8fafc;
+            --bg3: #f1f5f9;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --border2: #cbd5e1;
+            --tx1: #0f172a;
+            --tx2: #475569;
+            --tx3: #94a3b8;
+            --sh: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+            --sh2: 0 4px 12px rgba(0,0,0,.08);
+            --sh3: 0 10px 28px rgba(0,0,0,.1);
+            --rad: 14px;
+            --rad2: 10px;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0a0d14;
+            --bg2: #0f1117;
+            --bg3: #151924;
+            --card: #111520;
+            --border: rgba(255,255,255,0.07);
+            --border2: rgba(255,255,255,0.13);
+            --tx1: #eef0f8;
+            --tx2: #a8b0c8;
+            --tx3: #6b7294;
+            --sh: 0 1px 3px rgba(0,0,0,.4);
+            --sh2: 0 4px 12px rgba(0,0,0,.5);
+            --sh3: 0 10px 28px rgba(0,0,0,.6);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--tx1);
+            line-height: 1.6;
+            padding: 20px;
+            transition: background .2s, color .2s;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container { max-width: 1320px; margin: 0 auto; }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--rad);
+            padding: 14px 22px;
+            margin-bottom: 20px;
+            box-shadow: var(--sh);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .topbar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--p500), var(--pu500));
+        }
+
+        .brand {
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: -.5px;
+            background: linear-gradient(135deg, var(--p600), var(--pu600));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-sub {
+            font-size: 12px;
+            color: var(--tx3);
+            font-weight: 500;
+            margin-top: 1px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            border-radius: var(--rad2);
+            font-size: 13px;
+            font-weight: 700;
+            padding: 9px 16px;
+            border: 1px solid transparent;
+            transition: all .2s;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--p600), var(--pu600));
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(59,130,246,.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(59,130,246,.4);
+        }
+
+        .btn-ghost {
+            background: var(--bg2);
+            color: var(--tx1);
+            border-color: var(--border);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--p500);
+            color: var(--p500);
+        }
+
+        .theme-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--rad2);
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            font-size: 17px;
+            cursor: pointer;
+            transition: all .2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--tx1);
+        }
+
+        .theme-btn:hover {
+            border-color: var(--p500);
+            transform: scale(1.06);
+        }
+
+        .hero {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: var(--sh2);
+            position: relative;
+        }
+
+        .hero-band {
+            height: 90px;
+            background: linear-gradient(135deg, var(--p600) 0%, var(--pu600) 60%, #4f46e5 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-band::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 50% 120% at 90% 50%, rgba(255,255,255,.12) 0%, transparent 60%),
+                radial-gradient(ellipse 30% 80% at 10% 20%, rgba(255,255,255,.06) 0%, transparent 50%);
+        }
+
+        .hero-pattern {
+            position: absolute;
+            inset: 0;
+            opacity: .06;
+            background-image: repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%);
+            background-size: 16px 16px;
+        }
+
+        .hero-body {
+            padding: 0 28px 24px;
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+            position: relative;
+        }
+
+        .hero-avatar-wrap {
+            margin-top: -36px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .hero-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--p500), var(--pu500));
+            color: #fff;
+            font-size: 30px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 4px solid var(--card);
+            box-shadow: var(--sh2);
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid var(--card);
+        }
+
+        .status-dot.active { background: var(--g500); }
+        .status-dot.inactive { background: var(--r500); }
+
+        .hero-info {
+            flex: 1;
+            padding-top: 16px;
+            min-width: 200px;
+        }
+
+        .hero-name {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -.5px;
+            color: var(--tx1);
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .hero-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: var(--tx2);
+        }
+
+        .hero-meta span { display: flex; align-items: center; gap: 4px; }
+        .hero-meta .sep { color: var(--tx3); }
+
+        .hero-badges {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .3px;
+        }
+
+        .badge-active {
+            background: rgba(16,185,129,.12);
+            color: var(--g600);
+            border: 1px solid rgba(16,185,129,.2);
+        }
+
+        .badge-inactive {
+            background: rgba(239,68,68,.12);
+            color: var(--r600);
+            border: 1px solid rgba(239,68,68,.2);
+        }
+
+        .badge-role {
+            background: rgba(59,130,246,.1);
+            color: var(--p700);
+            border: 1px solid rgba(59,130,246,.2);
+        }
+
+        .badge-id {
+            background: rgba(139,92,246,.1);
+            color: var(--pu600);
+            border: 1px solid rgba(139,92,246,.2);
+        }
+
+        [data-theme="dark"] .badge-active { background: rgba(52,211,153,.12); color: #6ee7b7; }
+        [data-theme="dark"] .badge-inactive { background: rgba(248,113,113,.12); color: #fca5a5; }
+        [data-theme="dark"] .badge-role { background: rgba(96,165,250,.12); color: #93c5fd; }
+        [data-theme="dark"] .badge-id { background: rgba(167,139,250,.12); color: #c4b5fd; }
+
+        .hero-actions {
+            padding-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+
+        .snap-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .snap {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--rad);
+            padding: 16px 18px;
+            box-shadow: var(--sh);
+            position: relative;
+            overflow: hidden;
+            transition: all .2s;
+        }
+
+        .snap:hover { transform: translateY(-2px); box-shadow: var(--sh2); }
+
+        .snap::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            border-radius: var(--rad) var(--rad) 0 0;
+        }
+
+        .snap.s-wage::after { background: linear-gradient(90deg, var(--g500), var(--g400)); }
+        .snap.s-join::after { background: linear-gradient(90deg, var(--p500), var(--cy400)); }
+        .snap.s-type::after { background: linear-gradient(90deg, var(--pu500), #a855f7); }
+        .snap.s-pf::after { background: linear-gradient(90deg, var(--a500), var(--a400)); }
+
+        .snap-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg2);
+            margin-bottom: 10px;
+        }
+
+        .snap-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--tx3);
+            margin-bottom: 5px;
+        }
+
+        .snap-value {
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--tx1);
+            letter-spacing: -.3px;
+        }
+
+        .snap-sub {
+            font-size: 12px;
+            color: var(--tx3);
+            margin-top: 3px;
+        }
+
+        .missing-alert {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--a500);
+            border-radius: var(--rad);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--sh);
+        }
+
+        .missing-alert-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .missing-alert-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 800;
+            background: rgba(245,158,11,.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .missing-alert-title {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--a600);
+        }
+
+        .missing-alert-sub {
+            font-size: 12px;
+            color: var(--tx2);
+            margin-top: 1px;
+        }
+
+        [data-theme="dark"] .missing-alert-title { color: var(--a400); }
+
+        .missing-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            background: rgba(245,158,11,.08);
+            color: var(--a600);
+            border: 1px dashed var(--a500);
+        }
+
+        [data-theme="dark"] .chip {
+            color: var(--a400);
+            border-color: var(--a400);
+            background: rgba(251,191,36,.1);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--rad);
+            padding: 20px 22px;
+            box-shadow: var(--sh);
+            transition: all .2s;
+        }
+
+        .card:hover { box-shadow: var(--sh2); }
+
+        .card-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-head-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ci-blue { background: rgba(59,130,246,.1); }
+        .ci-green { background: rgba(16,185,129,.1); }
+        .ci-purple { background: rgba(139,92,246,.1); }
+        .ci-amber { background: rgba(245,158,11,.1); }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--tx1);
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .field {
+            padding: 11px 13px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--rad2);
+            transition: border-color .15s;
+        }
+
+        .field:hover { border-color: var(--border2); }
+
+        .field-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--tx3);
+            margin-bottom: 5px;
+        }
+
+        .field-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--tx1);
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .field-value.empty {
+            color: var(--tx3);
+            font-style: italic;
+            font-weight: 500;
+        }
+
+        .field-value.mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            letter-spacing: .5px;
+        }
+
+        .field-value.green { color: var(--g600); }
+        .field-value.red { color: var(--r600); }
+
+        [data-theme="dark"] .field-value.green { color: var(--g400); }
+        [data-theme="dark"] .field-value.red { color: var(--r400); }
+
+        .field.full { grid-column: 1 / -1; }
+
+        .compliance-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .compliance-tag {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 14px;
+            border-radius: var(--rad2);
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            text-align: center;
+        }
+
+        .compliance-tag .ct-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--tx3);
+            margin-bottom: 6px;
+        }
+
+        .compliance-tag .ct-value {
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .compliance-tag.enabled .ct-value { color: var(--g500); }
+        .compliance-tag.disabled .ct-value { color: var(--tx3); }
+        .compliance-tag.rate .ct-value { color: var(--p500); font-size: 16px; }
+
+        .footer-strip {
+            margin-top: 20px;
+            padding: 14px 20px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--rad);
+            box-shadow: var(--sh);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .footer-meta {
+            font-size: 12px;
+            color: var(--tx3);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        @media (max-width: 1100px) {
+            .snap-row { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+            .snap-row { grid-template-columns: 1fr 1fr; }
+            .hero-actions { margin-left: 0; width: 100%; }
+            .field-grid { grid-template-columns: 1fr; }
+            .missing-alert-head { flex-wrap: wrap; }
+            .missing-alert-head .btn { margin-left: 0 !important; }
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .snap-row { grid-template-columns: 1fr; }
+            .hero-name { font-size: 22px; }
+            .hero-body { padding: 0 16px 18px; }
+            .topbar { padding: 12px 14px; }
+            .topbar-right .btn { padding: 8px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="topbar">
+        <div>
+            <div class="brand">{{ BRAND_SHORT_NAME }}</div>
+            <div class="brand-sub">Manager Workspace - Employee Profile</div>
+        </div>
+        <div class="topbar-right">
+            <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+            <a href="{% url 'employee_list' %}" class="btn btn-ghost">Back to Employee List</a>
+            <a href="{% url 'edit_employee' employee.id %}" class="btn btn-primary">Edit Profile</a>
+        </div>
+    </div>
+
+    <div class="hero">
+        <div class="hero-band">
+            <div class="hero-pattern"></div>
+        </div>
+        <div class="hero-body">
+            <div class="hero-avatar-wrap">
+                <div class="hero-avatar">{{ employee.name|slice:":1"|upper }}</div>
+                <div class="status-dot {% if employee.is_active %}active{% else %}inactive{% endif %}"></div>
+            </div>
+            <div class="hero-info">
+                <div class="hero-name">{{ employee.name }}</div>
+                <div class="hero-meta">
+                    <span>{{ employee.user.username }}</span>
+                    <span class="sep">-</span>
+                    <span>{{ employee.working_location|default:"Location not set" }}</span>
+                    <span class="sep">-</span>
+                    <span>Joined {{ employee.join_date|date:"d M Y" }}</span>
+                </div>
+                <div class="hero-badges">
+                    <span class="badge {% if employee.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+                        {% if employee.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                    <span class="badge badge-role">{{ employee.role.name }}</span>
+                    <span class="badge badge-id">ID: {{ employee.user.username }}</span>
+                    {% if employee.get_employment_type_display %}
+                    <span class="badge badge-id">{{ employee.get_employment_type_display }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="hero-actions">
+                <a href="{% url 'employee_list' %}" class="btn btn-ghost">Back</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="snap-row">
+        <div class="snap s-wage">
+            <div class="snap-icon">INR</div>
+            <div class="snap-label">Daily Wage</div>
+            <div class="snap-value">Rs {{ employee.daily_wage }}</div>
+            <div class="snap-sub">Base pay per working day</div>
+        </div>
+        <div class="snap s-join">
+            <div class="snap-icon">CAL</div>
+            <div class="snap-label">Join Date</div>
+            <div class="snap-value">{{ employee.join_date|date:"d M Y" }}</div>
+            <div class="snap-sub">{{ employee.join_date|timesince }} on site</div>
+        </div>
+        <div class="snap s-type">
+            <div class="snap-icon">TYPE</div>
+            <div class="snap-label">Employment Type</div>
+            <div class="snap-value" style="font-size:15px;">{{ employee.get_employment_type_display }}</div>
+            <div class="snap-sub">{{ employee.role.name }}</div>
+        </div>
+        <div class="snap s-pf">
+            <div class="snap-icon">LAW</div>
+            <div class="snap-label">PF / ESIC</div>
+            <div class="snap-value" style="font-size:15px;">
+                {% if employee.pf_applicable or employee.esic_applicable %}
+                    {% if employee.pf_applicable %}PF{% endif %}{% if employee.pf_applicable and employee.esic_applicable %} + {% endif %}{% if employee.esic_applicable %}ESIC{% endif %}
+                {% else %}
+                    Not Applicable
+                {% endif %}
+            </div>
+            <div class="snap-sub">Statutory deductions</div>
+        </div>
+    </div>
+
+    {% if not employee.father_name or not employee.email or not employee.working_location or not employee.aadhar_number or not employee.pan_number or not employee.uan_number or not employee.esic_number or not employee.bank_account_no or not employee.current_address or not employee.permanent_address %}
+    <div class="missing-alert">
+        <div class="missing-alert-head">
+            <div class="missing-alert-icon">WARN</div>
+            <div>
+                <div class="missing-alert-title">Incomplete Profile - Action Required</div>
+                <div class="missing-alert-sub">The following fields are missing. Complete them for payroll accuracy and compliance readiness.</div>
+            </div>
+            <a href="{% url 'edit_employee' employee.id %}" class="btn btn-ghost" style="margin-left:auto;font-size:12px;padding:7px 14px;">
+                Complete Now
+            </a>
+        </div>
+        <div class="missing-chips">
+            {% if not employee.father_name %}<span class="chip">Father Name</span>{% endif %}
+            {% if not employee.email %}<span class="chip">Email</span>{% endif %}
+            {% if not employee.working_location %}<span class="chip">Work Location</span>{% endif %}
+            {% if not employee.aadhar_number %}<span class="chip">Aadhaar</span>{% endif %}
+            {% if not employee.pan_number %}<span class="chip">PAN</span>{% endif %}
+            {% if not employee.uan_number %}<span class="chip">UAN</span>{% endif %}
+            {% if not employee.esic_number %}<span class="chip">ESIC No.</span>{% endif %}
+            {% if not employee.bank_account_no %}<span class="chip">Bank Account</span>{% endif %}
+            {% if not employee.current_address %}<span class="chip">Current Address</span>{% endif %}
+            {% if not employee.permanent_address %}<span class="chip">Permanent Address</span>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="card-head">
+                <div class="card-head-icon ci-blue">ID</div>
+                <div class="card-title">Personal Information</div>
+            </div>
+            <div class="field-grid">
+                <div class="field">
+                    <span class="field-label">Full Name</span>
+                    <span class="field-value">{{ employee.name }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Father's Name</span>
+                    <span class="field-value {% if not employee.father_name %}empty{% endif %}">
+                        {{ employee.father_name|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Phone Number</span>
+                    <span class="field-value mono {% if not employee.phone_number %}empty{% endif %}">
+                        {{ employee.phone_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Email</span>
+                    <span class="field-value {% if not employee.email %}empty{% endif %}">
+                        {{ employee.email|default:"Not provided" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <div class="card-head-icon ci-green">JOB</div>
+                <div class="card-title">Employment Details</div>
+            </div>
+            <div class="field-grid">
+                <div class="field">
+                    <span class="field-label">Role</span>
+                    <span class="field-value">{{ employee.role.name }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Employment Type</span>
+                    <span class="field-value">{{ employee.get_employment_type_display }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Daily Wage</span>
+                    <span class="field-value green">Rs {{ employee.daily_wage }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Join Date</span>
+                    <span class="field-value">{{ employee.join_date|date:"d M Y" }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Working Location</span>
+                    <span class="field-value {% if not employee.working_location %}empty{% endif %}">
+                        {{ employee.working_location|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Status</span>
+                    <span class="field-value {% if employee.is_active %}green{% else %}red{% endif %}">
+                        {% if employee.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <div class="card-head-icon ci-amber">LAW</div>
+                <div class="card-title">Statutory and Compliance</div>
+            </div>
+            <div class="field-grid" style="margin-bottom:12px;">
+                <div class="field">
+                    <span class="field-label">Aadhaar Number</span>
+                    <span class="field-value mono {% if not employee.aadhar_number %}empty{% endif %}">
+                        {{ employee.aadhar_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="field-label">PAN Number</span>
+                    <span class="field-value mono {% if not employee.pan_number %}empty{% endif %}">
+                        {{ employee.pan_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="field-label">UAN Number</span>
+                    <span class="field-value mono {% if not employee.uan_number %}empty{% endif %}">
+                        {{ employee.uan_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="field-label">ESIC Number</span>
+                    <span class="field-value mono {% if not employee.esic_number %}empty{% endif %}">
+                        {{ employee.esic_number|default:"Not provided" }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="compliance-row">
+                <div class="compliance-tag {% if employee.pf_applicable %}enabled{% else %}disabled{% endif %}">
+                    <div class="ct-label">PF</div>
+                    <div class="ct-value">{% if employee.pf_applicable %}Yes{% else %}No{% endif %}</div>
+                </div>
+                <div class="compliance-tag rate">
+                    <div class="ct-label">PF Rate</div>
+                    <div class="ct-value">{{ employee.pf_rate|default:"-" }}</div>
+                </div>
+                <div class="compliance-tag {% if employee.esic_applicable %}enabled{% else %}disabled{% endif %}">
+                    <div class="ct-label">ESIC</div>
+                    <div class="ct-value">{% if employee.esic_applicable %}Yes{% else %}No{% endif %}</div>
+                </div>
+                <div class="compliance-tag rate">
+                    <div class="ct-label">ESIC Rate</div>
+                    <div class="ct-value">{{ employee.esic_rate|default:"-" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <div class="card-head-icon ci-purple">BANK</div>
+                <div class="card-title">Bank and Address Details</div>
+            </div>
+            <div class="field-grid">
+                <div class="field full">
+                    <span class="field-label">Bank Account Number</span>
+                    <span class="field-value mono {% if not employee.bank_account_no %}empty{% endif %}">
+                        {{ employee.bank_account_no|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field full">
+                    <span class="field-label">Current Address</span>
+                    <span class="field-value {% if not employee.current_address %}empty{% endif %}">
+                        {{ employee.current_address|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field full">
+                    <span class="field-label">Permanent Address</span>
+                    <span class="field-value {% if not employee.permanent_address %}empty{% endif %}">
+                        {{ employee.permanent_address|default:"Not provided" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer-strip">
+        <div class="footer-meta">
+            <span>System ID: <strong>{{ employee.user.username }}</strong></span>
+            <span>Profile viewed: {% now "d M Y, h:i A" %}</span>
+            <span>{{ employee.name }} - {{ employee.role.name }}</span>
+        </div>
+    </div>
+
+</div>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

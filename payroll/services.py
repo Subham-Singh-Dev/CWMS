@@ -1,7 +1,11 @@
 """
-payroll/services.py
-
-The ONLY place where payroll financial logic lives.
+Module: payroll.services
+App: payroll
+Purpose: Centralizes all payroll-side financial computation and persistence so salary generation,
+advance recovery, and statutory deductions are deterministic and auditable.
+Dependencies: payroll.models.MonthlySalary/Advance, attendance.models.Attendance, Django transactions.
+Author note: Financial logic is intentionally isolated here to prevent divergence between UI, admin,
+and command paths.
 
 STRICT ARCHITECTURAL RULE:
     Views, templates, admin, and management commands MUST NEVER:
@@ -50,6 +54,8 @@ def _calculate_pf(gross_pay: Decimal, rate: Decimal) -> Decimal:
     Applied on gross pay at the given rate.
     Uses ROUND_HALF_UP for statutory compliance.
     """
+    # Using Decimal (not float) to avoid binary floating-point rounding errors
+    # in financial calculations. Even 0.01 difference in payroll is unacceptable.
     return (gross_pay * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
@@ -59,6 +65,8 @@ def _calculate_esic(gross_pay: Decimal, rate: Decimal) -> Decimal:
     Applied on gross pay at the given rate.
     Uses ROUND_HALF_UP for statutory compliance.
     """
+    # Using Decimal (not float) to avoid binary floating-point rounding errors
+    # in financial calculations. Even 0.01 difference in payroll is unacceptable.
     return (gross_pay * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
@@ -139,7 +147,8 @@ def generate_monthly_salary(employee, month):
     overtime_hours = stats['total_overtime'] or Decimal('0.00')
 
     # ── STEP 2: Paid leave logic ───────────────────────────────
-    # Business Rule: First 2 absences per month are treated as paid leave
+    # BUSINESS RULE: Contractor policy grants salary credit for the first 2 absences
+    # in a month to smooth unavoidable short-term attendance drops.
     paid_leaves = min(absent_days, 2)
 
     # ── STEP 3: Gross pay calculation ─────────────────────────
@@ -176,7 +185,12 @@ def generate_monthly_salary(employee, month):
     if gross_pay == 0 and not has_unsettled_advances:
         return None  # Caller receives None — no salary slip generated
     
-     # ── STEP 5: FIFO Advance Deduction (inside atomic block) ───
+    # ─── TRANSACTION SAFETY ──────────────────────────────────────────────────────
+    # FINANCIAL CRITICAL: This block uses select_for_update() to lock advance rows
+    # and transaction.atomic() to ensure that if payroll generation fails midway,
+    # no partial advance deductions are committed to the database.
+    # ─────────────────────────────────────────────────────────────────────────────
+    # ── STEP 5: FIFO Advance Deduction (inside atomic block) ───
     with transaction.atomic():
 
         # Hard guard: Re-check inside transaction to prevent race conditions
@@ -191,17 +205,27 @@ def generate_monthly_salary(employee, month):
             settled=False
         ).order_by('issued_date')   # FIFO: oldest advance deducted first
 
+        # ─── FIFO ADVANCE DEDUCTION ──────────────────────────────────────────────────
+        # BUSINESS RULE: Advances are recovered oldest-first (FIFO) during payroll.
+        # This prevents workers from accumulating indefinite debt on newer advances
+        # while older ones remain unrecovered.
+        # ─────────────────────────────────────────────────────────────────────────────
+
         # Deduct from each advance until salary is exhausted or advances are cleared
         for advance in unsettled_advances:
             if remaining_salary <= 0:
                 break 
             
+            # Using Decimal (not float) to avoid binary floating-point rounding errors
+            # in financial calculations. Even 0.01 difference in payroll is unacceptable.
             deduction = min(remaining_salary, advance.remaining_amount)
             
             remaining_salary -= deduction
             total_advance_deducted += deduction
             
             advance.remaining_amount -= deduction
+            # Using Decimal (not float) to avoid binary floating-point rounding errors
+            # in financial calculations. Even 0.01 difference in payroll is unacceptable.
             advance.remaining_amount = advance.remaining_amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             
             # Mark advance as fully settled if balance reaches zero

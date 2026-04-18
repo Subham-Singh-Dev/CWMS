@@ -5,48 +5,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ wo.wo_number }} | Work Order Detail</title>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('king_theme') || 'light';
+            document.documentElement.setAttribute('data-kingTheme', theme);
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'king/css/theme.css' %}">
+    <link rel="stylesheet" href="{% static 'king/css/ui-utils.css' %}">
     <style>
-        :root {
-            --gold-400:#fbbf24; --gold-500:#f59e0b; --gold-600:#d97706;
-            --green-400:#34d399; --green-500:#10b981;
-            --red-400:#f87171; --blue-400:#60a5fa; --purple-400:#a78bfa;
-            --orange-400:#fb923c;
-            --text-primary:#eef0f8; --text-secondary:#a8b0c8; --text-muted:#6b7294;
-            --border:rgba(255,255,255,0.06); --border-strong:rgba(255,255,255,0.12);
-            --card-bg:#111420; --body-bg:#0a0b10;
-        }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Inter',sans-serif; background:var(--body-bg); color:var(--text-primary); padding:28px 24px; }
-        .container { max-width:1300px; margin:0 auto; }
-
-        .btn-gold {
-            padding:11px 22px; background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
-            color:#000; font-weight:700; font-size:13px; border:none; border-radius:10px;
-            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; transition:all .2s;
-        }
-        .btn-ghost {
-            padding:11px 18px; background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
-            color:var(--text-primary); font-weight:600; font-size:13px; border-radius:10px;
-            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; transition:all .2s;
-        }
-        .btn-ghost:hover { border-color:var(--gold-600); color:var(--gold-400); }
+        body { padding:28px 24px; }
+        .container { max-width:1300px; }
+        .btn-ghost { padding:11px 18px; gap:7px; }
+        .btn-gold { padding:11px 22px; gap:7px; }
 
         /* ── HEADER ── */
-        .header {
-            background:var(--card-bg); border:1px solid var(--border-strong);
-            border-radius:18px; padding:28px 36px; margin-bottom:28px;
-            position:relative; overflow:hidden;
-            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
-        }
-        .header::before {
-            content:''; position:absolute; top:0; left:0; right:0; height:3px;
-            background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600));
-        }
+        .header { border-radius:18px; padding:28px 36px; margin-bottom:28px; }
         .wo-number { font-size:13px; font-weight:700; color:var(--gold-400); letter-spacing:.5px; margin-bottom:4px; }
         .wo-title  { font-size:26px; font-weight:900; }
         .wo-client { font-size:14px; color:var(--text-secondary); margin-top:4px; display:flex; align-items:center; gap:8px; }
-        .header-right { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .header-right { gap:10px; }
 
         /* STATUS BADGE */
         .badge {

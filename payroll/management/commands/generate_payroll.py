@@ -1,3 +1,11 @@
+"""
+Module: payroll.management.commands.generate_payroll
+App: payroll
+Purpose: Batch payroll generation command for a specified year/month over active employees.
+Dependencies: payroll.services.generate_monthly_salary and employee master.
+Author note: Service-layer exceptions are surfaced clearly so operations teams can triage quickly.
+"""
+
 from datetime import date
 from django.core.management.base import BaseCommand
 from django.core.exceptions import ValidationError, PermissionDenied # Catch these new errors
@@ -7,13 +15,16 @@ from payroll.services import generate_monthly_salary, SalaryAlreadyGeneratedErro
 
 
 class Command(BaseCommand):
+    """Management command wrapper for monthly payroll batch generation."""
     help = "Generate payroll for all active employees for a given month"
 
     def add_arguments(self, parser):
+        """Accept target year and month arguments for payroll run."""
         parser.add_argument("year", type=int, help="Year of payroll (e.g. 2026)")
         parser.add_argument("month", type=int, help="Month of payroll (1-12)")
 
     def handle(self, *args, **options):
+        """Run payroll generation loop for each active employee."""
         year = options["year"]
         month = options["month"]
 

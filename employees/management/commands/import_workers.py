@@ -1,3 +1,11 @@
+"""
+Module: employees.management.commands.import_workers
+App: employees
+Purpose: Bulk-import worker master data from CSV with strict validation and deterministic ID generation.
+Dependencies: Employee/Role models, Django User/Group, transaction.atomic.
+Author note: Each row runs inside a transaction so partial row writes cannot corrupt master data.
+"""
+
 import csv
 import secrets
 import string
@@ -14,9 +22,11 @@ from employees.models import Employee, Role
 
 
 class Command(BaseCommand):
+    """Import employee rows from CSV with validation and transactional safety."""
     help = "Imports workers from CSV with strict validation and concurrency safety"
 
     def add_arguments(self, parser):
+        """Register CSV file path argument for import execution."""
         parser.add_argument("csv_file", type=str, help="Path to the CSV file")
 
     def generate_next_emp_id_locked(self):
@@ -40,6 +50,7 @@ class Command(BaseCommand):
         return f"EMP{next_num:05d}"
 
     def handle(self, *args, **kwargs):
+        """Execute CSV import loop and print per-row success/failure outcomes."""
         csv_file_path = kwargs["csv_file"]
 
         # Ensure Worker group exists

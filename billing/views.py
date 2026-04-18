@@ -1,3 +1,11 @@
+"""
+Module: billing.views
+App: billing
+Purpose: Manager-facing bill upload/listing and payment-state transitions.
+Dependencies: billing.models.Bill, manager_required decorator.
+Author note: Uses PRG (Post-Redirect-Get) to avoid duplicate uploads on refresh.
+"""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum
@@ -13,6 +21,7 @@ from .models import Bill
 
 @manager_required
 def billing_dashboard(request, viewing_as_owner=False):
+    """Render bill dashboard and handle upload form submissions."""
 
     # ==========================
     # HANDLE BILL UPLOAD (POST)
@@ -98,6 +107,10 @@ def billing_dashboard(request, viewing_as_owner=False):
 @manager_required
 @require_POST
 def toggle_bill_status(request, bill_id):
+    """Flip bill paid/unpaid state.
+
+    SECURITY: POST-only to prevent status changes via crawlers/bookmarks.
+    """
     bill = get_object_or_404(Bill, id=bill_id)
 
     if bill.is_paid:
@@ -122,6 +135,7 @@ def toggle_bill_status(request, bill_id):
 @manager_required
 @require_POST
 def delete_bill(request, bill_id):
+    """Hard-delete a bill row from dashboard action."""
     bill = get_object_or_404(Bill, id=bill_id)
     bill.delete()
     messages.success(request, "Bill deleted successfully.")

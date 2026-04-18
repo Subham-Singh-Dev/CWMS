@@ -5,6 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Audit Trail | {{ BRAND_SHORT_NAME }}</title>
+    <script>
+        (function() {
+            {% if is_king_view %}
+            const theme = localStorage.getItem('king_theme') || 'light';
+            document.documentElement.setAttribute('data-kingTheme', theme);
+            {% else %}
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            {% endif %}
+        })();
+    </script>
+    {% if is_king_view %}
+    <link rel="stylesheet" href="{% static 'king/css/theme.css' %}">
+    {% endif %}
     <style>
         :root {
             --bg: #f8fafc;
@@ -17,6 +31,19 @@
             --warn: #f59e0b;
             --danger: #ef4444;
         }
+        {% if is_king_view %}
+        :root {
+            --bg: var(--body-bg);
+            --card: var(--card-bg);
+            --text: var(--text-primary);
+            --muted: var(--text-muted);
+            --border: var(--border);
+            --primary: var(--gold-500);
+            --success: var(--green-500);
+            --warn: var(--gold-500);
+            --danger: var(--red-400);
+        }
+        {% endif %}
         [data-theme="dark"] {
             --bg: #0a0d14;
             --card: #1e293b;
@@ -62,7 +89,11 @@
             <div class="sub">{% if is_king_view %}Owner scope: full system visibility{% else %}Manager scope: operational visibility{% endif %}</div>
         </div>
         <div class="links">
-            <button type="button" class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            {% if is_king_view %}
+                <button type="button" class="theme-toggle" onclick="toggleKingTheme()">🌙</button>
+            {% else %}
+                <button type="button" class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            {% endif %}
             <button type="button" class="btn" onclick="window.location.reload()">🔄 Refresh</button>
             {% if is_king_view %}
                 <a class="btn" href="{% url 'king:king_dashboard' %}">Back to King Dashboard</a>
@@ -170,6 +201,30 @@
         </div>
     </div>
 </div>
+{% if not is_king_view %}
 <script src="{% static 'js/theme.js' %}"></script>
+{% endif %}
+{% if is_king_view %}
+<script>
+    function toggleKingTheme() {
+        const current = document.documentElement.getAttribute('data-kingTheme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-kingTheme', next);
+        localStorage.setItem('king_theme', next);
+        const icon = next === 'dark' ? '☀️' : '🌙';
+        document.querySelectorAll('.theme-toggle').forEach(btn => {
+            btn.textContent = icon;
+        });
+    }
+
+    (function syncKingThemeIcon() {
+        const theme = document.documentElement.getAttribute('data-kingTheme') || 'light';
+        const icon = theme === 'dark' ? '☀️' : '🌙';
+        document.querySelectorAll('.theme-toggle').forEach(btn => {
+            btn.textContent = icon;
+        });
+    })();
+</script>
+{% endif %}
 </body>
 </html>

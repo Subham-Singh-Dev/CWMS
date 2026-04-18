@@ -5,55 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Work Orders | {{ BRAND_SHORT_NAME }}</title>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('king_theme') || 'light';
+            document.documentElement.setAttribute('data-kingTheme', theme);
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'king/css/theme.css' %}">
+    <link rel="stylesheet" href="{% static 'king/css/ui-utils.css' %}">
     <style>
-        :root {
-            --gold-400: #fbbf24; --gold-500: #f59e0b; --gold-600: #d97706;
-            --green-400: #34d399; --green-500: #10b981;
-            --red-400: #f87171; --red-500: #ef4444;
-            --blue-400: #60a5fa; --blue-500: #3b82f6;
-            --orange-400: #fb923c; --purple-400: #a78bfa;
-            --n900: #0a0b10; --n800: #0f1117; --n700: #161822;
-            --n600: #1c1f2e; --n500: #252840; --n400: #2e3250;
-            --text-primary: #eef0f8; --text-secondary: #a8b0c8; --text-muted: #6b7294;
-            --border: rgba(255,255,255,0.06); --border-strong: rgba(255,255,255,0.12);
-            --card-bg: #111420;
-        }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Inter',sans-serif; background:#0a0b10; color:var(--text-primary); padding:20px; }
-        .container { max-width:1400px; margin:0 auto; }
-
-        /* HEADER */
-        .header {
-            background:var(--card-bg); border:1px solid var(--border-strong);
-            border-radius:16px; padding:24px 28px; margin-bottom:24px;
-            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
-            position:relative; overflow:hidden;
-        }
-        .header::before {
-            content:''; position:absolute; top:0; left:0; right:0; height:3px;
-            background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600));
-        }
-        .header-title { font-size:22px; font-weight:900; color:var(--text-primary); display:flex; align-items:center; gap:10px; }
-        .header-sub   { font-size:13px; color:var(--text-muted); margin-top:3px; }
-        .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-
-        /* BUTTONS */
-        .btn-gold {
-            padding:10px 20px; background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
-            color:#000; font-weight:700; font-size:13px; border:none; border-radius:10px;
-            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
-            transition:all .2s;
-        }
-        .btn-gold:hover { opacity:.9; transform:translateY(-1px); }
-        .btn-ghost {
-            padding:10px 16px; background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
-            color:var(--text-primary); font-weight:600; font-size:13px; border-radius:10px;
-            cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
-            transition:all .2s;
-        }
-        .btn-ghost:hover { border-color:var(--gold-600); color:var(--gold-400); }
-
         /* SUMMARY CARDS */
         .summary-grid {
             display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));

@@ -1,7 +1,18 @@
+"""
+Module: analytics.services.audit_service
+App: analytics
+Purpose: Provides non-blocking helpers for writing audit trail records and formatting
+recent activity cards for manager/owner dashboards.
+Dependencies: analytics.models.AuditLog.
+Author note: Business views should call create_audit_log but should not fail hard if audit
+metadata (like IP) is missing.
+"""
+
 from analytics.models import AuditLog
 
 
 def infer_user_role(user):
+    """Resolve effective display role used in audit rows."""
     if not user or not user.is_authenticated:
         return 'System'
     if user.groups.filter(name='King').exists() or user.is_superuser:
@@ -25,6 +36,13 @@ def create_audit_log(
     error_message='',
     request=None,
 ):
+    """
+    Persist a single audit log row.
+
+    Security:
+        - Captures client IP when request object is available.
+        - Stores username snapshot to preserve forensic trace even if user changes later.
+    """
     ip_address = None
     if request is not None:
         forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -50,6 +68,7 @@ def create_audit_log(
 
 
 def to_activity_item(log):
+    """Convert an AuditLog row into lightweight dashboard activity payload."""
     icon_map = {
         'attendance': '👤',
         'payroll': '💵',
@@ -83,10 +102,12 @@ def to_activity_item(log):
 
 
 def recent_activity_items_for_king(limit=8):
+    """Return latest activity items for King dashboard (full scope)."""
     logs = AuditLog.objects.order_by('-timestamp')[:limit]
     return [to_activity_item(log) for log in logs]
 
 
 def recent_activity_items_for_manager(limit=8):
+    """Return recent activity for manager dashboard (hides auth noise)."""
     logs = AuditLog.objects.exclude(activity='user').order_by('-timestamp')[:limit]
     return [to_activity_item(log) for log in logs]

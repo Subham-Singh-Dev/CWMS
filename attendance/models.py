@@ -1,3 +1,11 @@
+"""
+Module: attendance.models
+App: attendance
+Purpose: Stores day-wise attendance inputs that become the primary source for payroll computation.
+Dependencies: employees.models.Employee, timezone-aware validation rules.
+Author note: Validation intentionally enforces current-month discipline to reduce retroactive manipulation.
+"""
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -6,6 +14,12 @@ from employees.models import Employee
 
 
 class Attendance(models.Model):
+    """
+    Single attendance row for one employee on one date.
+
+    BUSINESS RULE: Exactly one row per employee/day to prevent duplicate salary credits.
+    BUSINESS RULE: Overtime is valid only when status is Present.
+    """
     STATUS_CHOICES = [
         ('P', 'Present'),
         ('A', 'Absent'),
@@ -25,7 +39,9 @@ class Attendance(models.Model):
     
 
     class Meta:
+        """Model metadata enforcing uniqueness and default attendance ordering behavior."""
         constraints = [
+            # BUSINESS RULE: This uniqueness is critical for payroll integrity.
             models.UniqueConstraint(
                 fields=['employee', 'date'],
                 name='unique_employee_attendance'
@@ -34,13 +50,14 @@ class Attendance(models.Model):
         
 
     def clean(self):
+        """Validate temporal and overtime rules before persisting attendance rows."""
         today = timezone.now().date()
         
-        # RULE 1: Cannot mark future dates
+        # BUSINESS RULE: Future attendance is blocked to prevent speculative wage entries.
         if self.date > today:
             raise ValidationError("❌ Attendance date cannot be in the future.")
 
-        # RULE 2: Cannot mark previous months (only current month allowed)
+        # BUSINESS RULE: Previous-month lock protects closed payroll periods.
         if self.date.year < today.year or (self.date.year == today.year and self.date.month < today.month):
             raise ValidationError("❌ Cannot mark attendance for previous months. Only current month is allowed.")
 
@@ -48,18 +65,20 @@ class Attendance(models.Model):
         if self.overtime_hours < 0:
             raise ValidationError("Overtime hours cannot be negative.")
 
-        # RULE 4: Overtime only for present employees
+        # BUSINESS RULE: Overtime is payable only on Present status.
         if self.status != 'P' and self.overtime_hours > 0:
             raise ValidationError(
                 "Overtime can be added only if employee is present."
             )
 
     def save(self, *args, **kwargs):
+        """Run full validation before save to guarantee integrity at model boundary."""
         # Always validate before saving
         self.clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
+        """Return human-readable attendance row identifier."""
         return f"{self.employee.name} - {self.date}"
 
     

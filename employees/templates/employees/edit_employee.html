@@ -250,6 +250,18 @@
             align-items: center;
             gap: 6px;
         }
+        .input-invalid {
+            border-color: var(--danger-500) !important;
+            background: var(--danger-50) !important;
+        }
+        .field-feedback {
+            display: none;
+            margin-top: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--danger-600);
+        }
+        .field-feedback.active { display: block; }
         
         /* INFO BOX */
         .info-box {
@@ -347,6 +359,70 @@
             color: var(--danger-600);
             border-color: var(--danger-500);
         }
+        .message.warning {
+            background: var(--warning-50);
+            color: var(--warning-600);
+            border-color: var(--warning-500);
+        }
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .message-title {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .message-list {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .form-section-header {
+            grid-column: 1 / -1;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--primary-600);
+            padding: 10px 14px;
+            background: linear-gradient(135deg, rgba(59,130,246,.07), rgba(139,92,246,.07));
+            border-left: 3px solid var(--primary-500);
+            border-radius: 0 8px 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .section-icon { font-size: 16px; }
+        .section-note {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: none;
+            letter-spacing: 0;
+            margin-left: auto;
+        }
+        .optional-tag {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            padding: 1px 6px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            margin-left: 4px;
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 70px;
+            line-height: 1.5;
+        }
+        input[name="pan_number"] { text-transform: uppercase; }
         
         /* RESPONSIVE */
         @media (max-width: 768px) {
@@ -366,7 +442,7 @@
         <div class="brand-section">
             <div class="company-name">{{ BRAND_COMPANY_NAME }}</div>
             <div class="brand">{{ BRAND_SHORT_NAME }}</div>
-            <div class="brand-subtitle">👷 Add New Employee</div>
+            <div class="brand-subtitle">✏️ Edit Employee Profile</div>
         </div>
         <div class="header-controls">
             <a href="{% url 'employee_list' %}" class="back-link">← Back To Employee List</a>
@@ -393,32 +469,50 @@
     <div class="info-box">
         <span class="info-icon">💡</span>
         <div class="info-content">
-            <strong>Employee Code will be auto-generated</strong> after saving. Workers can login using their phone number. Daily wage determines base pay calculation.
+            <strong>Keep employee compliance and banking details accurate</strong> for payroll, statutory deductions, and audit traceability.
         </div>
     </div>
 
     <!-- FORM PANEL -->
     <div class="form-panel">
         <div class="form-title">👤 Employee Information</div>
-        <div class="form-subtitle">Fill in the details to add a new worker to your workforce</div>
+        <div class="form-subtitle">Update worker details carefully. Changes affect payroll and compliance checks.</div>
         
         <form method="post" class="employee-form">
                 {% csrf_token %}
 
                 {% if error %}
                 <div class="message error full-width">
-                    ⚠️ {{ error }}
+                    <div class="message-content">
+                        <div class="message-title">Validation failed. Please review the highlighted fields.</div>
+                        {% if error_items %}
+                        <ul class="message-list">
+                            {% for item in error_items %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <div>{{ error }}</div>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
+
+                <div id="clientValidationAlert" class="message warning full-width" style="display:none;">
+                    <div class="message-content">
+                        <div class="message-title">Please fix the following before updating:</div>
+                        <ul id="clientValidationList" class="message-list"></ul>
+                    </div>
+                </div>
 
                 {% if success %}
                 <div class="message success full-width">
-                    ✅ Employee updated successfully.<br>
+                    ✅ Employee updated successfully.
                 </div>
                 {% endif %}
 
-                <div class="form-group full-width">
-                    <label class="form-label">Employment Classification</label>
+                <div class="form-section-header full-width">
+                    <span class="section-icon">🧾</span> Employment Classification
                 </div>
 
                 <div class="form-group">
@@ -455,6 +549,10 @@
                     <input type="number" name="esic_rate" id="esic_rate" class="form-input" min="0" step="0.0001" value="{{ employee.esic_rate }}">
                 </div>
 
+                <div class="form-section-header full-width">
+                    <span class="section-icon">👤</span> Personal Information
+                </div>
+
                 <!-- Name -->
                 <div class="form-group">
                     <label class="form-label">
@@ -481,6 +579,21 @@
                         value="{{ employee.phone_number }}"
                         required>
                     <div class="form-helper">Used for worker login (10 digits)</div>
+                    <div class="field-feedback" data-feedback-for="phone_number"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Father's Name</label>
+                    <input type="text" name="father_name" class="form-input" value="{{ employee.father_name|default:'' }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email <span class="optional-tag">Optional</span></label>
+                    <input type="email" name="email" class="form-input" value="{{ employee.email|default:'' }}" placeholder="e.g. rajesh@email.com">
+                </div>
+
+                <div class="form-section-header full-width">
+                    <span class="section-icon">🏗️</span> Work Details
                 </div>
 
                 <!-- Daily Wage -->
@@ -528,6 +641,11 @@
                     <div class="form-helper">When did they start working?</div>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">Working Location</label>
+                    <input type="text" name="working_location" class="form-input" value="{{ employee.working_location|default:'' }}" placeholder="e.g. Site A – Bhopal">
+                </div>
+
                 <!-- Status -->
                 <div class="form-group">
                     <label class="form-label">Status</label>
@@ -535,6 +653,60 @@
                         <option value="true" {% if employee.is_active %}selected{% endif %}>Active</option>
                         <option value="false" {% if not employee.is_active %}selected{% endif %}>Inactive</option>
                     </select>
+                </div>
+
+                <div class="form-section-header full-width">
+                    <span class="section-icon">📍</span> Address Details
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Current Address</label>
+                    <textarea name="current_address" class="form-input form-textarea" rows="2" placeholder="House No., Street, City, District, State – PIN">{{ employee.current_address|default:'' }}</textarea>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Permanent Address</label>
+                    <textarea name="permanent_address" class="form-input form-textarea" rows="2" placeholder="Village / Town, District, State – PIN">{{ employee.permanent_address|default:'' }}</textarea>
+                </div>
+
+                <div class="form-section-header full-width">
+                    <span class="section-icon">📋</span> Compliance &amp; Financial
+                    <span class="section-note">All fields optional — fill what's available</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Aadhar Card Number</label>
+                    <input type="text" name="aadhar_number" class="form-input" maxlength="14" inputmode="numeric" value="{{ employee.aadhar_number|default:'' }}" placeholder="e.g. 1234 5678 9012">
+                    <div class="form-helper">12-digit Aadhaar number</div>
+                    <div class="field-feedback" data-feedback-for="aadhar_number"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">PAN Card Number</label>
+                    <input type="text" name="pan_number" class="form-input" maxlength="10" value="{{ employee.pan_number|default:'' }}" placeholder="e.g. ABCDE1234F">
+                    <div class="form-helper">10-character PAN</div>
+                    <div class="field-feedback" data-feedback-for="pan_number"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">UAN Number</label>
+                    <input type="text" name="uan_number" class="form-input" maxlength="12" inputmode="numeric" value="{{ employee.uan_number|default:'' }}" placeholder="e.g. 100234567890">
+                    <div class="form-helper">Universal Account Number (PF)</div>
+                    <div class="field-feedback" data-feedback-for="uan_number"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ESIC Number</label>
+                    <input type="text" name="esic_number" class="form-input" maxlength="17" inputmode="numeric" value="{{ employee.esic_number|default:'' }}" placeholder="e.g. 12001234560000001">
+                    <div class="form-helper">Employee State Insurance number</div>
+                    <div class="field-feedback" data-feedback-for="esic_number"></div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Bank Account Number</label>
+                    <input type="text" name="bank_account_no" class="form-input" maxlength="20" inputmode="numeric" value="{{ employee.bank_account_no|default:'' }}" placeholder="e.g. 0123456789012">
+                    <div class="form-helper">For direct bank transfers</div>
+                    <div class="field-feedback" data-feedback-for="bank_account_no"></div>
                 </div>
 
                 <!-- Actions -->
@@ -551,11 +723,96 @@
 </div>
 
 <script>
+const editWorkerForm = document.querySelector('.employee-form');
 
-// Phone number validation
-document.querySelector('input[name="phone_number"]').addEventListener('input', function(e) {
-    this.value = this.value.replace(/[^0-9]/g, '').substring(0, 10);
-});
+function normalizeDigits(value, maxLength) {
+    return value.replace(/\D/g, '').slice(0, maxLength);
+}
+
+function setFieldError(inputName, message) {
+    const input = document.querySelector(`input[name="${inputName}"]`);
+    const feedback = document.querySelector(`[data-feedback-for="${inputName}"]`);
+    if (!input || !feedback) return;
+    if (message) {
+        input.classList.add('input-invalid');
+        feedback.textContent = `⚠ ${message}`;
+        feedback.classList.add('active');
+    } else {
+        input.classList.remove('input-invalid');
+        feedback.textContent = '';
+        feedback.classList.remove('active');
+    }
+}
+
+function validateField(name) {
+    const input = document.querySelector(`input[name="${name}"]`);
+    if (!input) return null;
+    const value = input.value.trim();
+
+    if (!value && !input.hasAttribute('required')) {
+        setFieldError(name, '');
+        return null;
+    }
+
+    if (name === 'phone_number') {
+        const digits = normalizeDigits(value, 10);
+        input.value = digits;
+        const err = digits.length === 10 ? null : 'Phone number must be exactly 10 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'aadhar_number') {
+        const digits = normalizeDigits(value, 12);
+        input.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+        const err = digits.length === 12 ? null : 'Aadhaar number must be exactly 12 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'uan_number') {
+        const digits = normalizeDigits(value, 12);
+        input.value = digits;
+        const err = digits.length === 12 ? null : 'UAN must be exactly 12 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'esic_number') {
+        const digits = normalizeDigits(value, 17);
+        input.value = digits;
+        const err = digits.length >= 8 ? null : 'ESIC number should be numeric and typically 8-17 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'bank_account_no') {
+        const digits = normalizeDigits(value, 20);
+        input.value = digits;
+        const err = digits.length >= 9 ? null : 'Bank account number should be at least 9 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'pan_number') {
+        const normalized = value.toUpperCase().replace(/\s+/g, '').slice(0, 10);
+        input.value = normalized;
+        const panOk = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(normalized);
+        const err = panOk ? null : 'PAN format should be like ABCDE1234F.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    return null;
+}
+
+['phone_number', 'aadhar_number', 'pan_number', 'uan_number', 'esic_number', 'bank_account_no']
+    .forEach((name) => {
+        const el = document.querySelector(`input[name="${name}"]`);
+        if (!el) return;
+        el.addEventListener('input', () => validateField(name));
+        el.addEventListener('blur', () => validateField(name));
+    });
 
 function toggleEmploymentFields() {
     const employmentType = document.getElementById('employment_type').value;
@@ -580,7 +837,46 @@ function toggleEmploymentFields() {
 }
 
 document.getElementById('employment_type').addEventListener('change', toggleEmploymentFields);
-document.addEventListener('DOMContentLoaded', toggleEmploymentFields);
+document.addEventListener('DOMContentLoaded', () => {
+    toggleEmploymentFields();
+    ['phone_number', 'aadhar_number', 'pan_number', 'uan_number', 'esic_number', 'bank_account_no']
+        .forEach((name) => {
+            const input = document.querySelector(`input[name="${name}"]`);
+            if (input && input.value.trim()) {
+                validateField(name);
+            }
+        });
+});
+
+editWorkerForm.addEventListener('submit', function (event) {
+    const validations = ['phone_number', 'aadhar_number', 'pan_number', 'uan_number', 'esic_number', 'bank_account_no'];
+    const errors = [];
+
+    validations.forEach((field) => {
+        const input = document.querySelector(`input[name="${field}"]`);
+        if (!input) return;
+        if (!input.value.trim() && !input.hasAttribute('required')) return;
+        const err = validateField(field);
+        if (err) errors.push(err);
+    });
+
+    const alertBox = document.getElementById('clientValidationAlert');
+    const alertList = document.getElementById('clientValidationList');
+    if (errors.length > 0) {
+        event.preventDefault();
+        alertList.innerHTML = errors.map((item) => `<li>${item}</li>`).join('');
+        alertBox.style.display = 'flex';
+        alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
+    const aadhar = document.querySelector('input[name="aadhar_number"]');
+    const uan = document.querySelector('input[name="uan_number"]');
+    const esic = document.querySelector('input[name="esic_number"]');
+    if (aadhar) aadhar.value = normalizeDigits(aadhar.value, 12);
+    if (uan) uan.value = normalizeDigits(uan.value, 12);
+    if (esic) esic.value = normalizeDigits(esic.value, 17);
+});
 </script>
 <script src="{% static 'js/theme.js' %}"></script>
 </body>

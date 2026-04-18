@@ -1,9 +1,22 @@
+"""
+Module: billing.models
+App: billing
+Purpose: Stores uploaded vendor/client bills and payment state for manager cashflow control.
+Dependencies: Django file storage, timezone helpers.
+Author note: Bill state is intentionally simple (paid/unpaid) to support fast dashboard summaries.
+"""
+
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal
 
 
 class Bill(models.Model):
+    """
+    Single bill/invoice with optional PDF attachment and payment status.
+
+    BUSINESS RULE: `paid_on` auto-syncs from `is_paid` in save() to keep state consistent.
+    """
     description = models.CharField(max_length=255)
 
     amount = models.DecimalField(
@@ -30,9 +43,11 @@ class Bill(models.Model):
     )
 
     def __str__(self):
+        """Return compact bill label for admin and logs."""
         return f"Bill #{self.id} - {self.description}"
 
     def save(self, *args, **kwargs):
+        """Synchronize paid_on date from payment status before persisting."""
         if self.is_paid and not self.paid_on:
             self.paid_on = timezone.now().date()
 

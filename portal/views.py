@@ -1,3 +1,11 @@
+"""
+Module: portal.views
+App: portal
+Purpose: Handles login and dashboard flows for manager and worker personas.
+Dependencies: employees, attendance, payroll, audit service, role-based decorators.
+Author note: Ownership/role checks are explicit to prevent cross-portal data exposure.
+"""
+
 from decimal import Decimal
 import json
 from datetime import datetime, date, timedelta
@@ -12,6 +20,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Sum, Count, Q, F
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from django.urls import reverse
 from xhtml2pdf import pisa
 from django.db import transaction
 
@@ -28,6 +37,7 @@ from analytics.services.audit_service import create_audit_log
 # =========================================
 
 def portal_login(request):
+    """Authenticate manager/worker based on selected login mode and route safely."""
     if request.user.is_authenticated:
         if request.user.is_superuser or request.user.groups.filter(name='Manager').exists():
             return redirect('manager_dashboard')
@@ -94,6 +104,10 @@ def portal_login(request):
 
 @worker_required
 def worker_dashboard(request):
+    """Render worker-scoped salary dashboard.
+
+    SECURITY: Worker data is scoped strictly through request.user.employee to prevent IDOR.
+    """
     try:
         employee = request.user.employee
         if not employee.is_active:
@@ -106,6 +120,7 @@ def worker_dashboard(request):
     return render(request, 'portal/dashboard.html', {'employee': employee, 'salaries': salaries})
 
 def worker_logout(request):
+    """Logout worker/manager sessions and record the event in audit trail."""
     if request.user.is_authenticated:
         create_audit_log(
             user=request.user,
@@ -123,6 +138,7 @@ def worker_logout(request):
 
 @worker_required
 def worker_profile(request):
+    """Render worker profile page with defensive profile existence checks."""
     # FIX: Defensive check for missing employee profile
     try:
         employee = request.user.employee
@@ -134,6 +150,7 @@ def worker_profile(request):
 
 @worker_required
 def worker_attendance(request):
+    """Render worker attendance history for recent records."""
     # FIX: Defensive check for missing employee profile
     try:
         employee = request.user.employee
@@ -147,6 +164,7 @@ def worker_attendance(request):
 
 @worker_required
 def download_payslip(request, salary_id):
+    """Download paid payslip with ownership enforcement for worker accounts."""
     salary = get_object_or_404(
         MonthlySalary.objects.select_related('employee'), 
         id=salary_id
@@ -296,6 +314,7 @@ def bulk_attendance(request):
     - Cannot mark future dates
     - Cannot mark previous months
     """
+    # BUSINESS RULE: Bulk attendance edits are constrained to current month to protect closed payroll windows.
     today = timezone.now().date()
     
     # 1. Get Date from URL (or default to Today)
@@ -415,18 +434,17 @@ def bulk_attendance(request):
 from payroll.services import generate_monthly_salary, SalaryAlreadyGeneratedError
 
 @manager_required
-@manager_required
 def run_payroll(request):
     """
     Manager Payroll Orchestrator - PRODUCTION GRADE
-    
+
     TRANSACTION GUARANTEE:
-    - All employees processed atomically OR all rolled back on ANY error
-    - Prevents inconsistent payroll state (partial payments)
-    - Safe for monthly permanent + individual local worker salary generation
+    - Entire payroll batch is wrapped in one atomic transaction.
+    - Any non-skippable employee failure rolls back the whole batch.
+    - Safe for monthly permanent + individual local worker salary generation.
     
     SAFETY FEATURES:
-    1. Atomic transaction block (all or nothing)
+    1. Batch-level atomic transaction (all-or-nothing)
     2. Duplicate salary check (prevents re-generation)
     3. Detailed error logging for audit trail
     4. Graceful error handling with user feedback
@@ -454,6 +472,7 @@ def run_payroll(request):
             return redirect('manager_dashboard')
         
         logger.info(f"Payroll processing started for {selected_month.strftime('%B %Y')}")
+        summary_url = f"{reverse('payroll_batch_summary')}?month={selected_month.strftime('%Y-%m')}"
         
         employees = Employee.objects.filter(is_active=True)
         logger.info(f"Processing {employees.count()} active employees")
@@ -461,74 +480,56 @@ def run_payroll(request):
         created = 0
         skipped = 0
         failed = 0
-        failed_employees = []
+        current_employee = None
 
         try:
             # ATOMIC TRANSACTION: All employees or rollback all
             with transaction.atomic():
                 for employee in employees:
+                    current_employee = employee
                     try:
                         salary = generate_monthly_salary(employee, selected_month)
-
-                        if salary is None:
-                            skipped += 1
-                            logger.debug(f"Skipped {employee.name} (no payable data)")
-                        else:
-                            created += 1
-                            logger.debug(f"Salary created for {employee.name}")
-
                     except SalaryAlreadyGeneratedError:
                         skipped += 1
                         logger.warning(
                             f"Payroll: Salary already generated for {employee.name} "
                             f"in {selected_month.strftime('%B %Y')}"
                         )
+                        continue
 
-                    except Exception as e:
-                        failed += 1
-                        failed_employees.append(f"{employee.name}: {str(e)}")
-                        logger.error(
-                            f"Payroll FAILED for {employee.name} in {selected_month.strftime('%B %Y')}: {str(e)}",
-                            exc_info=True
-                        )
-                        # Continue processing other employees to get complete picture
-                        # Re-raise to trigger atomic rollback if critical
-                        if "integrity" in str(e).lower() or "constraint" in str(e).lower():
-                            raise  # Critical error - rollback entire transaction
+                    if salary is None:
+                        skipped += 1
+                        logger.debug(f"Skipped {employee.name} (no payable data)")
+                    else:
+                        created += 1
+                        logger.debug(f"Salary created for {employee.name}")
         
         except Exception as e:
             # ATOMIC ROLLBACK: Any critical error rolls back ENTIRE batch
+            failed = 1
+            employee_name = current_employee.name if current_employee else "Unknown employee"
             logger.critical(
                 f"PAYROLL GENERATION ABORTED - Transaction rolled back for "
-                f"{selected_month.strftime('%B %Y')}: {str(e)}",
+                f"{selected_month.strftime('%B %Y')} at employee {employee_name}: {str(e)}",
                 exc_info=True
             )
             messages.error(
                 request,
-                f"⛔ CRITICAL ERROR - Payroll generation aborted and rolled back: {str(e)}. "
-                f"Please check system logs and retry."
+                f"⛔ Payroll batch failed and was rolled back. "
+                f"Failed employee: {employee_name}. Reason: {str(e)}"
             )
-            return redirect(
-                f"/payroll/manager/payroll/summary/?month={selected_month.strftime('%Y-%m')}"
-            )
+            return redirect(summary_url)
 
         # Success message with detailed results
         success_msg = (
             f"✅ Payroll for {selected_month.strftime('%B %Y')} completed | "
             f"Created: {created}, Skipped: {skipped}, Failed: {failed}"
         )
-        
-        if failed > 0:
-            success_msg += f"\n\n⚠️ Failed employees:\n" + "\n".join(failed_employees)
-            logger.warning(success_msg)
-        else:
-            logger.info(success_msg)
+        logger.info(success_msg)
         
         messages.success(request, success_msg)
         
-        return redirect(
-            f"/payroll/manager/payroll/summary/?month={selected_month.strftime('%Y-%m')}"
-        )
+        return redirect(summary_url)
 
     return render(request, 'portal/run_payroll.html', {'today': today})
 

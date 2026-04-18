@@ -250,6 +250,20 @@
             align-items: center;
             gap: 6px;
         }
+        .input-invalid {
+            border-color: var(--danger-500) !important;
+            background: var(--danger-50) !important;
+        }
+        .field-feedback {
+            display: none;
+            margin-top: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--danger-600);
+        }
+        .field-feedback.active {
+            display: block;
+        }
         
         /* INFO BOX */
         .info-box {
@@ -398,6 +412,26 @@
             color: var(--danger-600);
             border-color: var(--danger-500);
         }
+        .message.warning {
+            background: var(--warning-50);
+            color: var(--warning-600);
+            border-color: var(--warning-500);
+        }
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .message-title {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .message-list {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 13px;
+            line-height: 1.45;
+        }
         
         /* RESPONSIVE */
         @media (max-width: 768px) {
@@ -457,8 +491,28 @@
             {% csrf_token %}
 
             {% if error %}
-            <div class="message error full-width">⚠️ {{ error }}</div>
+            <div class="message error full-width">
+                <div class="message-content">
+                    <div class="message-title">Validation failed. Please review the highlighted fields.</div>
+                    {% if error_items %}
+                    <ul class="message-list">
+                        {% for item in error_items %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div>{{ error }}</div>
+                    {% endif %}
+                </div>
+            </div>
             {% endif %}
+
+            <div id="clientValidationAlert" class="message warning full-width" style="display:none;">
+                <div class="message-content">
+                    <div class="message-title">Please fix the following before submitting:</div>
+                    <ul id="clientValidationList" class="message-list"></ul>
+                </div>
+            </div>
 
             {% if success %}
             <div class="message success full-width">
@@ -535,6 +589,7 @@
                     placeholder="e.g. 9876543210"
                     pattern="[0-9]{10}" required>
                 <div class="form-helper">Used for worker login — 10 digits only</div>
+                <div class="field-feedback" data-feedback-for="phone_number"></div>
             </div>
 
             <!-- Email -->
@@ -630,6 +685,7 @@
                     placeholder="e.g. 1234 5678 9012"
                     maxlength="14" inputmode="numeric">
                 <div class="form-helper">12-digit Aadhar number</div>
+                <div class="field-feedback" data-feedback-for="aadhar_number"></div>
             </div>
 
             <!-- PAN -->
@@ -639,6 +695,7 @@
                     placeholder="e.g. ABCDE1234F"
                     maxlength="10" style="text-transform: uppercase;">
                 <div class="form-helper">10-character PAN</div>
+                <div class="field-feedback" data-feedback-for="pan_number"></div>
             </div>
 
             <!-- UAN -->
@@ -648,6 +705,7 @@
                     placeholder="e.g. 100234567890"
                     maxlength="12" inputmode="numeric">
                 <div class="form-helper">Universal Account Number (PF)</div>
+                <div class="field-feedback" data-feedback-for="uan_number"></div>
             </div>
 
             <!-- ESIC -->
@@ -657,6 +715,7 @@
                     placeholder="e.g. 12-00-123456-000-0001"
                     maxlength="17">
                 <div class="form-helper">Employee State Insurance number</div>
+                <div class="field-feedback" data-feedback-for="esic_number"></div>
             </div>
 
             <!-- Bank Account -->
@@ -666,6 +725,7 @@
                     placeholder="e.g. 0123456789012"
                     maxlength="20" inputmode="numeric">
                 <div class="form-helper">For direct bank transfers</div>
+                <div class="field-feedback" data-feedback-for="bank_account_no"></div>
             </div>
 
             <!-- ── ACTIONS ── -->
@@ -679,30 +739,126 @@
 </div>
 
 <script>
-// Phone — digits only, 10 max
-document.querySelector('input[name="phone_number"]').addEventListener('input', function() {
-    this.value = this.value.replace(/[^0-9]/g, '').substring(0, 10);
-});
+const addWorkerForm = document.querySelector('.employee-form');
 
-// Aadhar — digits + spaces, format as XXXX XXXX XXXX
-document.querySelector('input[name="aadhar_number"]').addEventListener('input', function() {
-    let val = this.value.replace(/\D/g, '').substring(0, 12);
-    this.value = val.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
-});
+function normalizeDigits(value, maxLength) {
+    return value.replace(/\D/g, '').slice(0, maxLength);
+}
 
-// UAN — digits only, 12 max
-document.querySelector('input[name="uan_number"]').addEventListener('input', function() {
-    this.value = this.value.replace(/[^0-9]/g, '').substring(0, 12);
-});
+function setFieldError(inputName, message) {
+    const input = document.querySelector(`input[name="${inputName}"]`);
+    const feedback = document.querySelector(`[data-feedback-for="${inputName}"]`);
+    if (!input || !feedback) return;
+    if (message) {
+        input.classList.add('input-invalid');
+        feedback.textContent = `⚠ ${message}`;
+        feedback.classList.add('active');
+    } else {
+        input.classList.remove('input-invalid');
+        feedback.textContent = '';
+        feedback.classList.remove('active');
+    }
+}
 
-// PAN — uppercase, 10 max
-document.querySelector('input[name="pan_number"]').addEventListener('input', function() {
-    this.value = this.value.toUpperCase().substring(0, 10);
-});
+function validateField(name) {
+    const input = document.querySelector(`input[name="${name}"]`);
+    if (!input) return null;
+    const value = input.value.trim();
 
-// Bank — digits only, 20 max
-document.querySelector('input[name="bank_account_no"]').addEventListener('input', function() {
-    this.value = this.value.replace(/[^0-9]/g, '').substring(0, 20);
+    if (!value && !input.hasAttribute('required')) {
+        setFieldError(name, '');
+        return null;
+    }
+
+    if (name === 'phone_number') {
+        const digits = normalizeDigits(value, 10);
+        input.value = digits;
+        const err = digits.length === 10 ? null : 'Phone number must be exactly 10 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'aadhar_number') {
+        const digits = normalizeDigits(value, 12);
+        input.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+        const err = digits.length === 12 ? null : 'Aadhaar number must be exactly 12 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'uan_number') {
+        const digits = normalizeDigits(value, 12);
+        input.value = digits;
+        const err = digits.length === 12 ? null : 'UAN must be exactly 12 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'esic_number') {
+        const digits = normalizeDigits(value, 17);
+        input.value = digits;
+        const err = digits.length >= 8 ? null : 'ESIC number should be numeric and typically 8-17 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'bank_account_no') {
+        const digits = normalizeDigits(value, 20);
+        input.value = digits;
+        const err = digits.length >= 9 ? null : 'Bank account number should be at least 9 digits.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    if (name === 'pan_number') {
+        const normalized = value.toUpperCase().replace(/\s+/g, '').slice(0, 10);
+        input.value = normalized;
+        const panOk = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(normalized);
+        const err = panOk ? null : 'PAN format should be like ABCDE1234F.';
+        setFieldError(name, err);
+        return err;
+    }
+
+    return null;
+}
+
+['phone_number', 'aadhar_number', 'pan_number', 'uan_number', 'esic_number', 'bank_account_no']
+    .forEach((name) => {
+        const el = document.querySelector(`input[name="${name}"]`);
+        if (!el) return;
+        el.addEventListener('input', () => validateField(name));
+        el.addEventListener('blur', () => validateField(name));
+    });
+
+addWorkerForm.addEventListener('submit', function (event) {
+    const validations = ['phone_number', 'aadhar_number', 'pan_number', 'uan_number', 'esic_number', 'bank_account_no'];
+    const errors = [];
+
+    validations.forEach((field) => {
+        const input = document.querySelector(`input[name="${field}"]`);
+        if (!input) return;
+        if (!input.value.trim() && !input.hasAttribute('required')) return;
+        const err = validateField(field);
+        if (err) errors.push(err);
+    });
+
+    const alertBox = document.getElementById('clientValidationAlert');
+    const alertList = document.getElementById('clientValidationList');
+    if (errors.length > 0) {
+        event.preventDefault();
+        alertList.innerHTML = errors.map((item) => `<li>${item}</li>`).join('');
+        alertBox.style.display = 'flex';
+        alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
+    // Submit normalized values (no formatting chars)
+    const aadhar = document.querySelector('input[name="aadhar_number"]');
+    const uan = document.querySelector('input[name="uan_number"]');
+    const esic = document.querySelector('input[name="esic_number"]');
+    if (aadhar) aadhar.value = normalizeDigits(aadhar.value, 12);
+    if (uan) uan.value = normalizeDigits(uan.value, 12);
+    if (esic) esic.value = normalizeDigits(esic.value, 17);
 });
 
 function toggleEmploymentFields() {

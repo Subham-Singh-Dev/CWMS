@@ -1,5 +1,9 @@
 """
-Analytics & Audit Models - Track system activities and generate insights
+Module: analytics.models
+App: analytics
+Purpose: Defines persistent audit trail entities used for compliance, forensics, and dashboard activity feeds.
+Dependencies: Django auth User and indexed query patterns for reporting/export.
+Author note: AuditLog is append-only by convention; updates should be avoided outside retention cleanup.
 """
 from django.db import models
 from django.contrib.auth.models import User
@@ -120,15 +124,21 @@ class AuditLog(models.Model):
     )
     
     class Meta:
+        """Model options and indexes optimized for audit timeline queries."""
         ordering = ['-timestamp']
         indexes = [
+            # Fast newest-first scans for dashboards and exports.
             models.Index(fields=['-timestamp']),
+            # User timeline queries for investigations.
             models.Index(fields=['user', '-timestamp']),
+            # Activity-specific trend and filter queries.
             models.Index(fields=['activity', '-timestamp']),
+            # Entity drill-down (e.g., all logs for one salary/employee row).
             models.Index(fields=['entity_type', 'entity_id']),
         ]
     
     def __str__(self):
+        """Return compact audit event descriptor for admin/debug displays."""
         return f"[{self.activity}] {self.action} - {self.entity_name} by {self.username} on {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
     
     @classmethod

@@ -1,3 +1,11 @@
+"""
+Module: analytics.management.commands.prune_audit_logs
+App: analytics
+Purpose: Removes stale audit rows based on retention policy to keep DB growth manageable.
+Dependencies: analytics.models.AuditLog, timezone.
+Author note: Dry-run mode exists for safe preview in production operations.
+"""
+
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
@@ -7,9 +15,11 @@ from analytics.models import AuditLog
 
 
 class Command(BaseCommand):
+    """Purge old audit log rows according to retention settings."""
     help = 'Delete audit logs older than retention period (default: 365 days).'
 
     def add_arguments(self, parser):
+        """Register retention controls and dry-run switch."""
         parser.add_argument(
             '--days',
             type=int,
@@ -23,6 +33,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Delete (or preview deletion of) audit logs older than configured threshold."""
         days = options['days']
         dry_run = options['dry_run']
 

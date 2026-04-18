@@ -13,39 +13,10 @@
         })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'king/css/theme.css' %}">
+    <link rel="stylesheet" href="{% static 'king/css/ui-utils.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        /* ══════════════════════════════════════════════════════════
-           LIGHT THEME (DEFAULT) - Professional, Clean, Contractor-Ready
-           ══════════════════════════════════════════════════════════ */
-        :root {
-            --gold-300: #fef3c7; --gold-400: #fcd34d; --gold-500: #f59e0b; --gold-600: #d97706;
-            --green-400: #4ade80; --green-500: #22c55e; --green-600: #16a34a;
-            --red-400: #f87171;  --red-500: #ef4444;
-            --blue-400: #60a5fa; --blue-500: #3b82f6;
-            --cyan-400: #06b6d4; --purple-400: #a78bfa; --orange-400: #fb923c;
-            --n700: #f0f0f0; --n600: #e5e5e5; --n500: #d4d4d8; --n400: #e4e4e7;
-            --text-primary: #1f2937; --text-secondary: #6b7280; --text-muted: #9ca3af;
-            --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.15);
-            --card-bg: #ffffff; --card-bg-2: #f9fafb; --body-bg: #f5f7fa;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        /* ══════════════════════════════════════════════════════════
-           DARK THEME - Elegant, Professional, Evening-Friendly
-           ══════════════════════════════════════════════════════════ */
-        html[data-kingTheme="dark"] {
-            --gold-300: #fcd34d; --gold-400: #fbbf24; --gold-500: #f59e0b; --gold-600: #d97706;
-            --green-400: #34d399; --green-500: #10b981; --green-600: #059669;
-            --red-400: #f87171;  --red-500: #ef4444;
-            --blue-400: #60a5fa; --blue-500: #3b82f6;
-            --cyan-400: #22d3ee; --purple-400: #a78bfa; --orange-400: #fb923c;
-            --n700: #161822; --n600: #1c1f2e; --n500: #252840; --n400: #2e3250;
-            --text-primary: #eef0f8; --text-secondary: #a8b0c8; --text-muted: #6b7294;
-            --border: rgba(255,255,255,0.06); --border-strong: rgba(255,255,255,0.12);
-            --card-bg: #111420; --card-bg-2: #0e1119; --body-bg: #0a0b10;
-        }
-
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family:'Inter',sans-serif;
@@ -89,9 +60,13 @@
         }
         .header-content {
             position:relative; z-index:1;
-            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;
+            display:grid;
+            grid-template-columns:minmax(0, 1fr) auto;
+            align-items:center;
+            column-gap:20px;
+            row-gap:14px;
         }
-        .header-left { display:flex; flex-direction:column; gap:4px; }
+        .header-left { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
         .header-company {
             font-size:11px; font-weight:700; letter-spacing:1.5px;
             text-transform:uppercase; color:var(--gold-500); opacity:.85;
@@ -110,7 +85,14 @@
             box-shadow:0 0 22px rgba(245,158,11,.3);
         }
         .header-subtitle { font-size:13px; color:var(--text-secondary); margin-top:2px; }
-        .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+        .header-right {
+            display:flex;
+            align-items:center;
+            justify-content:flex-end;
+            gap:10px;
+            flex-wrap:nowrap;
+        }
+        .header-right > * { flex-shrink:0; }
         .hdr-pill {
             display:flex; align-items:center; gap:8px;
             padding:9px 14px; border-radius:11px;
@@ -227,6 +209,7 @@
         }
         .chart-tab.active { background:var(--n400); color:var(--gold-400); }
         .chart-wrap { position:relative; height:380px; }
+        .chart-wrap canvas { display:block; width:100% !important; height:100% !important; }
 
         /* ── PAYROLL VERIFICATION ── */
         .verify-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
@@ -328,6 +311,12 @@
             .kpi-grid-3 { grid-template-columns:1fr 1fr; }
             .verify-grid { grid-template-columns:1fr; }
             .alerts-grid { grid-template-columns:1fr; }
+            .header-content { grid-template-columns:1fr; }
+            .header-right {
+                width:100%;
+                justify-content:flex-start;
+                flex-wrap:wrap;
+            }
         }
         @media(max-width:600px) {
             .kpi-grid-4, .kpi-grid-3, .kpi-grid-2 { grid-template-columns:1fr; }
@@ -806,6 +795,10 @@ function getChartColors() {
 }
 
 function initializeCharts() {
+    if (typeof Chart === 'undefined') {
+        return;
+    }
+
     const colors = getChartColors();
     const chartLabels = {{ chart_labels|safe }};
     const revenueData = {{ revenue_data|safe }};
@@ -942,7 +935,26 @@ async function refreshKingActivities() {
 
 // Initialize charts on page load
 window.addEventListener('DOMContentLoaded', () => {
-    initializeCharts();
+    const startCharts = () => {
+        try {
+            initializeCharts();
+        } catch (err) {
+            console.error('Chart initialization failed:', err);
+        }
+    };
+
+    if (typeof Chart !== 'undefined') {
+        startCharts();
+    } else {
+        const fallback = document.createElement('script');
+        fallback.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
+        fallback.onload = startCharts;
+        fallback.onerror = () => {
+            console.error('Chart.js failed to load from fallback CDN as well.');
+        };
+        document.head.appendChild(fallback);
+    }
+
     refreshKingActivities();
     setInterval(refreshKingActivities, 15000);
 });

@@ -6,5 +6,7 @@ urlpatterns = [
 
     path("manager/employees/edit/<int:employee_id>/", views.edit_employee_view, name="edit_employee"),
 
+    path("manager/employees/profile/<int:employee_id>/", views.employee_profile_view, name="employee_profile"),
+
     path("manager/employees/", views.employee_list_view, name="employee_list"),
 ]

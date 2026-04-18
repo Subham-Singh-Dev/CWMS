@@ -1,3 +1,11 @@
+"""
+Module: payroll.views
+App: payroll
+Purpose: Manager-facing payroll orchestration, list/report rendering, and payslip exports.
+Dependencies: payroll.services for all write-side financial logic, employee and portal auth layers.
+Author note: Views delegate calculations to services to avoid duplicated money logic.
+"""
+
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
@@ -10,11 +18,12 @@ from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import datetime, date, timedelta
 
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, F, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from django.http import Http404
 
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.contrib import messages
 
 from payroll.services import generate_monthly_salary, SalaryAlreadyGeneratedError
@@ -29,6 +38,7 @@ from django.views.decorators.http import require_POST
 
 @login_required
 def download_payslip(request, salary_id):
+    """Generate/download a single payslip PDF with strict authorization checks."""
     # --- IMPROVEMENT 2: PERFORMANCE ---
     # Fetch salary AND employee data in 1 query (saves DB hits)
     salary = get_object_or_404(
@@ -89,6 +99,7 @@ def payroll_batch_summary(request, viewing_as_owner=False):
     
     This ensures contractors can always see payroll status even if current month isn't generated yet.
     """
+    # AUTH GATE: manager_required — manager role (or owner read-only mode) is required.
     today = date.today()
     current_month_str = today.strftime("%Y-%m")
     prev_month = (today.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
@@ -122,6 +133,7 @@ def payroll_batch_summary(request, viewing_as_owner=False):
 
     # Helpers for rolling month calculations
     def shift_month(base_month, delta):
+        """Shift a month anchor by delta months while preserving day=1 semantics."""
         idx = (base_month.year * 12 + base_month.month - 1) + delta
         year = idx // 12
         month = (idx % 12) + 1
@@ -133,13 +145,18 @@ def payroll_batch_summary(request, viewing_as_owner=False):
     trend_start = months_12[0]
     trend_end = shift_month(month_date.replace(day=1), 1)
 
+    deduction_expr = ExpressionWrapper(
+        F("advance_deducted") + F("pf_deduction") + F("esic_deduction"),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+
     trend_qs = (
         MonthlySalary.objects
         .filter(month__gte=trend_start, month__lt=trend_end)
         .values("month")
         .annotate(
             total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
-            total_deductions=Coalesce(Sum("total_deductions"), Decimal("0.00")),
+            total_deductions=Coalesce(Sum(deduction_expr), Decimal("0.00")),
             total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
             unpaid_liability=Coalesce(Sum("net_pay", filter=Q(is_paid=False)), Decimal("0.00")),
         )
@@ -148,6 +165,7 @@ def payroll_batch_summary(request, viewing_as_owner=False):
     trend_map = {item["month"]: item for item in trend_qs}
 
     def build_chart_series(month_points):
+        """Build chart-ready label/value arrays for monthly payroll trend cards."""
         labels = []
         gross = []
         deductions = []
@@ -181,7 +199,7 @@ def payroll_batch_summary(request, viewing_as_owner=False):
         .values("month")
         .annotate(
             total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
-            total_deductions=Coalesce(Sum("total_deductions"), Decimal("0.00")),
+            total_deductions=Coalesce(Sum(deduction_expr), Decimal("0.00")),
             total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
             unpaid_liability=Coalesce(Sum("net_pay", filter=Q(is_paid=False)), Decimal("0.00")),
         )
@@ -242,7 +260,7 @@ def payroll_batch_summary(request, viewing_as_owner=False):
         total_advance_deducted=Coalesce(Sum("advance_deducted"), Decimal("0.00")),
         total_pf_deduction=Coalesce(Sum("pf_deduction"), Decimal("0.00")),
         total_esic_deduction=Coalesce(Sum("esic_deduction"), Decimal("0.00")),
-        total_deductions=Coalesce(Sum("total_deductions"), Decimal("0.00")),
+        total_deductions=Coalesce(Sum(deduction_expr), Decimal("0.00")),
         total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
         paid_count=Count("id", filter=Q(is_paid=True)),
         unpaid_count=Count("id", filter=Q(is_paid=False)),
@@ -285,6 +303,7 @@ def payroll_batch_summary(request, viewing_as_owner=False):
 
 @manager_required
 def salary_list_view(request):
+    """Show employee-wise salary generation status for a selected month."""
     selected_month = request.GET.get("month")
 
     if not selected_month:
@@ -331,6 +350,7 @@ def salary_list_view(request):
 @manager_required
 @require_POST
 def generate_employee_salary(request):
+    """Generate payroll for one employee-month and return with status messaging."""
     employee_id = request.POST.get("employee_id")
     selected_month = request.POST.get("month")
 
@@ -375,13 +395,13 @@ def generate_employee_salary(request):
             f"❌ Failed to generate salary for {employee.name}: {e}"
         )
 
-    return redirect(
-        f"/payroll/manager/payroll/salaries/?month={selected_month}"
-    )
+    salary_list_url = f"{reverse('manager_salary_list')}?month={selected_month}"
+    return redirect(salary_list_url)
 
 @manager_required
 @require_POST
 def mark_salary_paid(request):
+    """Mark one generated salary row as paid with idempotency guard."""
     salary_id = request.POST.get("salary_id")
     selected_month = request.POST.get("month")
 
@@ -396,9 +416,8 @@ def mark_salary_paid(request):
             request,
             f"⚠️ Salary already marked as paid for {salary.employee.name}"
         )
-        return redirect(
-            f"/payroll/manager/payroll/salaries/?month={selected_month}"
-        )
+        salary_list_url = f"{reverse('manager_salary_list')}?month={selected_month}"
+        return redirect(salary_list_url)
 
     salary.is_paid = True
     salary.paid_on = timezone.now()
@@ -412,12 +431,12 @@ def mark_salary_paid(request):
         f"at {timestamp}"
     )
 
-    return redirect(
-        f"/payroll/manager/payroll/salaries/?month={selected_month}"
-    )
+    salary_list_url = f"{reverse('manager_salary_list')}?month={selected_month}"
+    return redirect(salary_list_url)
 
 @manager_required
 def export_salary_list_csv(request):
+    """Export selected month salary register as downloadable CSV."""
     selected_month = request.GET.get("month")
 
     if not selected_month:
@@ -490,6 +509,7 @@ def export_salary_list_csv(request):
 @login_required
 @manager_required
 def issue_advance_view(request):
+    """Create employee advance records by delegating all finance logic to service layer."""
 
     # Only active employees can receive advances
     employees = Employee.objects.filter(is_active=True)

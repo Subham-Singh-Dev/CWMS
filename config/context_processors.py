@@ -7,4 +7,6 @@ def branding(_request):
         "BRAND_SHORT_NAME": settings.BRAND_SHORT_NAME,
         "BRAND_PRODUCT_NAME": settings.BRAND_PRODUCT_NAME,
         "BRAND_ACCOUNT_NAME": settings.BRAND_ACCOUNT_NAME,
+        "BRAND_COMPANY_ADDRESS": settings.BRAND_COMPANY_ADDRESS,
+        "BRAND_COMPANY_GSTIN": settings.BRAND_COMPANY_GSTIN,
     }

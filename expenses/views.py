@@ -1,3 +1,11 @@
+"""
+Module: expenses.views
+App: expenses
+Purpose: Expense entry/edit/delete workflows plus CSV/PDF exports and dashboard totals.
+Dependencies: expenses.models.Expense, xhtml2pdf, manager_required decorator.
+Author note: 7-day lock policy protects accounting closure from backdated tampering.
+"""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from decimal import Decimal
 from django.contrib import messages
@@ -16,10 +24,12 @@ EDIT_LOCK_DAYS = 7
 
 
 def get_lock_date():
+    """Return cutoff date older than which expense rows become immutable."""
     return date.today() - timedelta(days=EDIT_LOCK_DAYS)
 
 @manager_required
 def expense_dashboard(request, viewing_as_owner=False):
+    """Render expense dashboard and handle add-expense submissions."""
     if request.method == "POST":
         expense_date_str = request.POST.get("date")
         category = request.POST.get("category")
@@ -68,7 +78,8 @@ def expense_dashboard(request, viewing_as_owner=False):
         .order_by("category")
     )
 
-    #month boundaries
+    # BUSINESS RULE: Monthly totals are computed on calendar-month boundaries.
+    # month boundaries
     month_start = base_date.replace(day=1)
 
     if month_start.month == 12:
@@ -130,9 +141,11 @@ def expense_dashboard(request, viewing_as_owner=False):
 @manager_required
 @require_POST
 def delete_expense(request, expense_id):
+    """Delete an expense entry when it is still inside the configured lock window."""
     expense = Expense.objects.get(id=expense_id)
     lock_date = get_lock_date()
 
+    # BUSINESS RULE: 7-day lock prevents destructive edits after accounting review cycle.
     if expense.date < lock_date:
         messages.error(
             request,
@@ -145,6 +158,7 @@ def delete_expense(request, expense_id):
 
 @manager_required
 def edit_expense(request, expense_id):
+    """Edit expense record if still inside lock window."""
     expense = get_object_or_404(Expense, id=expense_id)
 
     if request.method == "POST":
@@ -190,6 +204,7 @@ def edit_expense(request, expense_id):
 
 @manager_required
 def export_expenses_csv(request, viewing_as_owner=False):
+    """Export one-day expense slice as CSV."""
     selected_date = request.GET.get("date")
     export_date = (
         date.fromisoformat(selected_date)
@@ -226,6 +241,7 @@ def export_expenses_csv(request, viewing_as_owner=False):
 
 @manager_required
 def daily_expense_pdf(request):
+    """Export one-day grouped expense summary as PDF."""
     from datetime import datetime
     from django.db.models import Count
 

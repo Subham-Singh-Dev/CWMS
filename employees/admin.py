@@ -1,3 +1,11 @@
+"""
+Module: employees.admin
+App: employees
+Purpose: Django admin configuration for roles and employee master records.
+Dependencies: employees.models, auth User, transactional save behavior.
+Author note: Admin create flow auto-generates deterministic EMP IDs and one-time temporary passwords.
+"""
+
 from django.contrib import admin
 from django import forms
 from django.contrib.auth.models import User
@@ -11,11 +19,14 @@ from .models import Employee, Role
 
 
 class EmployeeAdminForm(forms.ModelForm):
+    """Admin form with classification validation for statutory flags."""
     class Meta:
+        """Bind admin form metadata to Employee model and managed fields."""
         model = Employee
         exclude = ('user',)
 
     def clean(self):
+        """Block incompatible PF/ESIC flags when employment type is LOCAL."""
         cleaned_data = super().clean()
         if cleaned_data.get('employment_type') == 'LOCAL':
             if cleaned_data.get('pf_applicable') is True:
@@ -30,12 +41,14 @@ class EmployeeAdminForm(forms.ModelForm):
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
+    """Admin listing/options for role master data."""
     list_display = ('name', 'overtime_rate_per_hour', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('name',)
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
+    """Admin create/edit behavior for employee and linked auth user records."""
     form = EmployeeAdminForm
     exclude = ('user',)
     list_display = (
@@ -87,13 +100,16 @@ class EmployeeAdmin(admin.ModelAdmin):
     )
 
     class Media:
+        """Attach dynamic admin JS for classification-dependent form behavior."""
         js = ('admin/js/employee_classification.js',)
 
     def get_system_id(self, obj):
+        """Expose linked auth username in employee list display."""
         return obj.user.username if obj.user else "-"
     get_system_id.short_description = 'System ID'
 
     def save_model(self, request, obj, form, change):
+        """Create/update employee and keep linked auth user state consistent."""
         with transaction.atomic():
             # =========================
             # CREATE (New Employee)

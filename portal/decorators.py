@@ -1,4 +1,10 @@
-# portal/decorators.py
+"""
+Module: portal.decorators
+App: portal
+Purpose: Centralized access-control gates for manager, worker, and king routes.
+Dependencies: Django auth/session, role membership via groups.
+Author note: These decorators enforce role isolation before view logic executes.
+"""
 
 from functools import wraps
 from django.contrib.auth.decorators import login_required
@@ -31,6 +37,7 @@ def manager_required(view_func):
     @login_required(login_url='portal_login')
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
+        """Authorize manager routes and optionally enable owner read-only viewing mode."""
         client_ip = request.META.get('REMOTE_ADDR', 'Unknown')
         username = request.user.username
         
@@ -78,6 +85,7 @@ def worker_required(view_func):
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
+        """Allow worker-only access and redirect manager/superuser users away."""
         if not request.user.is_authenticated:
             return redirect('portal_login')
         
@@ -116,6 +124,7 @@ def king_required(view_func):
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
+        """Enforce strict king session and group membership before protected view access."""
         client_ip = request.META.get('REMOTE_ADDR', 'Unknown')
         username = request.user.username if request.user.is_authenticated else 'Anonymous'
         

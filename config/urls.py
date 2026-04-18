@@ -21,21 +21,29 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    # SECURITY: Django admin endpoint; restrict with strong credentials and network controls in production.
     path('admin/', admin.site.urls),
     
+    # Payroll module routes are namespaced by 'payroll/' for explicit financial workflow separation.
     path('payroll/', include('payroll.urls')),
 
+    # Portal handles login + manager/worker dashboards.
     path('portal/', include('portal.urls')),
 
+    # Billing endpoints mounted at root for legacy URL compatibility.
     path("", include("billing.urls")),
 
+    # Expense endpoints mounted at root for manager navigation continuity.
     path("", include("expenses.urls")),
 
+    # Employee master routes mounted at root for HR operations.
     path("", include("employees.urls")),
 
+    # Analytics routes include manager and king audit history/export endpoints.
     path("", include("analytics.urls")),
 
     
+    # King module is namespaced and isolated under /king/ for strict owner workflow boundaries.
     path('king/', include('king.urls', namespace='king')),
 
     

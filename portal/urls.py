@@ -22,6 +22,7 @@ urlpatterns = [
     path('manager/run-payroll/', views.run_payroll, name='run_payroll'),
 
     path("manager/advances/issue/", payroll_views.issue_advance_view, name="issue_advance"),
+    path("manager/advances/register/", payroll_views.advance_register_view, name="advance_register"),
 
 
 ]

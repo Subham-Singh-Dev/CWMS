@@ -422,10 +422,23 @@ def bulk_attendance(request):
             'overtime': att.overtime_hours if att else 0,
         })
 
+    # Month-level progress metrics for attendance operations dashboard cards
+    marked_days_this_month = (
+        Attendance.objects
+        .filter(date__year=today.year, date__month=today.month)
+        .values('date')
+        .distinct()
+        .count()
+    )
+    elapsed_days_this_month = today.day
+    skipped_days_this_month = max(elapsed_days_this_month - marked_days_this_month, 0)
+
     context = {
         'selected_date': selected_date,
         'worker_list': worker_list,
         'today': timezone.now().date(),
+        'marked_days_this_month': marked_days_this_month,
+        'skipped_days_this_month': skipped_days_this_month,
     }
     
     return render(request, 'portal/bulk_attendance.html', context)

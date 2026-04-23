@@ -38,6 +38,7 @@ class Advance(models.Model):
         remaining_amount — Outstanding unpaid balance (reduces as payroll deducts).
         issued_date     — Date the advance was issued (used for FIFO ordering).
         settled         — True when remaining_amount reaches 0.
+        settled_at      — Timestamp when advance became fully settled.
         created_at      — Timestamp of record creation.
 
     Ordering:
@@ -65,6 +66,7 @@ class Advance(models.Model):
 
     issued_date = models.DateField()
     settled = models.BooleanField(default=False)
+    settled_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -88,6 +90,10 @@ class Advance(models.Model):
         # Rule: Auto-settle if remaining balance is zero
         if self.remaining_amount == 0 and not self.settled:
             self.settled = True
+
+        # Keep settled flag and timestamp consistent with remaining balance
+        if self.remaining_amount and self.remaining_amount > 0 and self.settled:
+            self.settled = False
             
     def save(self, *args, **kwargs):
         """
@@ -98,6 +104,12 @@ class Advance(models.Model):
          # On creation: remaining balance starts as the full advance amount
         if self._state.adding and self.remaining_amount is None:
             self.remaining_amount = self.amount
+
+        # Maintain settled timestamp from source of truth fields.
+        if self.settled and self.settled_at is None:
+            self.settled_at = timezone.now()
+        if not self.settled:
+            self.settled_at = None
         
         self.full_clean() # Force all validation before saving
         super().save(*args, **kwargs)

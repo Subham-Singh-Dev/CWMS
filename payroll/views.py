@@ -12,7 +12,7 @@ from django.template.loader import get_template
 from xhtml2pdf import pisa
 import csv
 import json
-from .models import MonthlySalary
+from .models import MonthlySalary, Advance
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
@@ -531,7 +531,8 @@ def issue_advance_view(request):
                 "payroll/issue_advance.html",
                 {
                     "employees": employees,
-                    "success": "Advance issued successfully."
+                    "success": "Advance issued successfully.",
+                    "viewing_as_owner": request.viewing_as_owner,
                 }
             )
 
@@ -541,7 +542,8 @@ def issue_advance_view(request):
                 "payroll/issue_advance.html",
                 {
                     "employees": employees,
-                    "error": str(e)
+                    "error": str(e),
+                    "viewing_as_owner": request.viewing_as_owner,
                 }
             )
 
@@ -551,9 +553,72 @@ def issue_advance_view(request):
         "payroll/issue_advance.html",
         {
             "employees": employees,
-            "today": timezone.now().date()
+            "today": timezone.now().date(),
+            "viewing_as_owner": request.viewing_as_owner,
         }
     )
+
+
+@login_required
+@manager_required
+def advance_register_view(request):
+    """Render manager/owner advance register with filters, totals, and pagination."""
+    advances_qs = Advance.objects.select_related("employee", "employee__user").all()
+
+    search = (request.GET.get("search") or "").strip()
+    status = (request.GET.get("status") or "all").strip().lower()
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+
+    if search:
+        advances_qs = advances_qs.filter(
+            Q(employee__name__icontains=search)
+            | Q(employee__user__username__icontains=search)
+        )
+
+    if status == "outstanding":
+        advances_qs = advances_qs.filter(remaining_amount__gt=0)
+    elif status == "settled":
+        advances_qs = advances_qs.filter(remaining_amount=0)
+
+    if date_from:
+        advances_qs = advances_qs.filter(issued_date__gte=date_from)
+    if date_to:
+        advances_qs = advances_qs.filter(issued_date__lte=date_to)
+
+    advances_qs = advances_qs.order_by("-issued_date", "-created_at")
+
+    totals = advances_qs.aggregate(
+        total_issued=Coalesce(Sum("amount"), Decimal("0.00")),
+        total_outstanding=Coalesce(Sum("remaining_amount"), Decimal("0.00")),
+        total_records=Count("id"),
+        settled_count=Count("id", filter=Q(remaining_amount=0)),
+        outstanding_employee_count=Count(
+            "employee_id", filter=Q(remaining_amount__gt=0), distinct=True
+        ),
+    )
+
+    page_size = 25
+    page_number = request.GET.get("page", 1)
+    from django.core.paginator import Paginator
+    paginator = Paginator(advances_qs, page_size)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "advances": page_obj,
+        "page_obj": page_obj,
+        "search": search,
+        "status": status,
+        "date_from": date_from,
+        "date_to": date_to,
+        "total_issued": totals["total_issued"],
+        "total_outstanding": totals["total_outstanding"],
+        "total_records": totals["total_records"],
+        "settled_count": totals["settled_count"],
+        "outstanding_employee_count": totals["outstanding_employee_count"],
+        "viewing_as_owner": request.viewing_as_owner,
+    }
+    return render(request, "payroll/advance_register.html", context)
 
 
 

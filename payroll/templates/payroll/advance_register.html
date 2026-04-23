@@ -1,0 +1,427 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Advance Register | {{ BRAND_SHORT_NAME }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neutral-50: #f8fafc;
+            --neutral-100: #f1f5f9;
+            --neutral-200: #e2e8f0;
+            --neutral-300: #cbd5e1;
+            --neutral-400: #94a3b8;
+            --neutral-500: #64748b;
+            --neutral-600: #475569;
+            --neutral-700: #334155;
+            --neutral-800: #1e293b;
+            --neutral-900: #0f172a;
+            --danger-50: #fef2f2;
+            --danger-500: #ef4444;
+            --danger-600: #dc2626;
+            --success-50: #f0fdf4;
+            --success-500: #10b981;
+            --success-600: #059669;
+            --primary-50: #eff6ff;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --warning-50: #fffbeb;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+            --purple-500: #8b5cf6;
+            --purple-600: #7c3aed;
+            --bg-body: var(--neutral-50);
+            --bg-card: #ffffff;
+            --bg-secondary: var(--neutral-100);
+            --text-primary: var(--neutral-900);
+            --text-secondary: var(--neutral-600);
+            --text-muted: #6b7294;
+            --border-subtle: var(--neutral-200);
+            --border-strong: var(--neutral-300);
+            --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
+        }
+        [data-theme="dark"] {
+            --bg-body: #0a0d14;
+            --bg-card: #111520;
+            --bg-secondary: #0f1117;
+            --text-primary: #eef0f8;
+            --text-secondary: #a8b0c8;
+            --text-muted: #6b7294;
+            --border-subtle: rgba(255,255,255,0.07);
+            --border-strong: rgba(255,255,255,0.13);
+            --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.5);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,.6);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.7);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 20px;
+            transition: background-color .2s ease, color .2s ease;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .header {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--warning-500), #ea580c);
+        }
+        .title-wrap h1 {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -.4px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .title-wrap p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .header-controls { display: flex; gap: 10px; align-items: center; }
+        .back-link, .action-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            transition: all .2s ease;
+        }
+        .back-link:hover, .action-link:hover {
+            border-color: var(--warning-500);
+            background: var(--warning-50);
+        }
+        [data-theme="dark"] .back-link:hover,
+        [data-theme="dark"] .action-link:hover {
+            background: rgba(245,158,11,.15);
+        }
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s ease;
+        }
+        .theme-toggle:hover { border-color: var(--warning-500); transform: scale(1.05); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -.4px;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+        }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        .field input, .field select {
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .btn {
+            padding: 10px 14px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .btn.primary {
+            background: linear-gradient(135deg, var(--warning-600), #ea580c);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 960px;
+            background: var(--bg-card);
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            text-align: left;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        th {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .amount { font-weight: 700; color: var(--text-primary); }
+        .muted { color: var(--text-muted); }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .3px;
+            border: 1px solid;
+        }
+        .badge.outstanding {
+            background: rgba(245,158,11,.12);
+            border-color: rgba(245,158,11,.35);
+            color: var(--warning-500);
+        }
+        .badge.settled {
+            background: rgba(16,185,129,.12);
+            border-color: rgba(16,185,129,.35);
+            color: var(--success-500);
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px 16px;
+            color: var(--text-muted);
+        }
+
+        .pager {
+            margin-top: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .pager .links { display: flex; gap: 8px; }
+
+        @media (max-width: 1024px) {
+            .filters { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 640px) {
+            body { padding: 14px; }
+            .header { padding: 16px; }
+            .title-wrap h1 { font-size: 21px; }
+            .filters { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="title-wrap">
+            <h1>📒 Advance Register</h1>
+            <p>All employee advances with amount, issue date/time, and outstanding balance.</p>
+        </div>
+        <div class="header-controls">
+            {% if viewing_as_owner %}
+            <a href="{% url 'king:king_dashboard' %}" class="back-link">← Owner Dashboard</a>
+            {% else %}
+            <a href="{% url 'manager_dashboard' %}" class="back-link">← Dashboard</a>
+            {% endif %}
+            <a href="{% url 'issue_advance' %}" class="back-link">← Back to Issue Advance</a>
+            <a href="{% url 'issue_advance' %}" class="action-link">💸 Issue Advance</a>
+            <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Issued</div>
+            <div class="stat-value">₹{{ total_issued|floatformat:2 }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Outstanding Balance</div>
+            <div class="stat-value">₹{{ total_outstanding|floatformat:2 }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Outstanding Employees</div>
+            <div class="stat-value">{{ outstanding_employee_count }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Settled Records</div>
+            <div class="stat-value">{{ settled_count }}</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <form method="get" class="filters">
+            <div class="field">
+                <label>Employee Search</label>
+                <input type="text" name="search" value="{{ search }}" placeholder="Name or username">
+            </div>
+            <div class="field">
+                <label>Status</label>
+                <select name="status">
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+                    <option value="outstanding" {% if status == 'outstanding' %}selected{% endif %}>Outstanding</option>
+                    <option value="settled" {% if status == 'settled' %}selected{% endif %}>Settled</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>From Date</label>
+                <input type="date" name="date_from" value="{{ date_from }}">
+            </div>
+            <div class="field">
+                <label>To Date</label>
+                <input type="date" name="date_to" value="{{ date_to }}">
+            </div>
+            <button type="submit" class="btn primary">Apply</button>
+        </form>
+    </div>
+
+    <div class="panel">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Issued Amount</th>
+                        <th>Remaining Amount</th>
+                        <th>Issued Date</th>
+                        <th>Issued Time</th>
+                        <th>Settled Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for adv in advances %}
+                    <tr>
+                        <td>
+                            <div class="amount">{{ adv.employee.name }}</div>
+                            <div class="muted">{{ adv.employee.user.username }}</div>
+                        </td>
+                        <td class="amount">₹{{ adv.amount|floatformat:2 }}</td>
+                        <td class="amount">₹{{ adv.remaining_amount|floatformat:2 }}</td>
+                        <td>{{ adv.issued_date|date:"d M Y" }}</td>
+                        <td>{{ adv.created_at|date:"h:i A" }}</td>
+                        <td>
+                            {% if adv.settled_at %}
+                            {{ adv.settled_at|date:"d M Y, h:i A" }}
+                            {% else %}
+                            <span class="muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if adv.remaining_amount > 0 %}
+                            <span class="badge outstanding">Outstanding</span>
+                            {% else %}
+                            <span class="badge settled">Settled</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="empty">No advance records found for the selected filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pager">
+            <div class="muted">Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</div>
+            <div class="links">
+                {% if page_obj.has_previous %}
+                <a class="btn" href="?search={{ search|urlencode }}&status={{ status|urlencode }}&date_from={{ date_from|urlencode }}&date_to={{ date_to|urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                <span class="btn">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                <a class="btn" href="?search={{ search|urlencode }}&status={{ status|urlencode }}&date_from={{ date_from|urlencode }}&date_to={{ date_to|urlencode }}&page={{ page_obj.next_page_number }}">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

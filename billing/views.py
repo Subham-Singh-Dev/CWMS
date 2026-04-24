@@ -14,6 +14,8 @@ from decimal import Decimal
 from django.utils.dateparse import parse_date
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from datetime import datetime
+from django.urls import reverse
 
 from portal.decorators import manager_required
 from .models import Bill
@@ -22,6 +24,16 @@ from .models import Bill
 @manager_required
 def billing_dashboard(request, viewing_as_owner=False):
     """Render bill dashboard and handle upload form submissions."""
+    selected_type = request.GET.get("type", Bill.BILL_TYPE_DEBTOR).strip().lower()
+    if selected_type not in {Bill.BILL_TYPE_CLIENT, Bill.BILL_TYPE_DEBTOR}:
+        selected_type = Bill.BILL_TYPE_DEBTOR
+
+    selected_month_str = request.GET.get("month", timezone.now().strftime("%Y-%m")).strip()
+    try:
+        selected_month = datetime.strptime(selected_month_str, "%Y-%m")
+    except ValueError:
+        selected_month = timezone.now()
+        selected_month_str = selected_month.strftime("%Y-%m")
 
     # ==========================
     # HANDLE BILL UPLOAD (POST)
@@ -30,18 +42,23 @@ def billing_dashboard(request, viewing_as_owner=False):
         description = request.POST.get("description")
         amount = request.POST.get("amount")
         pdf_file = request.FILES.get("pdf_file")
+        bill_type = request.POST.get("bill_type", Bill.BILL_TYPE_DEBTOR).strip().lower()
+        if bill_type not in {Bill.BILL_TYPE_CLIENT, Bill.BILL_TYPE_DEBTOR}:
+            bill_type = Bill.BILL_TYPE_DEBTOR
+        redirect_url = f"{request.path}?type={selected_type}&month={selected_month_str}"
 
         if not description or not amount or not pdf_file:
             messages.error(request, "All fields are required.")
-            return redirect("billing:billing_dashboard")
+            return redirect(redirect_url)
 
         try:
             bill_amount = Decimal(amount).quantize(Decimal('0.01'))
         except (ValueError, TypeError):
             messages.error(request, "Invalid amount. Please enter a valid number.")
-            return redirect("billing:billing_dashboard")
+            return redirect(redirect_url)
         
         Bill.objects.create(
+            bill_type=bill_type,
             description=description,
             amount=bill_amount,
             pdf_file=pdf_file,
@@ -49,28 +66,32 @@ def billing_dashboard(request, viewing_as_owner=False):
         )
 
         messages.success(request, "Bill uploaded successfully.")
-        return redirect("billing:billing_dashboard")  # 🔒 PRG pattern
+        return redirect(redirect_url)  # 🔒 PRG pattern
 
     # ==========================
     # GET: DASHBOARD DATA
     # ==========================
-    bills = Bill.objects.all().order_by("-created_at")
+    bills = Bill.objects.filter(bill_type=selected_type).order_by("-created_at")
+    filtered_bills = bills.filter(
+        created_at__year=selected_month.year,
+        created_at__month=selected_month.month,
+    )
 
-    total_bills = bills.count()
+    total_bills = filtered_bills.count()
 
-    total_paid = bills.filter(is_paid=True).aggregate(
+    total_paid = filtered_bills.filter(is_paid=True).aggregate(
         total=Coalesce(Sum("amount"), Decimal("0.00"))
     )["total"]
 
-    total_unpaid = bills.filter(is_paid=False).aggregate(
+    total_unpaid = filtered_bills.filter(is_paid=False).aggregate(
         total=Coalesce(Sum("amount"), Decimal("0.00"))
     )["total"]
 
-    unpaid_count = bills.filter(is_paid=False).count()
+    unpaid_count = filtered_bills.filter(is_paid=False).count()
 
     # Monthly summary cards (default: current month)
     today = timezone.now().date()
-    monthly_bills = bills.filter(created_at__year=today.year, created_at__month=today.month)
+    monthly_bills = filtered_bills
     monthly_bill_count = monthly_bills.count()
     taxable_amount = monthly_bills.aggregate(
         total=Coalesce(Sum("amount"), Decimal("0.00"))
@@ -86,8 +107,21 @@ def billing_dashboard(request, viewing_as_owner=False):
     unpaid_percentage = 100 - paid_percentage
     unpaid_bill_percentage = int((unpaid_count / total_bills) * 100) if total_bills else 0
 
+    debtor_health = ""
+    debtor_health_color = ""
+    if selected_type == Bill.BILL_TYPE_DEBTOR:
+        if total_unpaid <= Decimal("50000"):
+            debtor_health = "Healthy"
+            debtor_health_color = "green"
+        elif total_unpaid < Decimal("200000"):
+            debtor_health = "Watch"
+            debtor_health_color = "orange"
+        else:
+            debtor_health = "Critical"
+            debtor_health_color = "red"
+
     context = {
-        "bills": bills,
+        "bills": filtered_bills,
         "total_bills": total_bills,
         "total_paid": total_paid,
         "total_unpaid": total_unpaid,
@@ -100,6 +134,11 @@ def billing_dashboard(request, viewing_as_owner=False):
         "gst_amount": gst_amount,
         "total_amount_with_gst": total_amount_with_gst,
         "today_date": today.isoformat(),
+        "selected_type": selected_type,
+        "selected_month": selected_month_str,
+        "selected_month_display": selected_month.strftime("%B %Y"),
+        "debtor_health": debtor_health,
+        "debtor_health_color": debtor_health_color,
     }
 
     return render(request, "billing/billing_dashboard.html", context)
@@ -112,6 +151,8 @@ def toggle_bill_status(request, bill_id):
     SECURITY: POST-only to prevent status changes via crawlers/bookmarks.
     """
     bill = get_object_or_404(Bill, id=bill_id)
+    selected_type = request.POST.get("type", bill.bill_type)
+    selected_month = request.POST.get("month", timezone.now().strftime("%Y-%m"))
 
     if bill.is_paid:
         bill.is_paid = False
@@ -129,14 +170,16 @@ def toggle_bill_status(request, bill_id):
     else:
         messages.warning(request, "Bill marked as UNPAID.")
 
-    return redirect("billing:billing_dashboard")
+    return redirect(f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}")
 
 
 @manager_required
 @require_POST
 def delete_bill(request, bill_id):
     """Hard-delete a bill row from dashboard action."""
+    selected_type = request.POST.get("type", Bill.BILL_TYPE_DEBTOR)
+    selected_month = request.POST.get("month", timezone.now().strftime("%Y-%m"))
     bill = get_object_or_404(Bill, id=bill_id)
     bill.delete()
     messages.success(request, "Bill deleted successfully.")
-    return redirect("billing:billing_dashboard")
+    return redirect(f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}")

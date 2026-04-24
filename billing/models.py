@@ -17,6 +17,21 @@ class Bill(models.Model):
 
     BUSINESS RULE: `paid_on` auto-syncs from `is_paid` in save() to keep state consistent.
     """
+    BILL_TYPE_CLIENT = "client"
+    BILL_TYPE_DEBTOR = "debtor"
+    BILL_TYPE_CHOICES = [
+        (BILL_TYPE_CLIENT, "Credit Customer"),
+        (BILL_TYPE_DEBTOR, "Debtor"),
+    ]
+
+    bill_type = models.CharField(
+        max_length=20,
+        choices=BILL_TYPE_CHOICES,
+        default=BILL_TYPE_DEBTOR,
+        db_index=True,
+        help_text="client = incoming money, debtor = outgoing money"
+    )
+
     description = models.CharField(max_length=255)
 
     amount = models.DecimalField(

@@ -25,7 +25,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import get_template
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from xhtml2pdf import pisa
+try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
 
 from employees.models import Employee
 from attendance.models import Attendance
@@ -1167,7 +1167,7 @@ def ledger_delete_entry(request, entry_id):
 
 
 @king_required
-def ledger_pdf(request):
+def ledger_pdf(request):`n    if pisa is None:`n        from django.http import HttpResponse`n        return HttpResponse("PDF export temporarily unavailable.", status=503)
     """Export filtered ledger view as PDF with current brand identity fields."""
     from_date_str = request.GET.get('from_date')
     to_date_str = request.GET.get('to_date')
@@ -1217,3 +1217,4 @@ def ledger_pdf(request):
     )
 
     return response
+

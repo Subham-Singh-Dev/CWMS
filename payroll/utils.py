@@ -1,8 +1,8 @@
 from io import BytesIO
 from django.template.loader import render_to_string
-from xhtml2pdf import pisa
+try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
 
-def generate_payslip_pdf(salary):
+def generate_payslip_pdf(salary):`n    if pisa is None:`n        return None
     """
     Pure utility function. 
     Input: MonthlySalary object
@@ -22,3 +22,4 @@ def generate_payslip_pdf(salary):
         return None
     
     return result.getvalue()
+

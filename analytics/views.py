@@ -7,7 +7,7 @@ from django.shortcuts import render
 from django.db.models import Q
 from django.template.loader import get_template
 
-from xhtml2pdf import pisa
+try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
 
 from analytics.models import AuditLog
 from analytics.services.audit_service import create_audit_log
@@ -166,7 +166,7 @@ def _audit_csv_response(filename, queryset):
     return response
 
 
-def _audit_pdf_response(filename, rows, request, is_king_view):
+def _audit_pdf_response(filename, rows, request, is_king_view):`n    if pisa is None:`n        from django.http import HttpResponse`n        return HttpResponse("PDF export temporarily unavailable.", status=503)
     generated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     company_name = 'Sakuntalam India Services · CWMS'
 
@@ -227,3 +227,4 @@ def manager_audit_export_pdf(request):
 
     _create_export_audit_log(request, 'Manager Audit PDF Export', len(rows))
     return _audit_pdf_response('manager_audit_log.pdf', rows, request, is_king_view=False)
+

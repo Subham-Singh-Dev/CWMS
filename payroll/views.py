@@ -9,7 +9,7 @@ Author note: Views delegate calculations to services to avoid duplicated money l
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
-from xhtml2pdf import pisa
+try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
 import csv
 import json
 from .models import MonthlySalary, Advance
@@ -37,7 +37,7 @@ from django.views.decorators.http import require_POST
 
 
 @login_required
-def download_payslip(request, salary_id):
+def download_payslip(request, salary_id):`n    if pisa is None:`n        from django.http import HttpResponse`n        return HttpResponse("PDF export temporarily unavailable.", status=503)
     """Generate/download a single payslip PDF with strict authorization checks."""
     # --- IMPROVEMENT 2: PERFORMANCE ---
     # Fetch salary AND employee data in 1 query (saves DB hits)
@@ -623,3 +623,4 @@ def advance_register_view(request):
 
 
     
+

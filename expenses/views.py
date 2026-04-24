@@ -16,7 +16,10 @@ from django.db.models import Sum
 import csv
 from django.http import HttpResponse
 from django.template.loader import get_template
-try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
 import io
 from django.views.decorators.http import require_POST
 

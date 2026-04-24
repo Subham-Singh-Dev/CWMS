@@ -9,7 +9,10 @@ Author note: Views delegate calculations to services to avoid duplicated money l
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
-try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
 import csv
 import json
 from .models import MonthlySalary, Advance

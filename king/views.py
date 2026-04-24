@@ -25,7 +25,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import get_template
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
 
 from employees.models import Employee
 from attendance.models import Attendance

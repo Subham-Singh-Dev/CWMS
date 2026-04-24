@@ -7,7 +7,10 @@ from django.shortcuts import render
 from django.db.models import Q
 from django.template.loader import get_template
 
-try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
 
 from analytics.models import AuditLog
 from analytics.services.audit_service import create_audit_log

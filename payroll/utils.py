@@ -1,6 +1,9 @@
 from io import BytesIO
 from django.template.loader import render_to_string
-try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
 
 def generate_payslip_pdf(salary):`n    if pisa is None:`n        return None
     """

@@ -21,7 +21,10 @@ from django.db.models import Sum, Count, Q, F
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.urls import reverse
-try:`n    from xhtml2pdf import pisa`nexcept ImportError:`n    pisa = None
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
 from django.db import transaction
 
 from employees.models import Employee

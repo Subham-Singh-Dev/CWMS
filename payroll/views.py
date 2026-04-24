@@ -40,10 +40,13 @@ from django.views.decorators.http import require_POST
 
 
 @login_required
-def download_payslip(request, salary_id):`n    if pisa is None:`n        from django.http import HttpResponse`n        return HttpResponse("PDF export temporarily unavailable.", status=503)
+def download_payslip(request, salary_id):
     """Generate/download a single payslip PDF with strict authorization checks."""
     # --- IMPROVEMENT 2: PERFORMANCE ---
     # Fetch salary AND employee data in 1 query (saves DB hits)
+    if pisa is None:
+        from django.http import HttpResponse
+        return HttpResponse("PDF export temporarily unavailable.", status=503)
     salary = get_object_or_404(
         MonthlySalary.objects.select_related('employee'), 
         id=salary_id

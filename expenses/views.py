@@ -243,8 +243,11 @@ def export_expenses_csv(request, viewing_as_owner=False):
     return response
 
 @manager_required
-def daily_expense_pdf(request):`n    if pisa is None:`n        from django.http import HttpResponse`n        return HttpResponse("PDF export temporarily unavailable.", status=503)
+def daily_expense_pdf(request):
     """Export one-day grouped expense summary as PDF."""
+    if pisa is None:
+        from django.http import HttpResponse
+        return HttpResponse("PDF export temporarily unavailable.", status=503)
     from datetime import datetime
     from django.db.models import Count
 

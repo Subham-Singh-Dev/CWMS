@@ -1170,8 +1170,11 @@ def ledger_delete_entry(request, entry_id):
 
 
 @king_required
-def ledger_pdf(request):`n    if pisa is None:`n        from django.http import HttpResponse`n        return HttpResponse("PDF export temporarily unavailable.", status=503)
+def ledger_pdf(request):
     """Export filtered ledger view as PDF with current brand identity fields."""
+    if pisa is None:
+        from django.http import HttpResponse
+        return HttpResponse("PDF export temporarily unavailable.", status=503)
     from_date_str = request.GET.get('from_date')
     to_date_str = request.GET.get('to_date')
     account_name = (request.GET.get('account_name') or settings.BRAND_ACCOUNT_NAME).strip()

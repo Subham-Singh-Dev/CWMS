@@ -5,12 +5,15 @@ try:
 except ImportError:
     pisa = None
 
-def generate_payslip_pdf(salary):`n    if pisa is None:`n        return None
+def generate_payslip_pdf(salary):
     """
     Pure utility function. 
     Input: MonthlySalary object
     Output: PDF Bytes
     """
+    if pisa is None:
+        from django.http import HttpResponse
+        return HttpResponse("PDF export temporarily unavailable.", status=503)
     # 1. Render HTML
     html_string = render_to_string('payroll/payslip.html', {'salary': salary})
     

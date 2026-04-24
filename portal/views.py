@@ -166,8 +166,11 @@ def worker_attendance(request):
     return render(request, 'portal/attendance.html', {'logs': logs})
 
 @worker_required
-def download_payslip(request, salary_id):`n    if pisa is None:`n        from django.http import HttpResponse`n        return HttpResponse("PDF export temporarily unavailable.", status=503)
+def download_payslip(request, salary_id):
     """Download paid payslip with ownership enforcement for worker accounts."""
+    if pisa is None:
+        from django.http import HttpResponse
+        return HttpResponse("PDF export temporarily unavailable.", status=503)
     salary = get_object_or_404(
         MonthlySalary.objects.select_related('employee'), 
         id=salary_id

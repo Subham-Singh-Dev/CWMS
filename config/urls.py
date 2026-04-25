@@ -20,6 +20,7 @@ from django.urls import path, include
 
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     # redirect view for the website
@@ -49,6 +50,9 @@ urlpatterns = [
     
     # King module is namespaced and isolated under /king/ for strict owner workflow boundaries.
     path('king/', include('king.urls', namespace='king')),
+
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 
     
 ]

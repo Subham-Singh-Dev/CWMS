@@ -78,6 +78,10 @@ INSTALLED_APPS = [
 
     'king.apps.KingConfig',
 
+    'rest_framework',
+
+    'drf_spectacular',
+
 
 ]
 
@@ -190,6 +194,25 @@ BRAND_PRODUCT_NAME = os.getenv("BRAND_PRODUCT_NAME", "Construction Workforce Man
 BRAND_ACCOUNT_NAME = os.getenv("BRAND_ACCOUNT_NAME", BRAND_COMPANY_NAME.upper())
 BRAND_COMPANY_ADDRESS = os.getenv("BRAND_COMPANY_ADDRESS", "")
 BRAND_COMPANY_GSTIN = os.getenv("BRAND_COMPANY_GSTIN", "")
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'CWMS API',
+    'DESCRIPTION': 'Contractor Workforce Management System API',
+    'VERSION': '1.0.0',
+}
+
+
+
 
 # Production Security Settings
 if not DEBUG:

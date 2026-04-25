@@ -30,7 +30,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 # WARNING: Hardcoded secret key is acceptable only for local/dev usage.
 # PRODUCTION: Load SECRET_KEY exclusively from environment/secret manager.
-SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-for-local')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('DEBUG', 'True') == 'True':
+        SECRET_KEY = 'dev-only-secret-not-for-production'
+    else:
+        raise ValueError("SECRET_KEY environment variable is not set")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # WARNING: DEBUG=True leaks stack traces/settings in error pages.
@@ -38,6 +43,11 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-for-local')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:8000'
+).split(',')
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
@@ -141,7 +151,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -169,6 +179,9 @@ LOGIN_REDIRECT_URL = 'portal_login' # <--- Where to go after login (we handle th
 # Media files (uploads)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# WARNING: Render free tier has ephemeral storage
+# Media files uploaded by users will be lost on redeploy
+# TODO Week 4: Migrate to Cloudinary or AWS S3 for persistent media storage
 
 # Global branding
 BRAND_COMPANY_NAME = os.getenv("BRAND_COMPANY_NAME", "Sakuntalam India Services")
@@ -177,3 +190,11 @@ BRAND_PRODUCT_NAME = os.getenv("BRAND_PRODUCT_NAME", "Construction Workforce Man
 BRAND_ACCOUNT_NAME = os.getenv("BRAND_ACCOUNT_NAME", BRAND_COMPANY_NAME.upper())
 BRAND_COMPANY_ADDRESS = os.getenv("BRAND_COMPANY_ADDRESS", "")
 BRAND_COMPANY_GSTIN = os.getenv("BRAND_COMPANY_GSTIN", "")
+
+# Production Security Settings
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

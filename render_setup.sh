@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Exit on error
 set -o errexit
 
 python manage.py migrate
 
-# Create a superuser if it doesn't exist
-# This uses environment variables you will set in the dashboard
-python manage.py shell << END
+python manage.py shell -c "
 from django.contrib.auth import get_user_model
+import os
 User = get_user_model()
-if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
-    User.objects.create_superuser('$DJANGO_SUPERUSER_USERNAME', '$DJANGO_SUPERUSER_EMAIL', '$DJANGO_SUPERUSER_PASSWORD')
-    print("Superuser created.")
+username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
+email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+if username and not User.objects.filter(username=username).exists():
+    User.objects.create_superuser(username, email, password)
+    print('Superuser created: ' + username)
 else:
-    print("Superuser already exists.")
-END
+    print('Superuser already exists or env vars missing.')
+"
 
-# Start the web server
 gunicorn config.wsgi:application

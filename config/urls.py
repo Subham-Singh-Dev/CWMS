@@ -23,7 +23,7 @@ from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
-    # redirect view for the website
+    # path for landing page to login portal
     path('', RedirectView.as_view(url='/portal/login/', permanent=False)),
     
     # SECURITY: Django admin endpoint; restrict with strong credentials and network controls in production.
@@ -50,7 +50,9 @@ urlpatterns = [
     
     # King module is namespaced and isolated under /king/ for strict owner workflow boundaries.
     path('king/', include('king.urls', namespace='king')),
-
+    
+    #path for Django-DRF API-VIEW
+    path('api/', include('portal.api.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 

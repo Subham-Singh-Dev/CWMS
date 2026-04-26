@@ -209,6 +209,16 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'CWMS API',
     'DESCRIPTION': 'Contractor Workforce Management System API',
     'VERSION': '1.0.0',
+    'SECURITY': [{'bearerAuth': []}],
+    'COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    },
 }
 
 

@@ -82,6 +82,8 @@ INSTALLED_APPS = [
 
     'drf_spectacular',
 
+    'django_extensions',
+
 
 ]
 

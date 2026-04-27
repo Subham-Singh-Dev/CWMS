@@ -234,6 +234,7 @@ def generate_monthly_salary(employee, month):
             
             advance.save()
 
+
         # Calculate total remaining advance debt after this payroll
         remaining_advance = Advance.objects.filter(
             employee=employee,

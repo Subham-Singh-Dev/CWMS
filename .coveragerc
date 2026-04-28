@@ -1,0 +1,7 @@
+[run]
+omit =
+    manage.py
+    populate_database.py
+    TESTING_SCRIPTS.py
+    */migrations/*
+    venv/*

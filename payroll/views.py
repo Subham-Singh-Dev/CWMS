@@ -10,7 +10,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
 try:
-    from xhtml2pdf import pisa
+    from xhtml2pdf import pisa  # type: ignore[reportMissingImports]
 except ImportError:
     pisa = None
 import csv

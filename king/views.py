@@ -1114,10 +1114,13 @@ def ledger_add_entry(request):
     """Create a ledger transaction row with validation and audit logging."""
     debit = request.POST.get('debit') or '0'
     credit = request.POST.get('credit') or '0'
+    date_str = request.POST.get('date') # Get the string
 
     try:
+        # --- THE FIX: Convert string to date object before creating ---
+        actual_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.localdate()
         entry = LedgerEntry.objects.create(
-            date=request.POST.get('date'),
+            date=actual_date, # Pass the object, not the string
             entry_type=request.POST.get('entry_type'),
             voucher_number=request.POST.get('voucher_number') or None,
             particulars=request.POST.get('particulars'),

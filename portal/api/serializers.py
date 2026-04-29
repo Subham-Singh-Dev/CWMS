@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from attendance.models import Attendance
 from employees.models import Employee
+from payroll.models import MonthlySalary, Advance
 
 
 class AttendanceSerializer(serializers.ModelSerializer):
@@ -30,4 +31,38 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'phone_number',
             'is_active',
             'join_date',
+        ]
+
+class AdvanceSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(
+        source='employee.name',
+        read_only=True
+    )
+    class Meta:
+        model = Advance
+        fields = [
+            'id',
+            'employee',
+            'employee_name',
+            'amount',
+            'issued_date',
+            'remaining_amount',
+        ]
+
+class MonthlySalarySerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(
+        source='employee.name',
+        read_only=True
+    )
+    class Meta:
+        model = MonthlySalary
+        fields = [
+            'id',
+            'employee',
+            'employee_name',
+            'month',
+            'gross_pay',
+            'net_pay',
+            'advance_deducted',
+            'is_paid',
         ]

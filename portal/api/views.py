@@ -9,6 +9,9 @@ from employees.models import Employee
 from analytics.services.audit_service import recent_activity_items_for_manager
 from .serializers import AttendanceSerializer, EmployeeSerializer
 
+from payroll.models import MonthlySalary, Advance
+from .serializers import MonthlySalarySerializer, AdvanceSerializer
+
 
 class RecentActivityAPIView(APIView):
     """
@@ -127,3 +130,100 @@ class EmployeeListAPIView(APIView):
             "count": employees.count(),
             "employees": serializer.data
         })
+
+class PayrollListAPIView(APIView):
+    """
+    GET /api/payroll/?month=2026-04
+    Returns salary list for a given month.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        is_manager = (
+            request.user.is_superuser or
+            request.user.groups.filter(name='Manager').exists()
+        )
+        if not is_manager:
+            return Response(
+                {"error": "Permission denied"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        month_str = request.query_params.get('month')
+        if month_str:
+            try:
+                from datetime import datetime
+                month = datetime.strptime(month_str, '%Y-%m').date().replace(day=1)
+            except ValueError:
+                return Response(
+                    {"error": "Invalid month format. Use YYYY-MM"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            month = timezone.now().date().replace(day=1)
+
+        salaries = MonthlySalary.objects.filter(
+            month=month
+        ).select_related('employee').order_by('employee__name')
+
+        serializer = MonthlySalarySerializer(salaries, many=True)
+        return Response({
+            "month": str(month),
+            "count": salaries.count(),
+            "salaries": serializer.data
+        })
+
+
+class AdvanceListAPIView(APIView):
+    """
+    GET /api/advances/?employee_id=1  → list advances for employee
+    POST /api/advances/               → issue new advance
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        is_manager = (
+            request.user.is_superuser or
+            request.user.groups.filter(name='Manager').exists()
+        )
+        if not is_manager:
+            return Response(
+                {"error": "Permission denied"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        employee_id = request.query_params.get('employee_id')
+        queryset = Advance.objects.select_related('employee')
+
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+
+        queryset = queryset.order_by('issued_date')
+        serializer = AdvanceSerializer(queryset, many=True)
+        return Response({
+            "count": queryset.count(),
+            "advances": serializer.data
+        })
+
+    def post(self, request):
+        is_manager = (
+            request.user.is_superuser or
+            request.user.groups.filter(name='Manager').exists()
+        )
+        if not is_manager:
+            return Response(
+                {"error": "Permission denied"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = AdvanceSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )

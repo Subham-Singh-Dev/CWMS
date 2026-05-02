@@ -31,6 +31,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'phone_number',
             'is_active',
             'join_date',
+            'daily_wage',
+            'role', 
+            'employment_type',
         ]
 
 class AdvanceSerializer(serializers.ModelSerializer):

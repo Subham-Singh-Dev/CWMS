@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 from employees.models import Employee, Role
 from attendance.models import Attendance
+from django.core.exceptions import ValidationError  # Import the raw Django error
 
 @pytest.mark.django_db
 class TestAttendanceAPI:
@@ -109,7 +110,7 @@ class TestAttendanceAPI:
 
     def test_mark_future_attendance_rejected(self):
         """Ensure the API enforces the 'no future dates' model validation."""
-        from django.core.exceptions import ValidationError  # Import the raw Django error
+        
         
         headers = self.get_auth_headers()
         tomorrow = timezone.now().date() + timedelta(days=1)
@@ -127,3 +128,33 @@ class TestAttendanceAPI:
         
         # Verify the error message inside the crash is the one we wrote for future dates
         assert "future" in str(exc_info.value).lower()
+
+
+@pytest.mark.django_db
+class TestEmployeeCRUD:
+
+    def test_get_employee_by_id(self, manager_client, employee):
+        response = manager_client.get(f'/api/employees/{employee.pk}/')
+        assert response.status_code == 200
+        assert response.data['name'] == employee.name
+
+    def test_put_updates_employee(self, manager_client, employee):
+        response = manager_client.put(
+            f'/api/employees/{employee.pk}/',
+            {'daily_wage': '750.00'},
+            format='json'
+        )
+        assert response.status_code == 200
+        employee.refresh_from_db()
+        assert employee.daily_wage == Decimal('750.00')
+
+    def test_delete_removes_employee(self, manager_client, employee):
+        pk = employee.pk
+        response = manager_client.delete(f'/api/employees/{pk}/')
+        assert response.status_code == 204
+        assert not Employee.objects.filter(pk=pk).exists()
+
+    def test_unauthenticated_cannot_delete(self):
+        client = APIClient()
+        response = client.delete('/api/employees/1/')
+        assert response.status_code == 401

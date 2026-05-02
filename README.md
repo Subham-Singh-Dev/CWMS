@@ -1,162 +1,197 @@
-# 🏗️ CWMS — Contractor Workforce Management System
+# CWMS — Contractor Workforce Management System
 
-> A production-grade Django backend system that automates daily-wage workforce management for construction contractors.
+[![CI](https://github.com/Subham-Singh-Dev/cwms/actions/workflows/ci.yml/badge.svg)](https://github.com/Subham-Singh-Dev/cwms/actions)
+[![Live](https://img.shields.io/badge/Live-cwms--1fdo.onrender.com-00b37e?style=flat-square&logo=render&logoColor=white)](https://cwms-1fdo.onrender.com/portal/login/)
+[![API Docs](https://img.shields.io/badge/API_Docs-Swagger_UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://cwms-1fdo.onrender.com/api/docs/)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![Django](https://img.shields.io/badge/Django-5.2-092E20?style=flat-square&logo=django&logoColor=white)](https://djangoproject.com)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-\---
+> A production-grade Django backend that automates daily-wage workforce management for construction contractors. Live system managing 100–500+ workers for a real client.
 
+---
 
+## Live Links
 
-\## 🚀 Live Demo
-
-| | |
-
+| | URL |
 |---|---|
+| **Web App** | https://cwms-1fdo.onrender.com/portal/login/ |
+| **API Docs (Swagger)** | https://cwms-1fdo.onrender.com/api/docs/ |
 
-| \*\*App\*\* | https://cwms-1fdo.onrender.com/portal/login/ |
+---
 
-| \*\*API Docs\*\* | https://cwms-1fdo.onrender.com/api/docs/ |
+## The Problem It Solves
 
+| Before CWMS | After CWMS |
+|---|---|
+| 6–8 hours of manual payroll every month | Payroll processed in under 10 minutes |
+| 5–10% advance leakage from manual tracking | Zero leakage — FIFO auto-deduction |
+| Frequent wage disputes with workers | Workers trust printed, signed payslips |
+| Zero financial visibility for the owner | Real-time liability and cash flow dashboard |
 
+---
 
+## Table of Contents
 
+- [Architecture](#architecture)
+- [Key Engineering Decisions](#key-engineering-decisions)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [User Roles](#user-roles)
+- [Project Structure](#project-structure)
+- [Setup & Installation](#setup--installation)
+- [API Reference](#api-reference)
+- [URL Endpoints](#url-endpoints)
+- [Authentication](#authentication)
+- [Deployment](#deployment)
+- [Future Enhancements](#future-enhancements)
 
+---
 
+## Architecture
 
-## 📌 Table of Contents
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Client Layer                          │
+│         Django Templates + Vanilla JS  │  REST API (JWT)    │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                      Django 5.2 Backend                      │
+│                                                              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐   │
+│  │employees │  │attendance│  │ payroll  │  │  billing  │   │
+│  └──────────┘  └──────────┘  └──────────┘  └───────────┘   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐   │
+│  │ expenses │  │  portal  │  │   king   │  │analytics  │   │
+│  └──────────┘  └──────────┘  └──────────┘  └───────────┘   │
+│                                                              │
+│         transaction.atomic() + select_for_update()           │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                   PostgreSQL (Render Managed)                 │
+└─────────────────────────────────────────────────────────────┘
+```
 
-* [Overview](#overview)
-* [Problem It Solves](#problem-it-solves)
-* [User Roles](#user-roles)
-* [Features](#features)
-* [Tech Stack](#tech-stack)
-* [Project Structure](#project-structure)
-* [Setup \& Installation](#setup--installation)
-* [URL Endpoints](#url-endpoints)
-* [Authentication](#authentication)
-* [Deployment](#deployment)
-* [Future Enhancements](#future-enhancements)
+---
 
-\---
+## Key Engineering Decisions
 
-## Overview
+These are the decisions that make CWMS production-safe, not just functional.
 
-CWMS replaces paper registers, Excel sheets, and ad-hoc workflows used by contractors to manage 100-400+ daily-wage workers. It provides a deterministic, auditable payroll workflow with attendance, advances, expenses, billing, owner reporting, and exportable documents.
+**FIFO Advance Deduction with `transaction.atomic()`**
 
-\---
+When payroll runs for 100–500+ workers concurrently, naive advance deduction causes race conditions — two payroll runs can read the same outstanding balance simultaneously and both deduct from it, causing double-deduction or missed recovery. CWMS uses `select_for_update()` inside `transaction.atomic()` to row-lock advance records per worker, ensuring FIFO recovery is deterministic with zero leakage.
 
-## Problem It Solves
+```python
+with transaction.atomic():
+    advances = Advance.objects.select_for_update().filter(
+        employee=employee, recovered=False
+    ).order_by('issued_on')   # FIFO — oldest first
+    # deduct from net salary until fully recovered or salary exhausted
+```
 
-|Before CWMS|After CWMS|
-|-|-|
-|6–8 hours of manual payroll|Payroll in 10 minutes|
-|5–10% advance leakage|Zero leakage (FIFO auto-deduction)|
-|Frequent wage disputes|Workers trust printed payslips|
-|Zero financial visibility|Real-time liability tracking|
+**3-Role RBAC with IDOR Protection**
 
-\---
+All three roles (Manager, Worker, King/Owner) use separate decorators and scoped queryset filters. A worker fetching `/payroll/payslip/<id>/` cannot access another worker's payslip — the view filters by `request.user` before returning any record.
 
-## User Roles
+**Immutable Salary Snapshots**
 
-|Role|Access|Capabilities|
-|-|-|-|
-|**Manager**|Operational Control|Attendance, payroll actions, advances, billing, expenses, employee records|
-|**Worker**|Read-Only|View own attendance, salary, download payslips|
-|**King (Owner)**|Strategic + Financial Control|Owner dashboard, work orders, revenue ledger, full audit visibility|
+Once a salary is generated and marked paid, its data is snapshotted — future rate changes or attendance edits do not retroactively alter past salaries. Critical for financial auditability.
 
-\---
+**7-Day Expense Edit Lock**
+
+Expenses cannot be edited or deleted after 7 days, enforced at the view layer. This prevents retroactive accounting manipulation.
+
+---
 
 ## Features
 
-### 📊 Payroll Engine
+### Payroll Engine
+- Monthly salary generation per employee
+- FIFO advance deduction (oldest debt recovered first)
+- Immutable salary snapshots (audit-safe, no retroactive changes)
+- Paid leave logic (first 2 absences per month = paid leave)
+- Overtime calculation by role
+- CSV export of salary list
 
-* Monthly salary generation per employee
-* Manager payroll dashboard summary and salary list
-* FIFO-based advance deduction (oldest debt first)
-* Immutable salary snapshots (audit-safe)
-* Paid leave logic (first 2 absences = paid leave)
-* Overtime calculation by role
-* CSV export of salary list
+### Attendance System
+- Daily tracking: Present / Half Day / Absent
+- Bulk attendance UI — spreadsheet-style for 100+ workers in one view
+- Overtime hours per record
+- Validation: blocks future dates and previous-month edits
 
-### 📅 Attendance System
+### Advance Management
+- Issue cash loans to workers
+- Automatic FIFO recovery during payroll run
+- Partial recovery tracking across multiple months
+- Real-time outstanding balance displayed per worker
 
-* Daily tracking: Present / Half Day / Absent
-* Bulk attendance UI (spreadsheet-style for 100+ workers)
-* Overtime hours per record
-* Validation rules for future date / previous month marking
+### Employee Management
+- Add / edit / deactivate employees
+- Auto-generated Employee IDs (`EMPxxxxx`) with temporary password
+- Worker login by phone number + password
 
-### 💰 Advance Management
+### Billing Module
+- Upload vendor bills (PDF)
+- Paid / Unpaid toggle with auto-tracked `paid_on` timestamp
+- POST-only mutation safety on delete and status toggle
 
-* Issue cash loans to workers
-* Automatic FIFO recovery during payroll
-* Partial recovery tracking across months
-* Real-time outstanding balance display
-* Managed within the `payroll` app — no separate module required
+### Daily Expenses
+- Categories: Food, Fuel, Travel, Material, Misc
+- Payment modes: Cash, UPI, Bank
+- Daily / Weekly / Monthly aggregates
+- 7-day edit lock (accounting safety)
+- CSV and PDF export
 
-### 👥 Employee Management
+### Document Generation
+- PDF payslips via xhtml2pdf
+- Expense PDF reports
+- Audit trail PDF exports
+- CSV exports across payroll, expenses, and audit modules
 
-* Add/edit/deactivate employees
-* Auto-generated user IDs (`EMPxxxxx`) with temporary password
-* Role assignment (Worker / Manager)
-* Worker login by phone number + password
+### Audit Log
+- Full activity trail: who did what, when, from which IP
+- Scope-aware: King sees all, Manager sees only their own actions
+- CSV and PDF export for both roles
 
-### 📄 Billing Module
+### King (Owner) Dashboard
+- Aggregate business analytics and cash flow overview
+- Work order lifecycle management
+- Revenue tracking and ledger management
+- Strategic reports for owner-level decision making
 
-* Upload vendor bills (PDF)
-* Mark Paid / Unpaid toggle
-* Payment date auto-tracking (`paid\_on`)
-* Manager-only delete and status toggle with POST-only mutation safety
-
-### 💸 Daily Expenses
-
-* Categories: Food, Fuel, Travel, Material, Misc
-* Payment modes: Cash, UPI, Bank
-* Daily / Weekly / Monthly aggregates
-* 7-day edit lock (accounting safety)
-* CSV and PDF export
-* POST-only delete action for safer mutation handling
-
-### 📑 Document Generation
-
-* PDF payslips (xhtml2pdf)
-* Expense PDF reports
-* Audit trail PDF exports
-* CSV exports across payroll, expenses, and audit modules
-
-### 🔍 Audit Log
-
-* Full activity trail across all modules (who did what, when)
-* Scope-aware views (King full scope, Manager filtered scope)
-* Accessible to Manager and King roles
-* CSV/PDF exports for both roles
-
-### 👑 King Dashboard
-
-* Aggregate business analytics and cash flow overview
-* Work order lifecycle management
-* Revenue tracking and ledger management
-* Strategic reports for owner-level decision making
-
-\---
+---
 
 ## Tech Stack
 
-|Layer|Technology|
-|-|-|
-|Backend|Python 3.11.x, Django 5.2.x|
-|Database (Prod)|PostgreSQL (Render Managed)|
-|Database (Prod)|PostgreSQL (via `psycopg2-binary`)|
-|PDF Generation|xhtml2pdf|
-|PDF Rendering Compatibility|Temporarily Disabled -WeasyPrint in Week 4 |
-|Frontend|Django Templates, Vanilla JS, CSS3|
-|Typography|Inter (Google Fonts)|
-|Financial Arithmetic|Python Decimal (zero float errors)|
-|Transaction Safety|`transaction.atomic()`, `select\_for\_update()`|
-|CI/CD|GitHub Actions (`manage.py check` + `manage.py test`) and Continuous Delivery<br />|
-|REST API|Django REST Framework + JWT Authentication|
-|API Docs|Swagger / OpenAPI 3.0 Via drf-spectacular|
-|Deployment|Render (web services + managed PostgreSQL)|
+| Layer | Technology |
+|---|---|
+| Language | Python 3.11 |
+| Framework | Django 5.2 + Django REST Framework |
+| Database | PostgreSQL (Render Managed) via psycopg2-binary |
+| Auth | Session-based (portal) + JWT via djangorestframework-simplejwt (API) |
+| API Docs | drf-spectacular (Swagger / OpenAPI 3.0) |
+| PDF Generation | xhtml2pdf |
+| Financial Arithmetic | Python `Decimal` — zero float errors |
+| Transaction Safety | `transaction.atomic()` + `select_for_update()` |
+| Frontend | Django Templates + Vanilla JS + CSS3 |
+| CI/CD | GitHub Actions → auto-deploy to Render on push to `main` |
+| Deployment | Render (web service + managed PostgreSQL) |
+| Testing | pytest + pytest-django (60 tests, 50% coverage) |
 
-\---
+---
+
+## User Roles
+
+| Role | Access Level | Capabilities |
+|---|---|---|
+| **Manager** | Operational | Attendance, payroll runs, advances, billing, expenses, employee records |
+| **Worker** | Read-only | Own attendance, salary history, payslip download |
+| **King (Owner)** | Strategic + Financial | Owner dashboard, work orders, revenue ledger, full audit visibility |
+
+---
 
 ## Project Structure
 
@@ -164,326 +199,258 @@ CWMS replaces paper registers, Excel sheets, and ad-hoc workflows used by contra
 CWMS/
 ├── manage.py
 ├── requirements.txt
-├── .env.example                # Environment template
-├── db.sqlite3                  # Local development database
-├── config/                     # Project config + root URL routing
+├── .env.example                 # Environment variable template
+├── config/                      # Project settings + root URL routing
 │   ├── settings.py
 │   ├── urls.py
 │   └── wsgi.py
-├── analytics/                  # Audit history views + CSV/PDF exports
-├── attendance/                 # Daily attendance tracking models
-├── billing/                    # Vendor bill management
-├── employees/                  # Employee + role management
-├── expenses/                   # Daily expense tracking
-├── king/                       # Owner dashboard, workorders, revenue, ledger
-├── payroll/                    # Payroll engine + advances + payslip export
-├── portal/                     # Worker and manager portal views
-├── static/                     # CSS, JS, fonts
-├── media/                      # Uploaded bills/documents
-└── .github/workflows/ci.yml    # CI pipeline
+├── analytics/                   # Audit history views + CSV/PDF exports
+├── attendance/                  # Daily attendance tracking + bulk UI
+├── billing/                     # Vendor bill management
+├── employees/                   # Employee + role management
+├── expenses/                    # Daily expense tracking + 7-day lock
+├── king/                        # Owner dashboard, work orders, revenue, ledger
+├── payroll/                     # Payroll engine + FIFO advances + payslips
+├── portal/                      # Worker and manager portal views
+├── static/                      # CSS, JS, fonts
+├── media/                       # Uploaded bills and documents
+└── .github/
+    └── workflows/
+        └── ci.yml               # CI pipeline (check + test + deploy)
 ```
 
-\---
+---
 
-## Setup \& Installation
+## Setup & Installation
 
 ### Prerequisites
 
-* Python 3.11+
-* SQLite3 (development) or PostgreSQL (production)
-* pip
+- Python 3.11+
+- SQLite3 (development) or PostgreSQL 14+ (production)
+- pip
 
 ### Steps
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/cwms.git
-cd CWMS
+git clone https://github.com/YOUR_USERNAME/cwms.git
+cd cwms
 
 # 2. Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate        # Linux/Mac
-venv\\Scripts\\activate           # Windows
+venv\Scripts\activate           # Windows
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
 # 4. Configure environment variables
-cp .env.example .env            # Windows PowerShell: Copy-Item .env.example .env
-# Edit .env with your database credentials and SECRET\_KEY
+cp .env.example .env
+# Edit .env with your SECRET_KEY and database credentials
 
 # 5. Run migrations
 python manage.py migrate
 
-# 6. Create superuser (Manager)
+# 6. Create a superuser (Manager access)
 python manage.py createsuperuser
 
-# 7. Run development server
+# 7. Start the development server
 python manage.py runserver
 ```
 
-### Environment Variables (.env)
+### Environment Variables
 
-```
-SECRET\_KEY=your-secret-key
+```env
+SECRET_KEY=your-secret-key-here
 DEBUG=True
-DATABASE\_URL=sqlite:///db.sqlite3
-ALLOWED\_HOSTS=localhost,127.0.0.1,testserver
+DATABASE_URL=sqlite:///db.sqlite3
+ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 ```
 
-\---
+---
 
-## URL Endpoints
+## API Reference
+
+Full interactive documentation: **https://cwms-1fdo.onrender.com/api/docs/**
 
 ### Authentication
 
-|Method|URL|Description|
-|-|-|-|
-|GET/POST|`/portal/login/`|Worker/Manager portal login|
-|GET|`/portal/logout/`|Worker/Manager portal logout|
-|GET/POST|`/king/secure/owner-x7k2/`|King secure login|
-|GET|`/king/logout/`|King logout|
-
-### Employees
-
-|Method|URL|Description|
-|-|-|-|
-|GET|`/manager/employees/`|Employee list with filters|
-|GET/POST|`/manager/employees/add/`|Add employee + create linked user|
-|GET/POST|`/manager/employees/edit/<employee\_id>/`|Edit employee|
-
-### Manager
-
-|Method|URL|Description|
-|-|-|-|
-|GET|`/portal/manager/dashboard/`|Manager dashboard|
-|GET|`/portal/manager/dashboard/recent-activity/`|Recent activity JSON feed|
-|GET/POST|`/portal/manager/attendance/bulk/`|Bulk attendance entry|
-|POST|`/portal/manager/run-payroll/`|Trigger month payroll run|
-|GET/POST|`/portal/manager/advances/issue/`|Issue worker advance|
-
-### Payroll
-
-|Method|URL|Description|
-|-|-|-|
-|GET|`/payroll/summary/`|Payroll batch summary|
-|GET|`/payroll/manager/payroll/salaries/`|Salary list for selected month|
-|POST|`/payroll/manager/payroll/salaries/generate/`|Generate one employee salary|
-|POST|`/payroll/manager/payroll/salaries/mark-paid/`|Mark salary paid|
-|GET|`/payroll/manager/payroll/salaries/export/`|Salary CSV export|
-|GET|`/payroll/payslip/<salary\_id>/`|Payslip download (role scoped)|
-
-### Billing
-
-|Method|URL|Description|
-|-|-|-|
-|GET/POST|`/manager/billing/`|Billing dashboard / upload bill|
-|POST|`/toggle\_bill\_status/<bill\_id>/`|Toggle paid/unpaid|
-|POST|`/delete\_bill/<bill\_id>/`|Delete bill|
-
-### Expenses
-
-|Method|URL|Description|
-|-|-|-|
-|GET/POST|`/manager/expenses/`|Expenses dashboard / add expense|
-|GET/POST|`/manager/expenses/edit/<expense\_id>/`|Edit expense (7-day lock)|
-|POST|`/manager/expenses/delete/<expense\_id>/`|Delete expense (POST-only)|
-|GET|`/manager/expenses/export/`|CSV export|
-|GET|`/manager/expenses/pdf/`|PDF export|
-
-### Worker Portal
-
-|Method|URL|Description|
-|-|-|-|
-|GET|`/portal/dashboard/`|Worker home|
-|GET|`/portal/profile/`|Worker profile|
-|GET|`/portal/attendance/`|View attendance|
-|GET|`/portal/download-payslip/<salary\_id>/`|Download payslip PDF|
-
-### King (Owner)
-
-|Method|URL|Description|
-|-|-|-|
-|GET|`/king/dashboard/`|Business analytics overview|
-|GET|`/king/dashboard/recent-activity/`|Recent activity JSON feed|
-|GET|`/king/workorders/`|Work order dashboard|
-|GET/POST|`/king/workorders/add/`|Add work order|
-|GET|`/king/workorders/<wo\_id>/`|Work order detail|
-|GET/POST|`/king/workorders/<wo\_id>/edit/`|Edit work order|
-|POST|`/king/workorders/<wo\_id>/status/`|Update work order status|
-|GET|`/king/revenue/`|Revenue dashboard|
-|POST|`/king/revenue/add/`|Add revenue entry|
-|POST|`/king/revenue/delete/<rev\_id>/`|Delete revenue entry|
-|GET|`/king/ledger/`|Ledger view|
-|POST|`/king/ledger/add/`|Add ledger entry|
-|POST|`/king/ledger/delete/<entry\_id>/`|Delete ledger entry|
-|GET|`/king/ledger/pdf/`|Ledger PDF export|
-
-### Audit History
-
-|Method|URL|Description|
-|-|-|-|
-|GET|`/king/audit/`|King audit history page|
-|GET|`/king/audit/export/csv/`|King audit CSV export|
-|GET|`/king/audit/export/pdf/`|King audit PDF export|
-|GET|`/portal/manager/audit/`|Manager audit history page|
-|GET|`/portal/manager/audit/export/csv/`|Manager audit CSV export|
-|GET|`/portal/manager/audit/export/pdf/`|Manager audit PDF export|
-
-\---
-
-
-
-\## 🔌 REST API Endpoints
-
-> Full interactive docs: https://cwms-1fdo.onrender.com/api/docs/
-
-
-
-\### Authentication
-
 | Method | Endpoint | Description |
-
-|--------|----------|-------------|
-
+|---|---|---|
 | POST | `/api/token/` | Obtain JWT access + refresh token |
-
 | POST | `/api/token/refresh/` | Refresh expired access token |
 
+Access token: valid 5 minutes. Refresh token: valid 24 hours. All endpoints require `Authorization: Bearer <token>`.
 
-
-\### Resources (JWT Required)
+### Resources (JWT Required)
 
 | Method | Endpoint | Description |
-
-|--------|----------|-------------|
-
+|---|---|---|
 | GET | `/api/employees/` | List all active employees |
-
-| GET | `/api/attendance/?date=YYYY-MM-DD` | Get attendance for date |
-
+| GET | `/api/attendance/?date=YYYY-MM-DD` | Attendance records for a date |
 | POST | `/api/attendance/` | Mark single attendance record |
-
 | GET | `/api/activity/` | Recent audit activity feed |
 
-
-
-\### Usage Example
+### Quick Start
 
 ```bash
+# Step 1 — Get token
+curl -X POST https://cwms-1fdo.onrender.com/api/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "your_user", "password": "your_pass"}'
 
-\# 1. Get token
-
-curl -X POST https://cwms-1fdo.onrender.com/api/token/ \\
-
-&#x20; -H "Content-Type: application/json" \\
-
-&#x20; -d '{"username": "your\_user", "password": "your\_pass"}'
-
-
-
-\# 2. Use token
-
-curl https://cwms-1fdo.onrender.com/api/employees/ \\
-
-&#x20; -H "Authorization: Bearer <your\_token>"
-
+# Step 2 — Use token
+curl https://cwms-1fdo.onrender.com/api/employees/ \
+  -H "Authorization: Bearer <your_access_token>"
 ```
 
+---
 
+## URL Endpoints
 
+<details>
+<summary><strong>Authentication</strong></summary>
 
+| Method | URL | Description |
+|---|---|---|
+| GET/POST | `/portal/login/` | Worker / Manager portal login |
+| GET | `/portal/logout/` | Portal logout |
+| GET/POST | `/king/secure/owner-x7k2/` | King secure login |
+| GET | `/king/logout/` | King logout |
+</details>
+
+<details>
+<summary><strong>Manager & Attendance</strong></summary>
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `/portal/manager/dashboard/` | Manager dashboard |
+| GET | `/portal/manager/dashboard/recent-activity/` | Recent activity JSON |
+| GET/POST | `/portal/manager/attendance/bulk/` | Bulk attendance entry |
+| POST | `/portal/manager/run-payroll/` | Trigger payroll run |
+| GET/POST | `/portal/manager/advances/issue/` | Issue worker advance |
+</details>
+
+<details>
+<summary><strong>Payroll</strong></summary>
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `/payroll/summary/` | Payroll batch summary |
+| GET | `/payroll/manager/payroll/salaries/` | Salary list |
+| POST | `/payroll/manager/payroll/salaries/generate/` | Generate one employee salary |
+| POST | `/payroll/manager/payroll/salaries/mark-paid/` | Mark salary paid |
+| GET | `/payroll/manager/payroll/salaries/export/` | CSV export |
+| GET | `/payroll/payslip/<salary_id>/` | Download payslip (role-scoped) |
+</details>
+
+<details>
+<summary><strong>Billing, Expenses, Employees</strong></summary>
+
+| Method | URL | Description |
+|---|---|---|
+| GET/POST | `/manager/billing/` | Billing dashboard / upload |
+| POST | `/toggle_bill_status/<bill_id>/` | Toggle paid/unpaid |
+| GET/POST | `/manager/expenses/` | Expenses dashboard / add |
+| GET/POST | `/manager/expenses/edit/<expense_id>/` | Edit (7-day lock) |
+| GET | `/manager/expenses/export/` | CSV export |
+| GET | `/manager/expenses/pdf/` | PDF export |
+| GET | `/manager/employees/` | Employee list |
+| GET/POST | `/manager/employees/add/` | Add employee |
+</details>
+
+<details>
+<summary><strong>Worker Portal</strong></summary>
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `/portal/dashboard/` | Worker home |
+| GET | `/portal/profile/` | Worker profile |
+| GET | `/portal/attendance/` | View attendance |
+| GET | `/portal/download-payslip/<salary_id>/` | Download payslip PDF |
+</details>
+
+<details>
+<summary><strong>King (Owner) & Audit</strong></summary>
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `/king/dashboard/` | Business analytics overview |
+| GET | `/king/workorders/` | Work order dashboard |
+| GET | `/king/revenue/` | Revenue dashboard |
+| GET | `/king/ledger/` | Ledger view |
+| GET | `/king/audit/` | Full audit history |
+| GET | `/king/audit/export/csv/` | Audit CSV export |
+| GET | `/portal/manager/audit/` | Manager audit history |
+</details>
+
+---
 
 ## Authentication
 
-**Manager Login:** Portal login (username + password path), session-based, protected by `@manager\_required` decorator.
+**Manager:** Username + password → session cookie → `@manager_required` decorator on all manager views.
 
-**Worker Login:** Phone number + password via portal login. Worker access is read-only and enforced via `@worker\_required`.
+**Worker:** Phone number + password → session cookie → `@worker_required` decorator. Read-only access enforced.
 
-**King Login:** Dedicated secure URL with explicit `King` group checks and session flag (`king\_authenticated`), enforced via `@king\_required`.
+**King:** Dedicated secure URL → explicit `King` group check + session flag (`king_authenticated`) → `@king_required` decorator.
 
-**Security:**
+**Security measures:**
+- CSRF tokens on all forms
+- IDOR protection — workers can only access their own payslips
+- Role isolation enforced between Manager and King flows
+- POST-only enforcement on all critical mutation endpoints
+- Full audit log on every financial action (actor, IP, timestamp)
 
-* CSRF tokens on all forms
-* IDOR protection for worker payslip access
-* Session-based auth with Django password hashing
-* Role-isolation guards between Manager and King flows
-* POST-only enforcement on critical mutation endpoints
-* Full audit log for critical operations + export actions
-
-\---
-
-
-
-\*\*API Authentication (JWT):\*\*
-
-REST API uses stateless JWT authentication via `djangorestframework-simplejwt`.
-
-\- Access token valid for 5 minutes
-
-\- Refresh token valid for 24 hours  
-
-\- All API endpoints require `Authorization: Bearer <token>` header
-
-\- Interactive testing available at `/api/docs/` via Swagger UI
-
-## 
-
-## 
+---
 
 ## Deployment
 
-### Recommended Stack (Production)
+### CI/CD Pipeline
+
+GitHub Actions runs on every push to `main`:
 
 ```
-OS:       Ubuntu 22.04 LTS
-Web:      Nginx + Gunicorn
-Database: PostgreSQL 14+
-Process:  Systemd
-SSL:      Let's Encrypt
-RAM:      2GB minimum
-Storage:  20GB minimum
+push to main
+    → Install dependencies
+    → python manage.py check
+    → python manage.py test
+    → Auto-deploy to Render on success
 ```
 
-### 
+### Production Stack (Self-Hosted)
 
-### Cloud Option
+```
+OS:        Ubuntu 22.04 LTS
+Web:       Nginx + Gunicorn
+Database:  PostgreSQL 14+
+Process:   Systemd
+SSL:       Let's Encrypt
+RAM:       2GB minimum
+Storage:   20GB minimum
+```
 
-Railway / Render / DigitalOcean with managed PostgreSQL and AWS S3 / Cloudflare R2 for media storage.
+### Cloud (Current)
 
-### 
+Render web service + managed PostgreSQL. Compatible with Railway and DigitalOcean. For media storage at scale: AWS S3 or Cloudflare R2.
 
-### CI Pipeline
-
-  * \### CI Pipeline
-  * GitHub Actions workflow (`.github/workflows/ci.yml`)
-  * Runs on every push to `main`
-  * Steps:
-  * \- Install dependencies
-  * \- `python manage.py check`
-  * \- `python manage.py test`
-  * \- Auto-deploy to Render on success
-
-\---
-
-## 
+---
 
 ## Future Enhancements
 
-* Multi-site support
-* SMS notifications for payslips
-* Biometric attendance integration
-* Mobile app (React Native)
-* Budget tracking module
-* Tax / compliance automation
+- [ ] Multi-site support (one instance, multiple contractor clients)
+- [ ] SMS notifications for payslip delivery
+- [ ] Biometric attendance integration
+- [ ] Mobile app (React Native)
+- [ ] Budget tracking and forecasting module
+- [ ] Tax and compliance automation
 
-\---
+---
 
-## 📜 License
+## License
 
-This project is licensed under the MIT License.
+MIT License. See [LICENSE](LICENSE) for details.
 
-\---
+---
 
-> Built with ❤️ to solve real problems for real contractors.
+> Built to solve real problems for real contractors — not a demo project.
 

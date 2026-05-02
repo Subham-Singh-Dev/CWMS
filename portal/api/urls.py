@@ -5,6 +5,7 @@ from .views import (
     EmployeeListAPIView,
     PayrollListAPIView,
     AdvanceListAPIView,
+    EmployeeDetailView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('employees/', EmployeeListAPIView.as_view(), name='api-employees'),
     path('payroll/', PayrollListAPIView.as_view(), name='api-payroll'),
     path('advances/', AdvanceListAPIView.as_view(), name='api-advances'),
+    path('employees/<int:pk>/', EmployeeDetailView.as_view(), name='employee-detail'),
 ]

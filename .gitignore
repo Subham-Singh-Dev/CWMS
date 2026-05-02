@@ -69,4 +69,4 @@ $RECYCLE.BIN/
 *.bak
 *.swp
 *.tmp
-*.DS_Store
+*.DS_Store.env.docker

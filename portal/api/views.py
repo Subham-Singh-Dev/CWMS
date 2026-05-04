@@ -12,18 +12,18 @@ from .serializers import AttendanceSerializer, EmployeeSerializer
 
 from payroll.models import MonthlySalary, Advance
 from .serializers import MonthlySalarySerializer, AdvanceSerializer
+from django.core.cache import cache
 
 
 class RecentActivityAPIView(APIView):
     """
     GET /api/activity/
-    Returns recent audit log activity for manager dashboard.
-    Replaces: manager_recent_activity_api JsonResponse view
+    Redis cached — 5 minute TTL
+    Cache key: cwms:activity:manager
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Same logic as your existing view — just DRF style
         is_manager = (
             request.user.is_superuser or
             request.user.groups.filter(name='Manager').exists()
@@ -34,8 +34,26 @@ class RecentActivityAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        # Try cache first
+        cache_key = f"activity:manager:{request.user.id}"
+        cached = cache.get(cache_key)
+
+        if cached:
+            return Response({
+                "activities": cached,
+                "cached": True      # tells you it came from Redis
+            })
+
+        # Cache miss — hit database
         activities = recent_activity_items_for_manager(limit=8)
-        return Response({"activities": activities})
+
+        # Store in Redis for 5 minutes
+        cache.set(cache_key, activities, timeout=300)
+
+        return Response({
+            "activities": activities,
+            "cached": False     # tells you it came from DB
+        })
 
 
 class AttendanceListAPIView(APIView):

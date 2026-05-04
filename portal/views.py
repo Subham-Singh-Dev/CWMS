@@ -34,6 +34,7 @@ from .decorators import manager_required, worker_required
 from .decorators import king_required
 from analytics.services.audit_service import recent_activity_items_for_manager
 from analytics.services.audit_service import create_audit_log
+from django.views.decorators.cache import cache_page # Add this import
 
 # =========================================
 # 👷 WORKER PORTAL VIEWS
@@ -301,7 +302,10 @@ def manager_dashboard(request, viewing_as_owner=False):
     return render(request, "portal/manager_dashboard.html", context)
 
 
+
+
 @manager_required
+@cache_page(60 * 5) # Cache for 5 minutes
 def manager_recent_activity_api(request):
     """Real-time activity feed endpoint for manager dashboard."""
     return JsonResponse({

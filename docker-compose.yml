@@ -1,4 +1,4 @@
-version: '3.9'
+
 
 services:
   db:
@@ -17,6 +17,13 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   web:
     build: .
     command: >
@@ -32,6 +39,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   postgres_data:
+  redis_data:

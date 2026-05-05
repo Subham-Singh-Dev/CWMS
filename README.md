@@ -106,6 +106,12 @@ Expenses cannot be edited or deleted after 7 days, enforced at the view layer. T
 
 ---
 
+## Performance
+- Redis caching on dashboard API: **2118ms → 26ms (98.8% faster)**
+- 52 pytest tests | 62% coverage
+- CI/CD via GitHub Actions on every push
+
+
 ## Features
 
 ### Payroll Engine
@@ -290,6 +296,8 @@ Access token: valid 5 minutes. Refresh token: valid 24 hours. All endpoints requ
 | GET | `/api/attendance/?date=YYYY-MM-DD` | Attendance records for a date |
 | POST | `/api/attendance/` | Mark single attendance record |
 | GET | `/api/activity/` | Recent audit activity feed |
+| GET | /portal/manager/dashboard/recent-activity/ | Dashboard feed (Redis cached) | Session |
+
 
 ### Quick Start
 

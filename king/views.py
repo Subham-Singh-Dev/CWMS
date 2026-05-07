@@ -25,10 +25,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import get_template
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    pisa = None
+from xhtml2pdf import pisa
 
 from employees.models import Employee
 from attendance.models import Attendance
@@ -1175,9 +1172,6 @@ def ledger_delete_entry(request, entry_id):
 @king_required
 def ledger_pdf(request):
     """Export filtered ledger view as PDF with current brand identity fields."""
-    if pisa is None:
-        from django.http import HttpResponse
-        return HttpResponse("PDF export temporarily unavailable.", status=503)
     from_date_str = request.GET.get('from_date')
     to_date_str = request.GET.get('to_date')
     account_name = (request.GET.get('account_name') or settings.BRAND_ACCOUNT_NAME).strip()

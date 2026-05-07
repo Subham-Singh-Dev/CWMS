@@ -21,10 +21,7 @@ from django.db.models import Sum, Count, Q, F
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.urls import reverse
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    pisa = None
+from xhtml2pdf import pisa
 from django.db import transaction
 
 from employees.models import Employee
@@ -169,9 +166,6 @@ def worker_attendance(request):
 @worker_required
 def download_payslip(request, salary_id):
     """Download paid payslip with ownership enforcement for worker accounts."""
-    if pisa is None:
-        from django.http import HttpResponse
-        return HttpResponse("PDF export temporarily unavailable.", status=503)
     salary = get_object_or_404(
         MonthlySalary.objects.select_related('employee'), 
         id=salary_id

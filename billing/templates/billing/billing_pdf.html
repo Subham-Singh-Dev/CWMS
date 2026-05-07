@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Billing Summary</title>
+<style>
+    @page { size: A4; margin: 12mm 10mm 10mm 10mm; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #111; margin: 0; }
+    
+    .header { text-align: center; margin-bottom: 15px; }
+    .title { font-size: 24px; font-weight: bold; margin-bottom: 5px; letter-spacing: 2px; }
+    .subtitle { font-size: 14px; color: #444; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { border-bottom: 1px solid #000; border-top: 1px solid #000; padding: 6px 4px; font-weight: bold; text-align: left; }
+    td { padding: 5px 4px; border-bottom: 0.5px solid #eee; vertical-align: top; }
+    
+    .w-date { width: 15%; }
+    .w-client { width: 35%; word-wrap: break-word; }
+    .w-type { width: 15%; text-align: center; }
+    .w-status { width: 15%; text-align: center; }
+    .w-amt { width: 20%; text-align: right; }
+    
+    .center { text-align: center; }
+    .right { text-align: right; }
+    
+    .summary-box { width: 40%; margin-left: auto; margin-top: 20px; border-top: 1px solid #000; padding-top: 5px; }
+    .summary-row { padding: 3px 0; }
+    .summary-label { font-weight: bold; display: inline-block; width: 60%; }
+    .summary-value { display: inline-block; width: 38%; text-align: right; }
+    .grand-total { font-weight: bold; font-size: 12px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="title">{{ BRAND_SHORT_NAME }} BILLING SUMMARY</div>
+        <div class="subtitle">For the Month of {{ month_name }}</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th class="w-date">Date</th>
+                <th class="w-client">Client / Party</th>
+                <th class="w-type center">Bill Type</th>
+                <th class="w-status center">Status</th>
+                <th class="w-amt right">Amount (Rs.)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bill in bills %}
+            <tr>
+                <td>{{ bill.created_at|date:"d/m/Y" }}</td>
+                <td>{{ bill.description|default:"-" }}</td>
+                <td class="center">{{ bill.bill_type }}</td>
+                <td class="center">
+                    {% if bill.is_paid %}
+                        {% if "Credit" in bill.get_bill_type_display %}
+                            Received
+                        {% else %}
+                            Paid
+                        {% endif %}
+                    {% else %}
+                        Unpaid
+                    {% endif %}
+                </td>
+
+                <td class="right">{{ bill.amount|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="center" style="padding: 20px; color: #777;">No bills recorded for this month.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if bills %}
+    <div class="summary-box">
+        <div class="summary-row">
+            <span class="summary-label">Total Debtor Bills:</span>
+            <span class="summary-value">{{ total_debtor|floatformat:2 }}</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">Total Credit Bills:</span>
+            <span class="summary-value">{{ total_credit|floatformat:2 }}</span>
+        </div>
+        <div class="summary-row grand-total">
+            <span class="summary-label">Grand Total:</span>
+            <span class="summary-value">{{ grand_total|floatformat:2 }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+</body>
+</html>

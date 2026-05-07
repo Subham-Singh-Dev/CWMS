@@ -16,12 +16,11 @@ from django.db.models import Sum
 import csv
 from django.http import HttpResponse
 from django.template.loader import get_template
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    pisa = None
+from xhtml2pdf import pisa
 import io
 from django.views.decorators.http import require_POST
+from datetime import datetime
+from django.db.models import Count
 
 EDIT_LOCK_DAYS = 7
 
@@ -245,11 +244,8 @@ def export_expenses_csv(request, viewing_as_owner=False):
 @manager_required
 def daily_expense_pdf(request):
     """Export one-day grouped expense summary as PDF."""
-    if pisa is None:
-        from django.http import HttpResponse
-        return HttpResponse("PDF export temporarily unavailable.", status=503)
-    from datetime import datetime
-    from django.db.models import Count
+
+    
 
     selected_date = request.GET.get("date")
     report_date = (

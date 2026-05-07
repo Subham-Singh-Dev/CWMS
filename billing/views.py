@@ -19,6 +19,11 @@ from django.urls import reverse
 
 from portal.decorators import manager_required
 from .models import Bill
+from django.template.loader import get_template
+from django.http import HttpResponse
+from xhtml2pdf import pisa
+from datetime import datetime
+from .models import Bill
 
 
 @manager_required
@@ -183,3 +188,45 @@ def delete_bill(request, bill_id):
     bill.delete()
     messages.success(request, "Bill deleted successfully.")
     return redirect(f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}")
+
+
+
+def billing_pdf(request):
+    # Safely get month/year, fallback to current if empty or None
+    month = request.GET.get('month')
+    year = request.GET.get('year')
+    
+    if not month:
+        month = datetime.today().month
+    if not year:
+        year = datetime.today().year
+        
+    # Use 'created_at' instead of 'date' to match your model
+    bills = Bill.objects.filter(created_at__month=month, created_at__year=year).order_by('created_at')
+    
+    # Calculate totals by type
+    total_credit = sum(b.amount for b in bills if b.bill_type == 'Credit')
+    total_debtor = sum(b.amount for b in bills if b.bill_type == 'Debtor')
+    grand_total = total_credit + total_debtor
+    
+    context = {
+        'bills': bills,
+        'month_name': datetime(int(year), int(month), 1).strftime('%B %Y'),
+        'total_credit': total_credit,
+        'total_debtor': total_debtor,
+        'grand_total': grand_total,
+        'BRAND_SHORT_NAME': 'CWMS' 
+    }
+    
+    template = get_template('billing/billing_pdf.html')
+    html = template.render(context)
+    
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Billing_Summary_{month}_{year}.pdf"'
+    
+    # Generate PDF
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    
+    if pisa_status.err:
+        return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response

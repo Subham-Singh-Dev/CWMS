@@ -1,9 +1,6 @@
 from io import BytesIO
 from django.template.loader import render_to_string
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    pisa = None
+from xhtml2pdf import pisa
 
 def generate_payslip_pdf(salary):
     """
@@ -11,9 +8,6 @@ def generate_payslip_pdf(salary):
     Input: MonthlySalary object
     Output: PDF Bytes
     """
-    if pisa is None:
-        from django.http import HttpResponse
-        return HttpResponse("PDF export temporarily unavailable.", status=503)
     # 1. Render HTML
     html_string = render_to_string('payroll/payslip.html', {'salary': salary})
     

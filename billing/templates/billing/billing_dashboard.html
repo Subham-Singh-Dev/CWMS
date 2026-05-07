@@ -530,6 +530,14 @@
         <div class="header-actions">
             <a href="{% url 'manager_dashboard' %}" class="btn-back">← Back to Dashboard</a>
             <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+            <a href="{% url 'billing:billing_pdf' %}?month={{ current_month }}&year={{ current_year }}" 
+                class="btn-export"
+                style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #1e293b; color: white; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 500;">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://w3.org">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Download PDF
+            </a>
         </div>
     </div>
 
@@ -786,7 +794,9 @@
                     </td>
                     <td>
                         {% if bill.is_paid %}
-                        <span class="status-pill pill-paid">✓ Paid</span>
+                            <span class="status-pill pill-paid">
+                                ✓ {% if selected_type == 'client' %}Received{% else %}Paid{% endif %}
+                            </span>
                         {% else %}
                         <span class="status-pill pill-unpaid">⏳ Unpaid</span>
                         {% endif %}

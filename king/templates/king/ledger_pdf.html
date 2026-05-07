@@ -73,13 +73,15 @@
         vertical-align: top;
     }
 
-    .w-date { width: 10%; }
-    .w-type { width: 8%; }
-    .w-vch  { width: 14%; }
-    .w-part { width: 34%; }
-    .w-dr   { width: 11%; }
-    .w-cr   { width: 11%; }
-    .w-bal  { width: 12%; }
+    .w-date { width: 11%; }
+    .w-type { width: 7%; text-align: center; }
+    .w-vch  { width: 10%; text-align: center; }
+    /* Force long particulars to wrap instead of pushing other columns */
+    .w-part { width: 30%; word-wrap: break-word; white-space: normal; } 
+    /* Give money columns 14% each to prevent overlaps with large numbers */
+    .w-dr   { width: 14%; text-align: right; }
+    .w-cr   { width: 14%; text-align: right; }
+    .w-bal  { width: 14%; text-align: right; }
 
     .right { text-align: right; }
     .center { text-align: center; }

@@ -6,11 +6,8 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.db.models import Q
 from django.template.loader import get_template
+from xhtml2pdf import pisa
 
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    pisa = None
 
 from analytics.models import AuditLog
 from analytics.services.audit_service import create_audit_log
@@ -170,9 +167,7 @@ def _audit_csv_response(filename, queryset):
 
 
 def _audit_pdf_response(filename, rows, request, is_king_view):
-    if pisa is None:
-        from django.http import HttpResponse
-        return HttpResponse("PDF export temporarily unavailable.", status=503)
+    
     generated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     company_name = 'Sakuntalam India Services · CWMS'
 

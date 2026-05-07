@@ -10,4 +10,5 @@ urlpatterns = [
     
     path('delete_bill/<int:bill_id>/', views.delete_bill, name='delete_bill'),
    
+    path('manager/billing/pdf/', views.billing_pdf, name='billing_pdf'),
 ]

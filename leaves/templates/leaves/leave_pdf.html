@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, sans-serif;
+            font-size: 12pt;
+        }
+        .header {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-decoration: underline;
+        }
+        .row { margin-bottom: 15px; }
+        .label { font-weight: bold; display: inline-block; width: 150px; }
+        .value { display: inline-block; border-bottom: 1px dotted #000; width: 300px; }
+        
+        .table-bordered {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .table-bordered th, .table-bordered td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        .signatures {
+            margin-top: 60px;
+            width: 100%;
+        }
+        .sig-box {
+            display: inline-block;
+            width: 45%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">LEAVE APPLICATION / SANCTION LETTER</div>
+
+    <div class="row">
+        <span class="label">Sl No:</span> <span class="value">{{ leave.sl_number }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Application Date:</span> <span class="value">{{ leave.application_date|date:"d/m/Y" }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Name of Employee:</span> <span class="value">{{ employee.name }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Emp. ID / Phone:</span> <span class="value">{{ employee.phone_number|default:"N/A" }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Designation (Role):</span> <span class="value">{{ employee.role.name }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Department/Site:</span> <span class="value">{{ leave.department|default:"N/A" }}</span>
+    </div>
+    
+    <hr>
+
+    <div class="row">
+        <span class="label">Leave From:</span> <span class="value" style="width: 120px;">{{ leave.from_date|date:"d/m/Y" }}</span>
+        <span class="label" style="width: 50px;">To:</span> <span class="value" style="width: 120px;">{{ leave.to_date|date:"d/m/Y" }}</span>
+    </div>
+    <div class="row">
+        <span class="label">No. of Days:</span> <span class="value">{{ leave.total_days }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Type of Leave:</span> <span class="value">{{ leave.get_leave_type_display }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Reason:</span> <span class="value">{{ leave.reason }}</span>
+    </div>
+    <div class="row">
+        <span class="label">Address on Leave:</span> <span class="value">{{ leave.address_on_leave|default:"N/A" }}</span>
+    </div>
+
+    <!-- Leave Balance Table -->
+    <table class="table-bordered">
+        <tr>
+            <th>Total Annual Quota</th>
+            <th>Days Used (Including this)</th>
+            <th>Remaining Balance</th>
+        </tr>
+        <tr>
+            <td>{{ allocation.total_days }}</td>
+            <td>{{ allocation.used_days }}</td>
+            <td>{{ allocation.remaining_days }}</td>
+        </tr>
+    </table>
+
+    <div class="signatures">
+        <div class="sig-box">
+            <br><br><br>
+            _______________________<br>
+            <strong>Signature of Applicant</strong>
+        </div>
+        <div class="sig-box">
+            <strong>Status: {{ leave.get_status_display|upper }}</strong><br><br><br>
+            _______________________<br>
+            <strong>Approved By ({{ leave.approved_by.username }})</strong>
+        </div>
+    </div>
+
+</body>
+</html>

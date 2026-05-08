@@ -1,6 +1,7 @@
 import pytest
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime, timezone
+from unittest.mock import patch
 from django.contrib.auth.models import User
 from employees.models import Employee, Role
 from attendance.models import Attendance
@@ -10,6 +11,18 @@ from payroll.services import generate_monthly_salary
 @pytest.mark.django_db
 class TestPayrollServices:
     
+    @pytest.fixture(autouse=True)
+    def freeze_time(self):
+        """
+        TIME MACHINE FIXTURE: 
+        Forces django.utils.timezone.now() to return April 30, 2026.
+        This bypasses the strict past/future month locks in Attendance.clean()
+        and ensures these tests never break as real-world time passes.
+        """
+        mock_date = datetime(2026, 4, 30, 12, 0, 0, tzinfo=timezone.utc)
+        with patch('django.utils.timezone.now', return_value=mock_date):
+            yield
+
     def setup_method(self):
         """Set up a baseline employee for salary calculations."""
         self.user = User.objects.create_user(username='payroll_tester', password='password123')
@@ -48,8 +61,8 @@ class TestPayrollServices:
         
         # 1. Setup: Use the EXACT field names found in your shell output
         self.employee.employment_type = 'Permanent'
-        self.employee.pf_applicable = True    # Fixed name
-        self.employee.esic_applicable = True  # Fixed name
+        self.employee.pf_applicable = True    
+        self.employee.esic_applicable = True  
         
         # Set the fixed rates as per contractor requirement
         self.employee.pf_rate = Decimal('0.1200')

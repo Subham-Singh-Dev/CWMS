@@ -24,6 +24,7 @@ class Attendance(models.Model):
         ('P', 'Present'),
         ('A', 'Absent'),
         ('H', 'Half Day'),
+        ('L', 'Leave'),
     ]
 
     employee = models.ForeignKey(
@@ -54,7 +55,8 @@ class Attendance(models.Model):
         today = timezone.now().date()
         
         # BUSINESS RULE: Future attendance is blocked to prevent speculative wage entries.
-        if self.date > today:
+        # EXCEPTION: We allow future records ONLY if they are pre-approved Leaves ('L').
+        if self.date > today and self.status != 'L':
             raise ValidationError("❌ Attendance date cannot be in the future.")
 
         # BUSINESS RULE: Previous-month lock protects closed payroll periods.

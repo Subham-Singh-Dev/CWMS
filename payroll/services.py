@@ -138,18 +138,21 @@ def generate_monthly_salary(employee, month):
         present_count=Count('id', filter=Q(status='P')),
         half_day_count=Count('id', filter=Q(status='H')),
         absent_count=Count('id', filter=Q(status='A')),
+        leave_count=Count('id', filter=Q(status='L')),
         total_overtime=Sum('overtime_hours')
     )
 
     present_days = stats['present_count']
     half_days = stats['half_day_count']
     absent_days = stats['absent_count']
+    days_on_leave = stats['leave_count'] or 0  # Handle NULL case when no leave records exist
     overtime_hours = stats['total_overtime'] or Decimal('0.00')
 
-    # ── STEP 2: Paid leave logic ───────────────────────────────
-    # BUSINESS RULE: Contractor policy grants salary credit for the first 2 absences
-    # in a month to smooth unavoidable short-term attendance drops.
-    paid_leaves = min(absent_days, 2)
+   
+    # ── STEP 2: Paid leave logic ──────────────────────────────
+    # NEW RULE: All absences ('A') are unpaid. Only approved leaves ('L') are paid.
+    paid_leave_days = days_on_leave
+
 
     # ── STEP 3: Gross pay calculation ─────────────────────────
     daily_wage = employee.daily_wage
@@ -157,7 +160,7 @@ def generate_monthly_salary(employee, month):
 
     present_pay = present_days * daily_wage
     half_day_pay = half_days * (daily_wage * half_day_multiplier)
-    paid_leave_pay = paid_leaves * daily_wage
+    paid_leave_pay = paid_leave_days * daily_wage
     
     # SAFETY: Calculate overtime with NULL checks (prevents crash if role unmapped)
     # Logic unchanged: if employee has no role, overtime defaults to zero
@@ -265,7 +268,7 @@ def generate_monthly_salary(employee, month):
             month=month,
             days_present=present_days,
             half_days=half_days,
-            paid_leaves=paid_leaves,
+            paid_leaves=paid_leave_days,
             overtime_hours=overtime_hours,
             
             gross_pay=gross_pay,

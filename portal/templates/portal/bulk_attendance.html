@@ -548,31 +548,41 @@
                                 <span class="worker-name">{{ item.employee.name }}</span>
                                 <span class="worker-id">ID: {{ item.employee.user.username }}</span>
                             </td>
+                            
                             <td>
-                                <div class="status-group">
-                                    <label>
-                                        <input type="radio" name="status_{{ item.employee.id }}" value="P" 
-                                               {% if item.status == 'P' or item.status == 'Present' %}checked{% endif %}>
-                                        <div class="status-option" data-val="P">✓ Present</div>
-                                    </label>
+                                {% if item.status == 'L' %}
+                                    <div class="status-group" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary-300); opacity: 0.9; cursor: not-allowed; user-select: none;">
+                                        <div style="padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; color: var(--primary-700);">
+                                            🏖️ Approved Leave
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="status-group">
+                                        <label>
+                                            <input type="radio" name="status_{{ item.employee.id }}" value="P" 
+                                                   {% if item.status == 'P' %}checked{% endif %}>
+                                            <div class="status-option" data-val="P">✓ Present</div>
+                                        </label>
 
-                                    <label>
-                                        <input type="radio" name="status_{{ item.employee.id }}" value="H"
-                                               {% if item.status == 'H' or item.status == 'Half Day' %}checked{% endif %}>
-                                        <div class="status-option" data-val="H">⚡ Half Day</div>
-                                    </label>
+                                        <label>
+                                            <input type="radio" name="status_{{ item.employee.id }}" value="H"
+                                                   {% if item.status == 'H' %}checked{% endif %}>
+                                            <div class="status-option" data-val="H">⚡ Half Day</div>
+                                        </label>
 
-                                    <label>
-                                        <input type="radio" name="status_{{ item.employee.id }}" value="A"
-                                               {% if item.status == 'A' or item.status == 'Absent' %}checked{% endif %}>
-                                        <div class="status-option" data-val="A">✕ Absent</div>
-                                    </label>
-                                </div>
+                                        <label>
+                                            <input type="radio" name="status_{{ item.employee.id }}" value="A"
+                                                   {% if item.status == 'A' %}checked{% endif %}>
+                                            <div class="status-option" data-val="A">✕ Absent</div>
+                                        </label>
+                                    </div>
+                                {% endif %}
                             </td>
+                            
                             <td>
                                 <input type="number" name="overtime_{{ item.employee.id }}" class="ot-input" 
                                        value="{{ item.overtime|default:0 }}" min="0" max="12" step="0.5"
-                                       {% if item.status == 'A' or item.status == 'Absent' %}disabled{% endif %}>
+                                       {% if item.status == 'A' or item.status == 'L' %}disabled{% endif %}>
                             </td>
                         </tr>
                         {% endfor %}

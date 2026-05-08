@@ -906,6 +906,18 @@
                 <div class="action-description">Bulk attendance entry</div>
             </a>
 
+            <a href="{% url 'assign_leave' %}" class="action-card">
+                <div class="action-icon">🏖️</div>
+                <div class="action-text">Assign Leave</div>
+                <div class="action-description">Approve & deduct leave quota</div>
+            </a>
+
+            <a href="{% url 'leave_list' %}" class="action-card">
+                <div class="action-icon">📋</div>
+                <div class="action-text">Leave Records</div>
+                <div class="action-description">View history & print sanction PDFs</div>
+            </a>
+
             <a href="{% url 'run_payroll' %}" class="action-card primary">
                 <div class="action-icon">💰</div>
                 <div class="action-text">Run Payroll</div>

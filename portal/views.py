@@ -358,12 +358,22 @@ def bulk_attendance(request):
         else:
             # Valid date - proceed with saving attendance
             try:
+                # BACKEND LOCK: Fetch IDs of workers who already have an approved 'L' today
+                leave_locked_emp_ids = set(
+                    Attendance.objects.filter(date=selected_date, status='L')
+                    .values_list('employee_id', flat=True)
+                )
+
                 with transaction.atomic():
                     # Loop through POST data to find status keys
                     for key, value in request.POST.items():
                         if key.startswith('status_'):
                             # key format: status_101 (where 101 is employee ID)
                             emp_id = key.split('_')[1]
+
+                            # BACKEND LOCK: If this employee is on leave, ignore manager's form submission completely!
+                            if emp_id in leave_locked_emp_ids:
+                                continue
                             
                             status = value
                             overtime_str = request.POST.get(f'overtime_{emp_id}', 0) or 0
@@ -422,7 +432,7 @@ def bulk_attendance(request):
         att = attendance_map.get(worker.id)
         worker_list.append({
             'employee': worker,
-            'status': att.status if att else 'Present', # Default to Present
+            'status': att.status if att else 'P', # 'P' matches our radio button values
             'overtime': att.overtime_hours if att else 0,
         })
 

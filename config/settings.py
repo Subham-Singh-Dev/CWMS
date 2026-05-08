@@ -84,6 +84,8 @@ INSTALLED_APPS = [
 
     'django_extensions',
 
+    'leaves',
+
 
 ]
 

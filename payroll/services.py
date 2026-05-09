@@ -177,8 +177,24 @@ def generate_monthly_salary(employee, month):
     # Round to 2 decimal places using standard financial rounding
     gross_pay = raw_gross_pay.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
-    # 7. ADVANCE DEDUCTION (FIFO)
-    remaining_salary = gross_pay
+    # --- PF Deduction ---
+    pf_deduction = Decimal('0.00')
+    pf_rate_used = Decimal('0.0000')
+    if employee.pf_applicable:
+        pf_rate_used = employee.pf_rate
+        pf_deduction = _calculate_pf(gross_pay, pf_rate_used)
+
+    # --- ESIC Deduction ---
+    esic_deduction = Decimal('0.00')
+    esic_rate_used = Decimal('0.0000')
+    if employee.esic_applicable:
+        esic_rate_used = employee.esic_rate
+        esic_deduction = _calculate_esic(gross_pay, esic_rate_used)
+
+
+    # Cap advance deduction to protect statutory deductions
+    # so net_pay never goes negative due to PF/ESIC on top of advances
+    remaining_salary = max(Decimal('0.00'), gross_pay - pf_deduction - esic_deduction)
     total_advance_deducted = Decimal('0.00')
 
     # ── STEP 4: Skip zero-value records ───────────────────────
@@ -244,19 +260,6 @@ def generate_monthly_salary(employee, month):
             settled=False
         ).aggregate(total=Sum('remaining_amount'))['total'] or Decimal('0.00')
 
-        # --- PF Deduction ---
-        pf_deduction = Decimal('0.00')
-        pf_rate_used = Decimal('0.0000')
-        if employee.pf_applicable:
-            pf_rate_used = employee.pf_rate
-            pf_deduction = _calculate_pf(gross_pay, pf_rate_used)
-
-        # --- ESIC Deduction ---
-        esic_deduction = Decimal('0.00')
-        esic_rate_used = Decimal('0.0000')
-        if employee.esic_applicable:
-            esic_rate_used = employee.esic_rate
-            esic_deduction = _calculate_esic(gross_pay, esic_rate_used)
 
         # --- Final Net Pay ---
         total_deductions = total_advance_deducted + pf_deduction + esic_deduction

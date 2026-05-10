@@ -139,6 +139,16 @@ Expenses cannot be edited or deleted after 7 days, enforced at the view layer. T
 - Auto-generated Employee IDs (`EMPxxxxx`) with temporary password
 - Worker login by phone number + password
 
+### Leave Management
+- **Policy-based allocation**: Set annual leave quota per employment type (Permanent/Local)
+- **Annual quota tracking**: Automatic per-employee per-year allocation resets every January
+- **Leave types**: Earned Leave (EL), Casual Leave (CL), Sick Leave (SL)
+- **Leave record workflow**: Hardcopy form-matching digital records with SL number auto-generation
+- **Leave balance tracking**: Real-time remaining days per employee per year
+- **PDF sanction letters**: Generate official leave approval letters via xhtml2pdf
+- **Approval system**: Manager assigns leaves with automatic quota deduction
+- **Integration with payroll**: Leave days tracked and impact on salary calculations
+
 ### Billing Module
 - Upload vendor bills (PDF)
 - Paid / Unpaid toggle with auto-tracked `paid_on` timestamp
@@ -193,9 +203,9 @@ Expenses cannot be edited or deleted after 7 days, enforced at the view layer. T
 
 | Role | Access Level | Capabilities |
 |---|---|---|
-| **Manager** | Operational | Attendance, payroll runs, advances, billing, expenses, employee records |
+| **Manager** | Operational | Attendance, payroll runs, advances, billing, expenses, leave management, employee records |
 | **Worker** | Read-only | Own attendance, salary history, payslip download |
-| **King (Owner)** | Strategic + Financial | Owner dashboard, work orders, revenue ledger, full audit visibility |
+| **King (Owner)** | Strategic + Financial | Owner dashboard, work orders, revenue ledger, leave reports, full audit visibility |
 
 ---
 
@@ -216,6 +226,7 @@ CWMS/
 ├── employees/                   # Employee + role management
 ├── expenses/                    # Daily expense tracking + 7-day lock
 ├── king/                        # Owner dashboard, work orders, revenue, ledger
+├── leaves/                      # Leave management, allocation, approval, PDF generation
 ├── payroll/                     # Payroll engine + FIFO advances + payslips
 ├── portal/                      # Worker and manager portal views
 ├── static/                      # CSS, JS, fonts

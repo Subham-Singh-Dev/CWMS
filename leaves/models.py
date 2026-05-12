@@ -52,7 +52,10 @@ class LeaveAllocation(models.Model):
 
     @property
     def remaining_days(self):
-        return self.total_days - self.used_days
+        # Fallback to 0 if the database accidentally contains None/Null
+        t_days = self.total_days if self.total_days is not None else 0
+        u_days = self.used_days if self.used_days is not None else 0
+        return t_days - u_days
 
     def __str__(self):
         return (

@@ -12,6 +12,8 @@ from portal.decorators import manager_required
 from .forms import AssignLeaveForm
 from .models import LeaveRecord
 from .services import assign_leave
+from django.utils import timezone
+from .models import LeaveAllocation
 
 @manager_required
 def assign_leave_view(request):

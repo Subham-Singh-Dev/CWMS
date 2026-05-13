@@ -157,6 +157,35 @@ def billing_dashboard(request, viewing_as_owner=False):
 
 @manager_required
 @require_POST
+def toggle_bill_status(request, bill_id):
+    """
+    Toggle paid/unpaid state for a bill.
+    Uses optional paid_on from POST to set a specific payment date.
+    """
+    bill = get_object_or_404(Bill, id=bill_id)
+    selected_type = request.POST.get("type", bill.bill_type)
+    selected_month = request.POST.get("month", timezone.now().strftime("%Y-%m"))
+
+    if bill.is_paid:
+        bill.paid_amount = Decimal("0.00")
+        bill.paid_on = None
+    else:
+        paid_on_input = request.POST.get("paid_on")
+        bill.paid_amount = bill.total_with_gst
+        if paid_on_input:
+            paid_on_date = parse_date(paid_on_input)
+            if paid_on_date:
+                bill.paid_on = paid_on_date
+
+    bill.save()
+
+    return redirect(
+        f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}"
+    )
+
+
+@manager_required
+@require_POST
 @transaction.atomic()
 def record_payment(request, bill_id):
     """

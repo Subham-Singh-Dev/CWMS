@@ -1,11 +1,15 @@
-"""
+"""Payroll financial services.
+
 Module: payroll.services
 App: payroll
-Purpose: Centralizes all payroll-side financial computation and persistence so salary generation,
+Purpose: Centralizes payroll-side computation and persistence so salary generation,
 advance recovery, and statutory deductions are deterministic and auditable.
-Dependencies: payroll.models.MonthlySalary/Advance, attendance.models.Attendance, Django transactions.
-Author note: Financial logic is intentionally isolated here to prevent divergence between UI, admin,
-and command paths.
+Key responsibilities: Salary generation, advance issuance, statutory deductions,
+and FIFO advance recovery under transaction safety.
+Dependencies: payroll.models.MonthlySalary/Advance, attendance.models.Attendance,
+and Django transactions.
+Author note: Financial logic is intentionally isolated here to prevent divergence
+between UI, admin, and command paths.
 
 STRICT ARCHITECTURAL RULE:
     Views, templates, admin, and management commands MUST NEVER:
@@ -17,119 +21,137 @@ STRICT ARCHITECTURAL RULE:
     - A single auditable source of truth for financial logic.
     - Consistent Decimal precision across all calculations.
     - Atomic database operations to prevent partial financial writes.
-
-Public Functions:
-    generate_monthly_salary(employee, month) -> MonthlySalary | None
-    issue_advance(employee, amount, issued_date) -> Advance
 """
 
-
-
+# ============================================================
+# IMPORTS
+# ============================================================
 from decimal import Decimal, ROUND_HALF_UP
-from django.db import transaction
-from django.core.exceptions import PermissionDenied, ValidationError
-from django.utils import timezone  # <--- NEW IMPORT
-from django.db.models import Sum, Count, Q
 
-from payroll.models import MonthlySalary, Advance
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
+from django.db.models import Count, Q, Sum
+from django.utils import timezone
+
 from attendance.models import Attendance
+from payroll.models import Advance, MonthlySalary
 
 
 # ============================================================
 # CUSTOM EXCEPTIONS
 # ============================================================
-
 class SalaryAlreadyGeneratedError(Exception):
-     """
-    Raised when attempting to generate a salary that already exists.
-    Callers (views/commands) should catch this and show a warning,
-    not an error — duplicate generation is a common user mistake.
+    """Signal that a salary already exists for an employee and month.
+
+    Business rule: Duplicate generation should be treated as a warning condition,
+    not a system error, because it is commonly caused by user retry actions.
+    Fields: None.
+    Constraints: Raised only when a salary row already exists for the same key.
     """
-     pass
+
+
+# ============================================================
+# DEDUCTION CALCULATORS
+# ============================================================
 
 
 def _calculate_pf(gross_pay: Decimal, rate: Decimal) -> Decimal:
+    """Calculate PF contribution from gross pay.
+
+    Args:
+        gross_pay (Decimal): Gross monthly pay before deductions.
+        rate (Decimal): PF rate applied to gross pay.
+
+    Returns:
+        Decimal: PF contribution rounded to two decimals.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Statutory PF must be rounded using ROUND_HALF_UP and never via floats.
     """
-    Calculate employee PF contribution.
-    Applied on gross pay at the given rate.
-    Uses ROUND_HALF_UP for statutory compliance.
-    """
-    # Using Decimal (not float) to avoid binary floating-point rounding errors
-    # in financial calculations. Even 0.01 difference in payroll is unacceptable.
-    return (gross_pay * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    # Avoid float drift in financial calculations.
+    return (gross_pay * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def _calculate_esic(gross_pay: Decimal, rate: Decimal) -> Decimal:
+    """Calculate ESIC contribution from gross pay.
+
+    Args:
+        gross_pay (Decimal): Gross monthly pay before deductions.
+        rate (Decimal): ESIC rate applied to gross pay.
+
+    Returns:
+        Decimal: ESIC contribution rounded to two decimals.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Statutory ESIC must be rounded using ROUND_HALF_UP and never via floats.
     """
-    Calculate employee ESIC contribution.
-    Applied on gross pay at the given rate.
-    Uses ROUND_HALF_UP for statutory compliance.
-    """
-    # Using Decimal (not float) to avoid binary floating-point rounding errors
-    # in financial calculations. Even 0.01 difference in payroll is unacceptable.
-    return (gross_pay * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    # Avoid float drift in financial calculations.
+    return (gross_pay * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def generate_monthly_salary(employee, month):
-    """
-    Generate and persist a salary record for ONE employee for ONE month.
-
-    This function:
-        1. Validates the employee and month (guards against bad input).
-        2. Fetches attendance stats for the month.
-        3. Calculates gross pay (present days + half days + paid leaves + overtime).
-        4. Deducts outstanding advances using FIFO (oldest advance first).
-        5. Persists an immutable salary snapshot to the database.
+    """Generate and persist a salary record for one employee and month.
 
     Args:
         employee (Employee): The employee to generate salary for.
-        month (date): Must be the first day of the target month (e.g. date(2025, 1, 1)).
+        month (date): First day of the target month (e.g. date(2025, 1, 1)).
 
     Returns:
-        MonthlySalary: The generated salary record.
-        None: If gross pay is 0 AND no advances are outstanding (nothing to record).
+        MonthlySalary | None: The salary record, or None when there is nothing to
+        record (zero gross pay and no unsettled advances).
 
     Raises:
-        ValueError: If month is not the first day of a month.
-        ValidationError: If generating for a future month, or salary already paid.
+        ValueError: If `month` is not the first day of a month.
+        ValidationError: If generating for a future month or salary is already paid.
         PermissionDenied: If employee is inactive or joined after the target month.
-        SalaryAlreadyGeneratedError: If salary already exists for this employee/month.
+        SalaryAlreadyGeneratedError: If a salary already exists for this month.
+
+    Business Rule:
+        Salary must be generated from attendance, deductions applied, and advances
+        recovered FIFO with transaction-level consistency.
     """
-    # ── GUARD 1: Month must be the 1st ────────────────────────
     if month.day != 1:
         raise ValueError("Month must be the first day of the month")
 
-    # ── GUARD 2: Prevent future payroll generation ─────────────
-    # Cannot generate salary for a month that hasn't ended yet
     today = timezone.now().date()
     if month > today.replace(day=1):
-        raise ValidationError(f"Cannot generate payroll for future month: {month.strftime('%B %Y')}")
+        raise ValidationError(
+            f"Cannot generate payroll for future month: {month.strftime('%B %Y')}"
+        )
 
-    # ── GUARD 3: Employee join date check ──────────────────────
-    # An employee cannot be paid for months before they joined
     if employee.join_date.replace(day=1) > month:
-        raise PermissionDenied(f"Employee joined on {employee.join_date}, cannot generate salary for {month.strftime('%B %Y')}")
+        raise PermissionDenied(
+            "Employee joined on {join_date}, cannot generate salary for "
+            "{month}".format(
+                join_date=employee.join_date,
+                month=month.strftime("%B %Y"),
+            )
+        )
 
-    # ── GUARD 4: Inactive employees cannot receive salary ──────
     if not employee.is_active:
         raise PermissionDenied("Inactive employee cannot receive salary")
 
-    # ── GUARD 5: Prevent duplicate salary generation ───────────
     if MonthlySalary.objects.filter(employee=employee, month=month).exists():
         raise SalaryAlreadyGeneratedError(
             f"Salary already generated for {employee} - {month}"
         )
-    
-     # ── GUARD 6: Prevent modification of paid salary ───────────
+
     existing_salary = MonthlySalary.objects.filter(
-        employee=employee, month=month).first()
-    
+        employee=employee, month=month
+    ).first()
+
     if existing_salary and existing_salary.is_paid:
         raise ValidationError(
-            f"salary for {employee} - {month.strftime('%B %Y')} is already PAID and cannot be modified"
+            "salary for {employee} - {month} is already PAID and cannot be modified"
+            .format(employee=employee, month=month.strftime("%B %Y"))
         )
-    
-    # ── STEP 1: Fetch attendance stats for the month ───────────
+
     stats = Attendance.objects.filter(
         employee=employee,
         date__year=month.year,
@@ -144,27 +166,24 @@ def generate_monthly_salary(employee, month):
 
     present_days = stats['present_count']
     half_days = stats['half_day_count']
-    absent_days = stats['absent_count']
-    days_on_leave = stats['leave_count'] or 0  # Handle NULL case when no leave records exist
+    # Business rule: Missing leave rows should not block payroll.
+    days_on_leave = stats["leave_count"] or 0
     overtime_hours = stats['total_overtime'] or Decimal('0.00')
 
-   
-    # ── STEP 2: Paid leave logic ──────────────────────────────
-    # NEW RULE: All absences ('A') are unpaid. Only approved leaves ('L') are paid.
+    # BUSINESS RULE: All absences ('A') are unpaid; only approved leave ('L') pays.
     paid_leave_days = days_on_leave
 
-
-    # ── STEP 3: Gross pay calculation ─────────────────────────
     daily_wage = employee.daily_wage
-    half_day_multiplier = Decimal('0.5') 
+    half_day_multiplier = Decimal('0.5')
 
     present_pay = present_days * daily_wage
     half_day_pay = half_days * (daily_wage * half_day_multiplier)
     paid_leave_pay = paid_leave_days * daily_wage
     
-    # SAFETY: Calculate overtime with NULL checks (prevents crash if role unmapped)
-    # Logic unchanged: if employee has no role, overtime defaults to zero
-    overtime_rate = employee.role.overtime_rate_per_hour if employee.role else Decimal('0.00')
+    # Reason: Avoid blocking payroll for employees without a role assignment.
+    overtime_rate = (
+        employee.role.overtime_rate_per_hour if employee.role else Decimal("0.00")
+    )
     overtime_pay = overtime_hours * overtime_rate
 
     raw_gross_pay = (
@@ -174,17 +193,15 @@ def generate_monthly_salary(employee, month):
         overtime_pay
     )
 
-    # Round to 2 decimal places using standard financial rounding
+    # Business rule: Monetary values must be stored at two decimals.
     gross_pay = raw_gross_pay.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
-    # --- PF Deduction ---
     pf_deduction = Decimal('0.00')
     pf_rate_used = Decimal('0.0000')
     if employee.pf_applicable:
         pf_rate_used = employee.pf_rate
         pf_deduction = _calculate_pf(gross_pay, pf_rate_used)
 
-    # --- ESIC Deduction ---
     esic_deduction = Decimal('0.00')
     esic_rate_used = Decimal('0.0000')
     if employee.esic_applicable:
@@ -192,80 +209,69 @@ def generate_monthly_salary(employee, month):
         esic_deduction = _calculate_esic(gross_pay, esic_rate_used)
 
 
-    # Cap advance deduction to protect statutory deductions
-    # so net_pay never goes negative due to PF/ESIC on top of advances
+    # Business rule: Protect statutory deductions before advance recovery.
     remaining_salary = max(Decimal('0.00'), gross_pay - pf_deduction - esic_deduction)
     total_advance_deducted = Decimal('0.00')
 
-    # ── STEP 4: Skip zero-value records ───────────────────────
-    # If employee earned nothing AND has no advances, skip record creation
-    has_unsettled_advances = Advance.objects.filter(employee=employee, settled=False).exists()
-    
+    # If employee earned nothing AND has no advances, skip record creation.
+    has_unsettled_advances = Advance.objects.filter(
+        employee=employee, settled=False
+    ).exists()
+
     if gross_pay == 0 and not has_unsettled_advances:
-        return None  # Caller receives None — no salary slip generated
+        return None
     
     # ─── TRANSACTION SAFETY ──────────────────────────────────────────────────────
-    # FINANCIAL CRITICAL: This block uses select_for_update() to lock advance rows
-    # and transaction.atomic() to ensure that if payroll generation fails midway,
-    # no partial advance deductions are committed to the database.
+    # FINANCIAL CRITICAL: Lock advances and keep deductions atomic to prevent
+    # partial recovery when concurrent payroll generation occurs.
     # ─────────────────────────────────────────────────────────────────────────────
-    # ── STEP 5: FIFO Advance Deduction (inside atomic block) ───
     with transaction.atomic():
 
-        # Hard guard: Re-check inside transaction to prevent race conditions
+        # Reason: Prevent duplicate payroll rows under concurrent requests.
         if MonthlySalary.objects.filter(employee=employee, month=month).exists():
             raise ValidationError(
                 "Advance deduction already processed for this employee and month."
             )
-        
-        # Lock advance rows to prevent concurrent modification
+
+        # Reason: Avoid double-deduction when multiple jobs run in parallel.
         unsettled_advances = Advance.objects.select_for_update().filter(
             employee=employee,
             settled=False
         ).order_by('issued_date')   # FIFO: oldest advance deducted first
 
-        # ─── FIFO ADVANCE DEDUCTION ──────────────────────────────────────────────────
-        # BUSINESS RULE: Advances are recovered oldest-first (FIFO) during payroll.
-        # This prevents workers from accumulating indefinite debt on newer advances
-        # while older ones remain unrecovered.
-        # ─────────────────────────────────────────────────────────────────────────────
+        # ─── FIFO ADVANCE DEDUCTION ───────────────────────────────────────────────
+        # BUSINESS RULE: Recover advances oldest-first to prevent indefinite debt
+        # rollover on newer advances while older ones stay unpaid.
+        # ─────────────────────────────────────────────────────────────────────────
 
-        # Deduct from each advance until salary is exhausted or advances are cleared
         for advance in unsettled_advances:
             if remaining_salary <= 0:
-                break 
-            
-            # Using Decimal (not float) to avoid binary floating-point rounding errors
-            # in financial calculations. Even 0.01 difference in payroll is unacceptable.
+                break
+
             deduction = min(remaining_salary, advance.remaining_amount)
-            
+
             remaining_salary -= deduction
             total_advance_deducted += deduction
-            
+
             advance.remaining_amount -= deduction
-            # Using Decimal (not float) to avoid binary floating-point rounding errors
-            # in financial calculations. Even 0.01 difference in payroll is unacceptable.
-            advance.remaining_amount = advance.remaining_amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            
-            # Mark advance as fully settled if balance reaches zero
+            # Avoid float drift in financial calculations.
+            advance.remaining_amount = advance.remaining_amount.quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+
             if advance.remaining_amount == 0:
                 advance.settled = True
-            
+
             advance.save()
 
-
-        # Calculate total remaining advance debt after this payroll
         remaining_advance = Advance.objects.filter(
             employee=employee,
             settled=False
         ).aggregate(total=Sum('remaining_amount'))['total'] or Decimal('0.00')
 
-
-        # --- Final Net Pay ---
         total_deductions = total_advance_deducted + pf_deduction + esic_deduction
         net_pay = gross_pay - total_deductions
 
-        # ── STEP 6: Persist immutable salary snapshot ──────────
         salary = MonthlySalary.objects.create(
             employee=employee,
             month=month,
@@ -273,7 +279,7 @@ def generate_monthly_salary(employee, month):
             half_days=half_days,
             paid_leaves=paid_leave_days,
             overtime_hours=overtime_hours,
-            
+
             gross_pay=gross_pay,
             advance_deducted=total_advance_deducted,
             pf_deduction=pf_deduction,
@@ -283,52 +289,47 @@ def generate_monthly_salary(employee, month):
             total_deductions=total_deductions,
             net_pay=net_pay,
             remaining_advance=remaining_advance,
-            
+
             is_paid=False,
         )
 
     return salary
 
-#============================================================
-# FUNCTION: issue_advance
+
 # ============================================================
-
-
-
-
+# ADVANCE ISSUANCE
+# ============================================================
 def issue_advance(employee, amount, issued_date):
-    """
-        Issue a cash advance (loan) to an employee.
-    
-        IMPORTANT — What this function does NOT do:
-            - It does NOT deduct anything from salary.
-            - FIFO deduction happens strictly inside generate_monthly_salary().
-            - Views must NEVER create Advance objects directly.
-    
-        Args:
-            employee (Employee): The employee receiving the advance.
-            amount (Decimal | str): Advance amount (will be normalized to 2dp).
-            issued_date (date): Date the advance was physically issued.
-    
-        Returns:
-            Advance: The created advance record.
-    
-        Raises:
-            ValidationError: If employee is inactive or amount is zero/negative.
-        """
+    """Issue a cash advance to an employee.
 
-    # Business Rule: Inactive employees cannot receive advances
+    Args:
+        employee (Employee): The employee receiving the advance.
+        amount (Decimal | str): Advance amount (normalized to two decimals).
+        issued_date (date): Date the advance was physically issued.
+
+    Returns:
+        Advance: The created advance record.
+
+    Raises:
+        ValidationError: If employee is inactive or amount is zero/negative.
+
+    Business Rule:
+        Salary deduction for advances must only occur in
+        `generate_monthly_salary()` with FIFO recovery.
+    """
+
+    # Business rule: Inactive employees cannot receive advances.
     if not employee.is_active:
         raise ValidationError("Cannot issue advance to inactive employee.")
 
-     # Normalize to 2 decimal places for financial consistency
+    # Business rule: Normalize to two decimals for financial consistency.
     amount = Decimal(amount).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
-    # Defensive check: Reject zero or negative advance amounts
+    # Reason: Prevents invalid advances from entering recovery queue.
     if amount <= 0:
         raise ValidationError("Advance amount must be greater than zero.")
 
-    # Atomic transaction ensures advance record is all-or-nothing
+    # Reason: Maintain atomicity if related writes are added later.
     with transaction.atomic():
 
         advance = Advance.objects.create(

@@ -24,6 +24,8 @@ from django.http import HttpResponse
 from xhtml2pdf import pisa
 from datetime import datetime
 from .models import Bill
+from django.db import transaction
+
 
 
 @manager_required
@@ -84,23 +86,28 @@ def billing_dashboard(request, viewing_as_owner=False):
 
     total_bills = filtered_bills.count()
 
-    total_paid = filtered_bills.filter(is_paid=True).aggregate(
+    # --- FIX: Calculate total unpaid against the GST-included amount ---
+    taxable_amount = filtered_bills.aggregate(
         total=Coalesce(Sum("amount"), Decimal("0.00"))
     )["total"]
 
-    total_unpaid = filtered_bills.filter(is_paid=False).aggregate(
-        total=Coalesce(Sum("amount"), Decimal("0.00"))
+    gst_rate = Decimal("0.18")
+    gst_amount = (taxable_amount * gst_rate).quantize(Decimal("0.01"))
+    total_amount_with_gst = taxable_amount + gst_amount
+
+    total_paid = filtered_bills.aggregate(
+        total=Coalesce(Sum("paid_amount"), Decimal("0.00"))
     )["total"]
+
+    total_unpaid = total_amount_with_gst - total_paid
+    # -------------------------------------
 
     unpaid_count = filtered_bills.filter(is_paid=False).count()
 
-    # Monthly summary cards (default: current month)
+    # Monthly summary cards
     today = timezone.now().date()
     monthly_bills = filtered_bills
     monthly_bill_count = monthly_bills.count()
-    taxable_amount = monthly_bills.aggregate(
-        total=Coalesce(Sum("amount"), Decimal("0.00"))
-    )["total"]
 
     gst_rate = Decimal("0.18")
     gst_amount = (taxable_amount * gst_rate).quantize(Decimal("0.01"))
@@ -150,30 +157,33 @@ def billing_dashboard(request, viewing_as_owner=False):
 
 @manager_required
 @require_POST
-def toggle_bill_status(request, bill_id):
-    """Flip bill paid/unpaid state.
-
-    SECURITY: POST-only to prevent status changes via crawlers/bookmarks.
+@transaction.atomic()
+def record_payment(request, bill_id):
+    """
+    Safely record a partial or full payment.
+    Atomic wrapper ensures DB consistency.
     """
     bill = get_object_or_404(Bill, id=bill_id)
     selected_type = request.POST.get("type", bill.bill_type)
     selected_month = request.POST.get("month", timezone.now().strftime("%Y-%m"))
-
-    if bill.is_paid:
-        bill.is_paid = False
-        bill.paid_on = None
-        bill.save(update_fields=["is_paid", "paid_on"])
-    else:
-        selected_date_raw = request.POST.get("paid_on", "").strip()
-        selected_date = parse_date(selected_date_raw) if selected_date_raw else None
-        bill.is_paid = True
-        bill.paid_on = selected_date or timezone.localdate()
-        bill.save(update_fields=["is_paid", "paid_on"])
-
-    if bill.is_paid:
-        messages.success(request, "Bill marked as PAID.")
-    else:
-        messages.warning(request, "Bill marked as UNPAID.")
+    
+    payment_str = request.POST.get("payment_amount", "0").strip()
+    
+    try:
+        payment_amount = Decimal(payment_str).quantize(Decimal('0.01'))
+        
+        if payment_amount <= 0:
+            messages.error(request, "Payment amount must be greater than zero.")
+        elif (bill.paid_amount + payment_amount) > bill.total_with_gst:
+            messages.error(request, f"Payment of ₹{payment_amount} exceeds the remaining balance of ₹{bill.balance}!")
+        else:
+            bill.paid_amount += payment_amount
+            # The model's save() method will auto-calculate if is_paid=True based on this new amount
+            bill.save()
+            messages.success(request, f"Payment of ₹{payment_amount} recorded successfully for BILL-{bill.id:04d}.")
+            
+    except (ValueError, TypeError):
+        messages.error(request, "Invalid payment amount entered.")
 
     return redirect(f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}")
 

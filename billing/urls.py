@@ -6,9 +6,10 @@ app_name = "billing"
 urlpatterns = [
     path("manager/billing/", views.billing_dashboard,name="billing_dashboard"),
 
-    path('toggle_bill_status/<int:bill_id>/', views.toggle_bill_status, name='toggle_bill_status'),
+    path("record-payment/<int:bill_id>/", views.record_payment, name="record_payment"),
     
     path('delete_bill/<int:bill_id>/', views.delete_bill, name='delete_bill'),
    
     path('manager/billing/pdf/', views.billing_pdf, name='billing_pdf'),
+
 ]

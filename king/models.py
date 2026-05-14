@@ -128,6 +128,14 @@ class LedgerEntry(models.Model):
     Double-sided ledger entry where debit and credit semantics mirror accounting notation.
 
     FINANCIAL CRITICAL: Debit/Credit fields are Decimal and validated to block negative or zero-only entries.
+    Added fields (non-destructive migration):
+        value_date  — bank value date (nullable)
+        branch_code — bank branch code (nullable)
+        work_order  — optional FK to WorkOrder (SET_NULL, survives WO deletion)
+        party_name  — free-text party / account name (replaces BRAND_ACCOUNT_NAME lookup)
+        wo_number_snapshot   — WO number at time of entry (editable, survives WO edits)
+        buyer_name_snapshot  — buyer name at time of entry (editable)
+        gst_snapshot         — GST number at time of entry (editable)
     """
     ENTRY_TYPE_CHOICES = [
         ('sale',    'Sale'),
@@ -136,14 +144,34 @@ class LedgerEntry(models.Model):
         ('journal', 'Journal'),
     ]
 
-    date         = models.DateField()
-    entry_type   = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)
-    voucher_number = models.CharField(max_length=50, blank=True, null=True)
-    particulars  = models.CharField(max_length=255)
-    debit        = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    credit       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    created_by   = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at   = models.DateTimeField(auto_now_add=True)
+    date           = models.DateField()
+    value_date     = models.DateField(blank=True, null=True, verbose_name="Value Date")
+    entry_type     = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)
+    voucher_number = models.CharField(max_length=50, blank=True, null=True,
+                                      verbose_name="Ref No. / Cheque No.")
+    particulars    = models.CharField(max_length=255, verbose_name="Description")
+    branch_code    = models.CharField(max_length=20, blank=True, null=True,
+                                      verbose_name="Branch Code")
+    debit          = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    credit         = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # Account / party details — stored as snapshots so edits to WO don't alter history
+    work_order          = models.ForeignKey(
+        'WorkOrder', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='ledger_entries',
+        verbose_name="Linked Work Order"
+    )
+    party_name          = models.CharField(max_length=255, blank=True, null=True,
+                                           verbose_name="Party Name")
+    wo_number_snapshot  = models.CharField(max_length=20, blank=True, null=True,
+                                           verbose_name="WO Number")
+    buyer_name_snapshot = models.CharField(max_length=100, blank=True, null=True,
+                                           verbose_name="Buyer Name")
+    gst_snapshot        = models.CharField(max_length=15, blank=True, null=True,
+                                           verbose_name="GST No.")
+
+    created_by  = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         """Chronological ordering ensures stable running-balance rendering."""
@@ -164,24 +192,24 @@ class LedgerEntry(models.Model):
     def _generate_voucher_number(self):
         """Generate financial-year scoped sequential voucher number by entry type."""
         code_map = {
-            'sale': 'SAL',
+            'sale':    'SAL',
             'receipt': 'RCPT',
             'payment': 'PAY',
             'journal': 'JRN',
         }
-        prefix = code_map.get(self.entry_type, 'LED')
-
+        prefix   = code_map.get(self.entry_type, 'LED')
         ref_date = self.date or timezone.localdate()
+
         if ref_date.month >= 4:
             fy_start = ref_date.year
-            fy_end = ref_date.year + 1
+            fy_end   = ref_date.year + 1
         else:
             fy_start = ref_date.year - 1
-            fy_end = ref_date.year
+            fy_end   = ref_date.year
         fy_text = f"{str(fy_start)[-2:]}-{str(fy_end)[-2:]}"
 
-        fy_anchor = date(fy_start, 4, 1)
-        next_fy_anchor = date(fy_end, 4, 1)
+        fy_anchor      = date(fy_start, 4, 1)
+        next_fy_anchor = date(fy_end,   4, 1)
         seq = LedgerEntry.objects.filter(
             entry_type=self.entry_type,
             date__gte=fy_anchor,

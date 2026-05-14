@@ -1017,26 +1017,29 @@ def _ledger_data(from_date, to_date):
 
     running_balance = Decimal('0.00')
     rows = []
-    total_debit = Decimal('0.00')
+    total_debit  = Decimal('0.00')
     total_credit = Decimal('0.00')
 
     for entry in entries:
-        debit = _to_decimal(entry.debit)
+        debit  = _to_decimal(entry.debit)
         credit = _to_decimal(entry.credit)
         running_balance += (debit - credit)
-        total_debit += debit
-        total_credit += credit
+        total_debit     += debit
+        total_credit    += credit
 
-        balance_type = 'Dr' if running_balance >= 0 else 'Cr'
-        particulars_prefix = 'Dr' if debit > 0 else 'Cr'
+        balance_type        = 'Dr' if running_balance >= 0 else 'Cr'
+        particulars_prefix  = 'Dr' if debit > 0 else 'Cr'
 
         rows.append({
             'entry': entry,
             'type_short': _short_type(entry.entry_type),
             'particulars_with_prefix': f"{particulars_prefix}  {entry.particulars}",
-            'debit_fmt': _format_indian_amount(debit) if debit > 0 else '',
-            'credit_fmt': _format_indian_amount(credit) if credit > 0 else '',
-            'balance_fmt': _format_indian_amount(abs(running_balance)),
+            # NEW: expose value_date and branch_code for template
+            'value_date':   entry.value_date,
+            'branch_code':  entry.branch_code or '',
+            'debit_fmt':    _format_indian_amount(debit)  if debit  > 0 else '',
+            'credit_fmt':   _format_indian_amount(credit) if credit > 0 else '',
+            'balance_fmt':  _format_indian_amount(abs(running_balance)),
             'balance_type': balance_type,
             'balance_display': f"{_format_indian_amount(abs(running_balance))}{balance_type}",
         })
@@ -1048,33 +1051,45 @@ def _ledger_data(from_date, to_date):
     grand_total = total_debit if total_debit >= total_credit else total_credit
 
     return {
-        'entries': entries,
-        'rows': rows,
-        'total_debit': total_debit,
-        'total_credit': total_credit,
-        'debit_balance': debit_balance,
-        'grand_total': grand_total,
-        'total_debit_fmt': _format_indian_amount(total_debit),
+        'entries':          entries,
+        'rows':             rows,
+        'total_debit':      total_debit,
+        'total_credit':     total_credit,
+        'debit_balance':    debit_balance,
+        'grand_total':      grand_total,
+        'total_debit_fmt':  _format_indian_amount(total_debit),
         'total_credit_fmt': _format_indian_amount(total_credit),
-        'debit_balance_fmt': _format_indian_amount(debit_balance),
-        'grand_total_fmt': _format_indian_amount(grand_total),
+        'debit_balance_fmt':_format_indian_amount(debit_balance),
+        'grand_total_fmt':  _format_indian_amount(grand_total),
     }
 
 @king_required
 def ledger_view(request):
     """Render owner ledger table with date filter and computed running balances."""
-    # Date range filter
     from_date_str = request.GET.get('from_date')
-    to_date_str = request.GET.get('to_date')
-    account_name = (request.GET.get('account_name') or settings.BRAND_ACCOUNT_NAME).strip()
+    to_date_str   = request.GET.get('to_date')
 
-    today = date_class.today()
+    today     = date_class.today()
     from_date = date_class.fromisoformat(from_date_str) if from_date_str else today.replace(day=1)
-    to_date = date_class.fromisoformat(to_date_str) if to_date_str else today
+    to_date   = date_class.fromisoformat(to_date_str)   if to_date_str   else today
     if from_date > to_date:
         from_date, to_date = to_date, from_date
 
     data = _ledger_data(from_date, to_date)
+
+    # Build a JSON-serialisable dict of all work orders so the JS autofill works
+    # without any extra AJAX endpoint.
+    work_orders_qs = WorkOrder.objects.order_by('wo_number')
+    work_orders_json = json.dumps([
+        {
+            'id':           wo.id,
+            'wo_number':    wo.wo_number,
+            'client_name':  wo.client_name,
+            'gst_number':   wo.gst_number or '',
+            'project_name': wo.project_name,
+        }
+        for wo in work_orders_qs
+    ])
 
     create_audit_log(
         user=request.user,
@@ -1084,24 +1099,26 @@ def ledger_view(request):
         entity_type='Ledger',
         entity_id=0,
         entity_name='Ledger View',
-        details=f"Viewed ledger from {from_date} to {to_date} for account {account_name}",
+        details=f"Viewed ledger from {from_date} to {to_date}",
         request=request,
     )
 
     return render(request, 'king/ledger.html', {
-        'ledger_rows': data['rows'],
-        'from_date': from_date,
-        'to_date': to_date,
-        'entry_types': LedgerEntry.ENTRY_TYPE_CHOICES,
-        'account_name': account_name,
-        'company_name': settings.BRAND_COMPANY_NAME,
-        'company_address': settings.BRAND_COMPANY_ADDRESS,
-        'company_gstin': settings.BRAND_COMPANY_GSTIN,
-        'total_debit_fmt': data['total_debit_fmt'],
+        'ledger_rows':      data['rows'],
+        'from_date':        from_date,
+        'to_date':          to_date,
+        'entry_types':      LedgerEntry.ENTRY_TYPE_CHOICES,
+        'company_name':     settings.BRAND_COMPANY_NAME,
+        'company_address':  settings.BRAND_COMPANY_ADDRESS,
+        'company_gstin':    settings.BRAND_COMPANY_GSTIN,
+        'total_debit_fmt':  data['total_debit_fmt'],
         'total_credit_fmt': data['total_credit_fmt'],
-        'debit_balance_fmt': data['debit_balance_fmt'],
-        'grand_total_fmt': data['grand_total_fmt'],
-        'now': datetime.now(),
+        'debit_balance_fmt':data['debit_balance_fmt'],
+        'grand_total_fmt':  data['grand_total_fmt'],
+        'now':              datetime.now(),
+        # NEW
+        'work_orders':      work_orders_qs,
+        'work_orders_json': work_orders_json,
     })
 
 
@@ -1109,21 +1126,37 @@ def ledger_view(request):
 @require_POST
 def ledger_add_entry(request):
     """Create a ledger transaction row with validation and audit logging."""
-    debit = request.POST.get('debit') or '0'
-    credit = request.POST.get('credit') or '0'
-    date_str = request.POST.get('date') # Get the string
+    debit      = request.POST.get('debit')  or '0'
+    credit     = request.POST.get('credit') or '0'
+    date_str   = request.POST.get('date')
+    vd_str     = request.POST.get('value_date') or None     # NEW
+    wo_id      = request.POST.get('work_order') or None     # NEW
 
     try:
-        # --- THE FIX: Convert string to date object before creating ---
-        actual_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.localdate()
+        actual_date  = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.localdate()
+        actual_vdate = datetime.strptime(vd_str,   '%Y-%m-%d').date() if vd_str   else None
+
+        # Resolve optional work order
+        linked_wo = None
+        if wo_id:
+            linked_wo = WorkOrder.objects.filter(id=wo_id).first()
+
         entry = LedgerEntry.objects.create(
-            date=actual_date, # Pass the object, not the string
-            entry_type=request.POST.get('entry_type'),
-            voucher_number=request.POST.get('voucher_number') or None,
-            particulars=request.POST.get('particulars'),
-            debit=Decimal(debit),
-            credit=Decimal(credit),
-            created_by=request.user,
+            date           = actual_date,
+            value_date     = actual_vdate,
+            entry_type     = request.POST.get('entry_type'),
+            voucher_number = request.POST.get('voucher_number') or None,
+            particulars    = request.POST.get('particulars'),
+            branch_code    = request.POST.get('branch_code') or None,
+            debit          = Decimal(debit),
+            credit         = Decimal(credit),
+            # Account detail snapshots
+            work_order          = linked_wo,
+            party_name          = request.POST.get('party_name') or None,
+            wo_number_snapshot  = request.POST.get('wo_number_snapshot') or None,
+            buyer_name_snapshot = request.POST.get('buyer_name_snapshot') or None,
+            gst_snapshot        = request.POST.get('gst_snapshot') or None,
+            created_by          = request.user,
         )
     except (ValidationError, ValueError) as exc:
         messages.error(request, f'Unable to add ledger entry: {exc}')
@@ -1173,12 +1206,13 @@ def ledger_delete_entry(request, entry_id):
 def ledger_pdf(request):
     """Export filtered ledger view as PDF with current brand identity fields."""
     from_date_str = request.GET.get('from_date')
-    to_date_str = request.GET.get('to_date')
-    account_name = (request.GET.get('account_name') or settings.BRAND_ACCOUNT_NAME).strip()
+    to_date_str   = request.GET.get('to_date')
+    # account_name now comes from the header block snapshot on first row, or query param fallback
+    account_name  = (request.GET.get('account_name') or settings.BRAND_ACCOUNT_NAME).strip()
 
-    today = date_class.today()
+    today     = date_class.today()
     from_date = date_class.fromisoformat(from_date_str) if from_date_str else today.replace(day=1)
-    to_date = date_class.fromisoformat(to_date_str) if to_date_str else today
+    to_date   = date_class.fromisoformat(to_date_str)   if to_date_str   else today
     if from_date > to_date:
         from_date, to_date = to_date, from_date
 
@@ -1186,17 +1220,17 @@ def ledger_pdf(request):
 
     template = get_template('king/ledger_pdf.html')
     html = template.render({
-        'ledger_rows': data['rows'],
-        'from_date': from_date,
-        'to_date': to_date,
-        'account_name': account_name,
-        'company_name': settings.BRAND_COMPANY_NAME,
-        'company_address': settings.BRAND_COMPANY_ADDRESS,
-        'company_gstin': settings.BRAND_COMPANY_GSTIN,
-        'total_debit_fmt': data['total_debit_fmt'],
+        'ledger_rows':      data['rows'],
+        'from_date':        from_date,
+        'to_date':          to_date,
+        'account_name':     account_name,
+        'company_name':     settings.BRAND_COMPANY_NAME,
+        'company_address':  settings.BRAND_COMPANY_ADDRESS,
+        'company_gstin':    settings.BRAND_COMPANY_GSTIN,
+        'total_debit_fmt':  data['total_debit_fmt'],
         'total_credit_fmt': data['total_credit_fmt'],
-        'debit_balance_fmt': data['debit_balance_fmt'],
-        'grand_total_fmt': data['grand_total_fmt'],
+        'debit_balance_fmt':data['debit_balance_fmt'],
+        'grand_total_fmt':  data['grand_total_fmt'],
     })
 
     result = io.BytesIO()
@@ -1215,7 +1249,7 @@ def ledger_pdf(request):
         entity_type='Ledger',
         entity_id=0,
         entity_name='Ledger PDF',
-        details=f"Exported ledger PDF from {from_date} to {to_date} for account {account_name}",
+        details=f"Exported ledger PDF from {from_date} to {to_date}",
         request=request,
     )
 

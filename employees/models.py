@@ -1,30 +1,55 @@
-"""
+"""Employee and role models.
+
 Module: employees.models
 App: employees
-Purpose: Defines employee master data and role-level wage metadata that feed attendance and payroll.
+Purpose: Defines employee master data and role-level wage metadata that feed
+attendance and payroll.
+Key responsibilities: Store worker identity, statutory flags, wage rates, and
+role-level overtime policy.
 Dependencies: Django auth User, payroll and attendance apps through foreign keys.
-Author note: Statutory flags/rates are stored at employee level for auditable payroll snapshots.
+Author note: Statutory flags/rates are stored at employee level for auditable
+payroll snapshots.
 """
 
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
-from django.utils import timezone
-from django.contrib.auth.models import User  # <--- The Security Import
+# ============================================================
+# IMPORTS
+# ============================================================
 from decimal import Decimal
 
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
+from django.db import models
+from django.utils import timezone
 
+
+# ============================================================
+# CHOICES
+# ============================================================
 EMPLOYMENT_TYPE_CHOICES = [
     ('LOCAL', 'Local'),
     ('PERMANENT', 'Permanent'),
 ]
 
+
+# ============================================================
+# MODELS
+# ============================================================
 class Role(models.Model):
     """
     Represents a labor role (e.g., Mason, Helper) with shared overtime policy.
 
-    BUSINESS RULE: Overtime rate is maintained at role level, not per employee,
-    so payroll policy can be changed centrally without editing every worker record.
+    Business Rule:
+        Overtime rate is maintained at role level, not per employee, so payroll
+        policy can be changed centrally without editing every worker record.
+
+    Fields:
+        name (str): Human-readable role name.
+        overtime_rate_per_hour (Decimal): Standard overtime rate for the role.
+        is_active (bool): Enables deactivation without deleting historical data.
+
+    Constraints:
+        Role name is unique.
     """
     name = models.CharField(max_length=50, unique=True)
     overtime_rate_per_hour = models.DecimalField(max_digits=6, decimal_places=2)
@@ -38,9 +63,20 @@ class Employee(models.Model):
     """
     Core worker profile used across attendance, payroll, and portal modules.
 
-    SECURITY: The linked auth user is PROTECT to preserve payroll/audit history.
-    BUSINESS RULE: daily_wage uses Decimal to guarantee paisa-level precision.
-    EDGE CASE: Local employees cannot have PF/ESIC enabled.
+    Business Rule:
+        daily_wage uses Decimal to guarantee paisa-level precision.
+        Local employees cannot have PF/ESIC enabled.
+
+    Fields:
+        user (User): Auth account linked to the worker profile.
+        role (Role): Role tied to overtime policy.
+        daily_wage (Decimal): Base daily wage for payroll.
+        employment_type (str): Local or Permanent wage policy.
+        pf_applicable/esic_applicable (bool): Statutory flags.
+        pf_rate/esic_rate (Decimal): Statutory contribution rates.
+
+    Constraints:
+        Compliance identifiers are unique when present.
     """
     # SECURITY: One employee must map to one login; PROTECT prevents orphaning
     # financial history if someone tries to delete the auth account.
@@ -89,22 +125,34 @@ class Employee(models.Model):
     # Work
     working_location = models.CharField(max_length=100, blank=True, null=True)
 
-
     # Address
-    current_address  = models.TextField(blank=True, null=True)
-    permanent_address= models.TextField(blank=True, null=True)
+    current_address = models.TextField(blank=True, null=True)
+    permanent_address = models.TextField(blank=True, null=True)
 
     # Compliance (all optional — workers may not have these)
-    aadhar_number    = models.CharField(max_length=12,  blank=True, null=True, unique=True)
-    pan_number       = models.CharField(max_length=10,  blank=True, null=True, unique=True)
-    uan_number       = models.CharField(max_length=12,  blank=True, null=True, unique=True)
-    esic_number      = models.CharField(max_length=17,  blank=True, null=True, unique=True)
-    bank_account_no  = models.CharField(max_length=20,  blank=True, null=True, unique=True)
-
-
+    aadhar_number = models.CharField(max_length=12, blank=True, null=True, unique=True)
+    pan_number = models.CharField(max_length=10, blank=True, null=True, unique=True)
+    uan_number = models.CharField(max_length=12, blank=True, null=True, unique=True)
+    esic_number = models.CharField(max_length=17, blank=True, null=True, unique=True)
+    bank_account_no = models.CharField(
+        max_length=20, blank=True, null=True, unique=True
+    )
 
     def clean(self):
-        """Validate wage/date constraints and statutory applicability rules."""
+        """Validate wage/date constraints and statutory applicability rules.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            ValidationError: When any constraint or statutory rule is violated.
+
+        Business Rule:
+            Local employees cannot have PF/ESIC enabled and wages must be positive.
+        """
         # Normalize optional compliance fields so blank strings are stored as None.
         optional_fields = [
             'aadhar_number',
@@ -128,7 +176,9 @@ class Employee(models.Model):
             raise ValidationError("Daily wage must be positive.")
         if self.join_date > timezone.now().date():
             raise ValidationError("Join date cannot be in the future.")
-        if self.employment_type == 'LOCAL' and (self.pf_applicable or self.esic_applicable):
+        if self.employment_type == 'LOCAL' and (
+            self.pf_applicable or self.esic_applicable
+        ):
             raise ValidationError(
                 "Local employees cannot have PF or ESIC applicable. Set both flags to False."
             )
@@ -138,11 +188,19 @@ class Employee(models.Model):
         if self.aadhar_number and len(self.aadhar_number) != 12:
             raise ValidationError({"aadhar_number": "Aadhaar must be exactly 12 digits."})
 
-        if self.uan_number and (not self.uan_number.isdigit() or len(self.uan_number) != 12):
+        if self.uan_number and (
+            not self.uan_number.isdigit() or len(self.uan_number) != 12
+        ):
             raise ValidationError({"uan_number": "UAN must be exactly 12 digits."})
 
-        if self.esic_number and (not self.esic_number.isdigit() or len(self.esic_number) > 17):
-            raise ValidationError({"esic_number": "ESIC number must be numeric and up to 17 digits."})
+        if self.esic_number and (
+            not self.esic_number.isdigit() or len(self.esic_number) > 17
+        ):
+            raise ValidationError(
+                {
+                    "esic_number": "ESIC number must be numeric and up to 17 digits."
+                }
+            )
 
         if self.pan_number:
             pan_validator = RegexValidator(
@@ -152,7 +210,20 @@ class Employee(models.Model):
             pan_validator(self.pan_number)
 
     def clean_fields(self, exclude=None):
-        """Normalize formatted identifier inputs before Django field validators run."""
+        """Normalize formatted identifier inputs before field validators run.
+
+        Args:
+            exclude (iterable | None): Fields to exclude from validation.
+
+        Returns:
+            None.
+
+        Raises:
+            ValidationError: Propagates from Django field validators.
+
+        Business Rule:
+            Identifier fields are stored without spaces or separators.
+        """
         if self.aadhar_number:
             self.aadhar_number = str(self.aadhar_number).replace(' ', '').replace('-', '')
         if self.uan_number:

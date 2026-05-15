@@ -1,46 +1,68 @@
-"""
+"""Portal view handlers.
+
 Module: portal.views
 App: portal
-Purpose: Handles login and dashboard flows for manager and worker personas.
-Dependencies: employees, attendance, payroll, audit service, role-based decorators.
-Author note: Ownership/role checks are explicit to prevent cross-portal data exposure.
+Purpose: Handles login, worker/manager dashboards, and payroll orchestration.
+Key responsibilities: Role-based access control, payroll batching, attendance
+bulk operations, and audit logging for portal interactions.
+Dependencies: employees, attendance, payroll, audit service, and decorators.
+Author note: Ownership/role checks are explicit to prevent cross-portal data
+exposure and unauthorized payroll actions.
 """
 
+# ============================================================
+# IMPORTS
+# ============================================================
+import logging
+from datetime import datetime, timedelta
 from decimal import Decimal
-import json
-from datetime import datetime, date, timedelta
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.template.loader import get_template
 from django.core.exceptions import PermissionDenied
-from django.db.models import Sum, Count, Q, F
-from django.db.models.functions import Coalesce
-from django.utils import timezone
-from django.urls import reverse
-from xhtml2pdf import pisa
 from django.db import transaction
+from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import get_template
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.cache import cache_page
+from xhtml2pdf import pisa
 
-from employees.models import Employee
-from payroll.models import MonthlySalary, Advance
-from attendance.models import Attendance
-from .decorators import manager_required, worker_required
-from .decorators import king_required
-from analytics.services.audit_service import recent_activity_items_for_manager
 from analytics.services.audit_service import create_audit_log
-from django.views.decorators.cache import cache_page # Add this import
+from analytics.services.audit_service import recent_activity_items_for_manager
+from attendance.models import Attendance
+from employees.models import Employee
+from payroll.models import Advance, MonthlySalary
+from payroll.services import SalaryAlreadyGeneratedError, generate_monthly_salary
 
-# =========================================
-# 👷 WORKER PORTAL VIEWS
-# =========================================
+from .decorators import manager_required, worker_required
+
+# ============================================================
+# WORKER PORTAL VIEWS
+# ============================================================
 
 def portal_login(request):
-    """Authenticate manager/worker based on selected login mode and route safely."""
+    """Authenticate manager/worker based on selected login mode.
+
+    Args:
+        request (HttpRequest): Incoming request with login credentials.
+
+    Returns:
+        HttpResponse: Login template or redirect to the correct dashboard.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Manager/worker login must match the selected login type toggle.
+    """
     if request.user.is_authenticated:
-        if request.user.is_superuser or request.user.groups.filter(name='Manager').exists():
+        if request.user.is_superuser or request.user.groups.filter(
+            name='Manager'
+        ).exists():
             return redirect('manager_dashboard')
         return redirect('worker_dashboard')
 
@@ -55,15 +77,24 @@ def portal_login(request):
             user = authenticate(request, username=login_id, password=password)
         else:
             try:
-                employee = Employee.objects.get(phone_number=login_id, is_active=True)
-                user = authenticate(request, username=employee.user.username, password=password)
+                employee = Employee.objects.get(
+                    phone_number=login_id, is_active=True
+                )
+                user = authenticate(
+                    request,
+                    username=employee.user.username,
+                    password=password,
+                )
             except Employee.DoesNotExist:
                 pass
 
         if user is not None and user.is_active:
-            is_manager = user.is_superuser or user.groups.filter(name='Manager').exists()
+            # Reason: Role is derived from groups to avoid user-provided flags.
+            is_manager = user.is_superuser or user.groups.filter(
+                name='Manager'
+            ).exists()
 
-            # ✅ Role must match toggle
+            # Business rule: Role must match the login type toggle.
             if login_type == 'manager' and not is_manager:
                 messages.error(request, "Invalid credentials.")
             elif login_type == 'worker' and is_manager:
@@ -107,21 +138,49 @@ def portal_login(request):
 def worker_dashboard(request):
     """Render worker-scoped salary dashboard.
 
-    SECURITY: Worker data is scoped strictly through request.user.employee to prevent IDOR.
+    Args:
+        request (HttpRequest): Worker request.
+
+    Returns:
+        HttpResponse: Worker dashboard with salary list.
+
+    Raises:
+        Employee.DoesNotExist: When the user lacks a worker profile.
+
+    Business Rule:
+        Worker data is scoped strictly through request.user.employee to prevent IDOR.
     """
     try:
         employee = request.user.employee
         if not employee.is_active:
-             raise Employee.DoesNotExist
+            raise Employee.DoesNotExist
     except Employee.DoesNotExist:
         logout(request)
         return redirect('portal_login')
 
+    # Reason: Scope payroll to current user to avoid cross-employee access.
     salaries = MonthlySalary.objects.filter(employee=employee).order_by('-month')
-    return render(request, 'portal/dashboard.html', {'employee': employee, 'salaries': salaries})
+    return render(
+        request,
+        'portal/dashboard.html',
+        {'employee': employee, 'salaries': salaries},
+    )
 
 def worker_logout(request):
-    """Logout worker/manager sessions and record the event in audit trail."""
+    """Logout worker/manager sessions and record the event in audit trail.
+
+    Args:
+        request (HttpRequest): Current request.
+
+    Returns:
+        HttpResponse: Redirect to portal login page.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Logout events are always recorded for audit compliance.
+    """
     if request.user.is_authenticated:
         create_audit_log(
             user=request.user,
@@ -139,59 +198,103 @@ def worker_logout(request):
 
 @worker_required
 def worker_profile(request):
-    """Render worker profile page with defensive profile existence checks."""
-    # FIX: Defensive check for missing employee profile
+    """Render worker profile page.
+
+    Args:
+        request (HttpRequest): Worker request.
+
+    Returns:
+        HttpResponse: Worker profile page.
+
+    Raises:
+        Employee.DoesNotExist: When the user lacks a worker profile.
+
+    Business Rule:
+        Missing profiles are logged out to avoid stale accounts.
+    """
+    # Reason: Avoid rendering with missing or stale employee profiles.
     try:
         employee = request.user.employee
     except Employee.DoesNotExist:
         logout(request)
         return redirect('portal_login')
-        
+
     return render(request, 'portal/profile.html', {'employee': employee})
 
 @worker_required
 def worker_attendance(request):
-    """Render worker attendance history for recent records."""
-    # FIX: Defensive check for missing employee profile
+    """Render worker attendance history for recent records.
+
+    Args:
+        request (HttpRequest): Worker request.
+
+    Returns:
+        HttpResponse: Attendance page with recent entries.
+
+    Raises:
+        Employee.DoesNotExist: When the user lacks a worker profile.
+
+    Business Rule:
+        Attendance access is scoped to the current worker only.
+    """
+    # Reason: Avoid rendering with missing or stale employee profiles.
     try:
         employee = request.user.employee
     except Employee.DoesNotExist:
         logout(request)
         return redirect('portal_login')
         
-    # Get last 30 days of attendance
+    # Reason: Limit history for performance and data relevance.
     logs = Attendance.objects.filter(employee=employee).order_by('-date')[:30]
     return render(request, 'portal/attendance.html', {'logs': logs})
 
 @worker_required
 def download_payslip(request, salary_id):
-    """Download paid payslip with ownership enforcement for worker accounts."""
+    """Download paid payslip with ownership enforcement for worker accounts.
+
+    Args:
+        request (HttpRequest): Requesting user.
+        salary_id (int): MonthlySalary id.
+
+    Returns:
+        HttpResponse: PDF response for the payslip.
+
+    Raises:
+        PermissionDenied: When the user is not authorized or salary is unpaid.
+
+    Business Rule:
+        Only managers or the owning worker can access a paid payslip.
+    """
     salary = get_object_or_404(
-        MonthlySalary.objects.select_related('employee'), 
-        id=salary_id
+        MonthlySalary.objects.select_related('employee'),
+        id=salary_id,
     )
 
-    # FIX: Strict RBAC - Only Superuser or Manager Group can bypass ownership
+    # Reason: Only managers can bypass worker ownership checks.
     is_manager = request.user.groups.filter(name='Manager').exists()
-    
+
     if request.user.is_superuser or is_manager:
         pass  # Access granted
     elif hasattr(request.user, 'employee'):
-        # Check 1: Ownership
+        # Reason: Enforce worker-level ownership isolation.
         if salary.employee != request.user.employee:
-            raise PermissionDenied("⛔ You are not authorized to view this payslip.")
+            raise PermissionDenied(
+                '⛔ You are not authorized to view this payslip.'
+            )
         
-        # Check 2: Status
+        # Reason: Payslips are visible only after payment is finalized.
         if not salary.is_paid:
             raise PermissionDenied("⏳ Payslip not available until salary is paid.")
     else:
         raise PermissionDenied("Unauthorized access.")
 
-    # Generate PDF
     template_path = 'payroll/payslip_pdf.html'
     context = {'salary': salary}
     response = HttpResponse(content_type='application/pdf')
-    filename = f"Payslip_{salary.employee.name}_{salary.month.strftime('%b_%Y')}.pdf"
+    filename = (
+        f"Payslip_{salary.employee.name}_"
+        f"{salary.month.strftime('%b_%Y')}.pdf"
+    )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     template = get_template(template_path)
@@ -200,12 +303,12 @@ def download_payslip(request, salary_id):
     pisa_status = pisa.CreatePDF(html, dest=response)
     if pisa_status.err:
         return HttpResponse('We had some errors <pre>' + html + '</pre>')
-    
+
     return response
 
-# =========================================
-# 📊 MANAGER PORTAL VIEWS
-# =========================================
+# ============================================================
+# MANAGER PORTAL VIEWS
+# ============================================================
 @manager_required
 def manager_dashboard(request, viewing_as_owner=False):
     """
@@ -222,11 +325,17 @@ def manager_dashboard(request, viewing_as_owner=False):
     - Regular workers: Denied
     
     Args:
-        request: HTTP request
-        viewing_as_owner: Boolean flag indicating if King user is viewing
+        request (HttpRequest): Incoming request.
+        viewing_as_owner (bool): Whether King user is viewing read-only.
         
     Returns:
-        Rendered manager dashboard template
+        HttpResponse: Rendered manager dashboard template.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Metrics are computed for the selected month and visible per role.
     """
     context = {}  # always initialize once
 
@@ -234,23 +343,23 @@ def manager_dashboard(request, viewing_as_owner=False):
     today = current_time.date()
     selected_month = today.replace(day=1)
 
-    # needed for navigation (salary list, summary)
-    context["selected_month"] = selected_month.strftime("%Y-%m")
+    # Reason: Used by downstream payroll and summary navigation.
+    context['selected_month'] = selected_month.strftime('%Y-%m')
     
-    # check if payroll exists for selected month (for dashboard navigation)
+    # Reason: Toggle payroll actions based on existing batch for the month.
     month_date = datetime.strptime(
-        context["selected_month"], "%Y-%m"
+        context['selected_month'], '%Y-%m'
     ).date().replace(day=1)
 
     payroll_exists = MonthlySalary.objects.filter(
         month=month_date
     ).exists()
 
-    context["payroll_exists"] = payroll_exists
-    context["viewing_as_owner"] = request.viewing_as_owner  # Pass flag from request
+    context['payroll_exists'] = payroll_exists
+    # Reason: Template uses this flag to prevent write actions in owner view.
+    context['viewing_as_owner'] = request.viewing_as_owner
 
-
-    # 1. WORKFORCE METRICS
+    # Reason: Workforce metrics are used to inform staffing alerts.
     total_workers = Employee.objects.filter(is_active=True).count()
 
     new_joinees = Employee.objects.filter(
@@ -259,78 +368,96 @@ def manager_dashboard(request, viewing_as_owner=False):
         is_active=True
     ).count()
 
-    # 2. FINANCIAL METRICS (current month)
-    financials = MonthlySalary.objects.filter(
-        month=selected_month
-    ).aggregate(
-        total_gross=Coalesce(Sum("gross_pay"), Decimal("0.00")),
-        total_net=Coalesce(Sum("net_pay"), Decimal("0.00")),
+    # Reason: Financial metrics power the dashboard summary cards.
+    financials = MonthlySalary.objects.filter(month=selected_month).aggregate(
+        total_gross=Coalesce(Sum('gross_pay'), Decimal('0.00')),
+        total_net=Coalesce(Sum('net_pay'), Decimal('0.00')),
         total_paid=Coalesce(
-            Sum("net_pay", filter=Q(is_paid=True)), Decimal("0.00")
+            Sum('net_pay', filter=Q(is_paid=True)), Decimal('0.00')
         ),
-        recovered=Coalesce(Sum("advance_deducted"), Decimal("0.00")),
+        recovered=Coalesce(Sum('advance_deducted'), Decimal('0.00')),
     )
 
-    # 3. LIABILITY
-    outstanding_liability = financials["total_net"] - financials["total_paid"]
+    # Reason: Outstanding liability highlights unpaid net payroll.
+    outstanding_liability = financials['total_net'] - financials['total_paid']
 
-    # 4. ADVANCES (issued this month)
+    # Reason: Advance totals inform liability tracking.
     advances_given = Advance.objects.filter(
         issued_date__year=current_time.year,
         issued_date__month=current_time.month,
     ).aggregate(
-        total=Coalesce(Sum("amount"), Decimal("0.00"))
-    )["total"]
+        total=Coalesce(Sum('amount'), Decimal('0.00'))
+    )['total']
 
-    # update context (never overwrite)
-    context.update({
-        "current_month": current_time,
-        "total_workers": total_workers,
-        "new_joinees": new_joinees,
-        "financials": financials,
-        "outstanding_liability": outstanding_liability,
-        "advances_given": advances_given,
-        "recent_activities": recent_activity_items_for_manager(limit=8),
-    })
+    # Reason: Update context in a single, consistent step.
+    context.update(
+        {
+            'current_month': current_time,
+            'total_workers': total_workers,
+            'new_joinees': new_joinees,
+            'financials': financials,
+            'outstanding_liability': outstanding_liability,
+            'advances_given': advances_given,
+            'recent_activities': recent_activity_items_for_manager(limit=8),
+        }
+    )
 
-    return render(request, "portal/manager_dashboard.html", context)
-
-
-
+    return render(request, 'portal/manager_dashboard.html', context)
 
 @manager_required
-@cache_page(60 * 5) # Cache for 5 minutes
+@cache_page(60 * 5)
 def manager_recent_activity_api(request):
-    """Real-time activity feed endpoint for manager dashboard."""
-    return JsonResponse({
-        "activities": recent_activity_items_for_manager(limit=8)
-    })
+    """Provide recent activity items for the manager dashboard.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        JsonResponse: Recent activity payload.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Results are cached briefly to reduce audit-service load.
+    """
+    return JsonResponse(
+        {'activities': recent_activity_items_for_manager(limit=8)}
+    )
 
 
 @manager_required
 def bulk_attendance(request):
-    """
-    Bulk Attendance Interface.
-    Allows marking 100+ workers in one go.
-    
-    RESTRICTIONS:
-    - Only current month dates allowed
-    - Cannot mark future dates
-    - Cannot mark previous months
+    """Bulk attendance entry for managers.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Bulk attendance page with form data.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Updates are limited to current-month dates to avoid payroll drift.
     """
     # BUSINESS RULE: Bulk attendance edits are constrained to current month to protect closed payroll windows.
     today = timezone.now().date()
     
-    # 1. Get Date from URL (or default to Today)
+    # Reason: Date is driven by UI filters and must be constrained.
     date_str = request.GET.get('date')
     if date_str:
         try:
             selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            # Validate date is in current month and not in future
+            # Reason: Prevent edits outside the allowed payroll window.
             if selected_date > today:
                 messages.warning(request, "Cannot mark attendance for future dates.")
                 selected_date = today
-            elif selected_date.year < today.year or (selected_date.year == today.year and selected_date.month < today.month):
+            elif selected_date.year < today.year or (
+                selected_date.year == today.year
+                and selected_date.month < today.month
+            ):
                 messages.warning(request, "Cannot mark attendance for previous months.")
                 selected_date = today
         except ValueError:
@@ -338,7 +465,7 @@ def bulk_attendance(request):
     else:
         selected_date = today
 
-    # 2. Handle SAVE (POST)
+    # Reason: POST handles writes; GET handles preview.
     if request.method == "POST":
         post_date_str = request.POST.get('attendance_date')
         try:
@@ -347,23 +474,27 @@ def bulk_attendance(request):
             messages.error(request, "Invalid date format.")
             selected_date = today
         
-        # VALIDATE: No future dates
+        # Reason: Future attendance could distort payroll calculations.
         if selected_date > today:
             messages.error(request, "❌ Cannot mark attendance for future dates.")
             selected_date = today
-        # VALIDATE: No previous months
-        elif selected_date.year < today.year or (selected_date.year == today.year and selected_date.month < today.month):
+        # Reason: Previous months may already be closed for payroll.
+        elif selected_date.year < today.year or (
+            selected_date.year == today.year
+            and selected_date.month < today.month
+        ):
             messages.error(request, "❌ Cannot mark attendance for previous months.")
             selected_date = today
         else:
-            # Valid date - proceed with saving attendance
+            # Reason: Only valid current-month dates are persisted.
             try:
-                # BACKEND LOCK: Fetch IDs of workers who already have an approved 'L' today
+                # BACKEND LOCK: Prevent leave overrides during bulk edits.
                 leave_locked_emp_ids = set(
                     Attendance.objects.filter(date=selected_date, status='L')
                     .values_list('employee_id', flat=True)
                 )
 
+                # Reason: Attendance writes must be atomic to prevent partial saves.
                 with transaction.atomic():
                     # Loop through POST data to find status keys
                     for key, value in request.POST.items():
@@ -371,31 +502,33 @@ def bulk_attendance(request):
                             # key format: status_101 (where 101 is employee ID)
                             emp_id = key.split('_')[1]
 
-                            # BACKEND LOCK: If this employee is on leave, ignore manager's form submission completely!
+                            # Reason: Leave-approved rows must not be overwritten.
                             if emp_id in leave_locked_emp_ids:
                                 continue
                             
                             status = value
-                            overtime_str = request.POST.get(f'overtime_{emp_id}', 0) or 0
+                            overtime_str = (
+                                request.POST.get(f'overtime_{emp_id}', 0) or 0
+                            )
                             
-                            # Validate and convert Overtime to Decimal
+                            # Reason: Use Decimal to avoid float drift in payroll.
                             try:
-                                overtime = Decimal(str(overtime_str)).quantize(Decimal('0.01'))
+                                overtime = Decimal(str(overtime_str)).quantize(
+                                    Decimal('0.01')
+                                )
                             except (ValueError, TypeError):
                                 overtime = Decimal('0.00')
                             
-                            # Update or Create
                             Attendance.objects.update_or_create(
                                 employee_id=emp_id,
                                 date=selected_date,
                                 defaults={
                                     'status': status,
                                     'overtime_hours': overtime,
-                                    
                                 }
                             )
                     
-                # COUNT STATUSES
+                # Reason: Build summary counts for user feedback.
                 present = 0
                 absent = 0
                 half_day = 0
@@ -409,21 +542,20 @@ def bulk_attendance(request):
                         elif value == 'H':
                             half_day += 1
                 
-                # SUCCESS MESSAGE
+                # Reason: Provide a clear confirmation summary.
                 messages.success(
                     request,
                     f"✓ Attendance saved for {selected_date} | "
                     f"Present: {present} | Half Day: {half_day} | Absent: {absent}"
                 )
                 
-            except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
+            except Exception as exc:
+                messages.error(request, f"Error: {exc}")
 
-    # 3. Handle VIEW (GET)
-    # Fetch all active workers
+    # Reason: Always scope to active employees.
     workers = Employee.objects.filter(is_active=True).order_by('id')
     
-    # Pre-fetch existing attendance to fill the form
+    # Reason: Prefetch reduces per-worker queries in the loop below.
     existing_attendance = Attendance.objects.filter(date=selected_date)
     attendance_map = {att.employee_id: att for att in existing_attendance}
 
@@ -432,11 +564,12 @@ def bulk_attendance(request):
         att = attendance_map.get(worker.id)
         worker_list.append({
             'employee': worker,
-            'status': att.status if att else 'P', # 'P' matches our radio button values
+            # Reason: Default to present for unmarked employees.
+            'status': att.status if att else 'P',
             'overtime': att.overtime_hours if att else 0,
         })
 
-    # Month-level progress metrics for attendance operations dashboard cards
+    # Reason: Dashboard cards use month-level attendance progress.
     marked_days_this_month = (
         Attendance.objects
         .filter(date__year=today.year, date__month=today.month)
@@ -458,7 +591,10 @@ def bulk_attendance(request):
     return render(request, 'portal/bulk_attendance.html', context)
 
 
-from payroll.services import generate_monthly_salary, SalaryAlreadyGeneratedError
+# ============================================================
+# PAYROLL OPERATIONS
+# ============================================================
+
 
 @manager_required
 def run_payroll(request):
@@ -477,15 +613,20 @@ def run_payroll(request):
     4. Graceful error handling with user feedback
     
     Args:
-        request: HTTP request
+        request (HttpRequest): Incoming request.
         
     Returns:
-        Redirect with success/error message
+        HttpResponse: Redirect with success/error message.
+
+    Raises:
+        ValidationError: If month selection is invalid.
+
+    Business Rule:
+        Payroll batch runs as a single transaction to avoid partial creation.
     """
     today = timezone.now().date()
 
     if request.method == "POST":
-        import logging
         logger = logging.getLogger(__name__)
         
         try:
@@ -498,8 +639,13 @@ def run_payroll(request):
             messages.error(request, "Invalid month selected.")
             return redirect('manager_dashboard')
         
-        logger.info(f"Payroll processing started for {selected_month.strftime('%B %Y')}")
-        summary_url = f"{reverse('payroll_batch_summary')}?month={selected_month.strftime('%Y-%m')}"
+        logger.info(
+            f"Payroll processing started for {selected_month.strftime('%B %Y')}"
+        )
+        summary_url = (
+            f"{reverse('payroll_batch_summary')}?month="
+            f"{selected_month.strftime('%Y-%m')}"
+        )
         
         employees = Employee.objects.filter(is_active=True)
         logger.info(f"Processing {employees.count()} active employees")
@@ -510,7 +656,7 @@ def run_payroll(request):
         current_employee = None
 
         try:
-            # ATOMIC TRANSACTION: All employees or rollback all
+            # Reason: Ensure payroll batch is all-or-nothing.
             with transaction.atomic():
                 for employee in employees:
                     current_employee = employee
@@ -534,10 +680,13 @@ def run_payroll(request):
         except Exception as e:
             # ATOMIC ROLLBACK: Any critical error rolls back ENTIRE batch
             failed = 1
-            employee_name = current_employee.name if current_employee else "Unknown employee"
+            employee_name = (
+                current_employee.name if current_employee else 'Unknown employee'
+            )
             logger.critical(
                 f"PAYROLL GENERATION ABORTED - Transaction rolled back for "
-                f"{selected_month.strftime('%B %Y')} at employee {employee_name}: {str(e)}",
+                f"{selected_month.strftime('%B %Y')} at employee {employee_name}: "
+                f"{str(e)}",
                 exc_info=True
             )
             messages.error(

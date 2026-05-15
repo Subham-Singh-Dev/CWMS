@@ -1,27 +1,35 @@
-"""
+"""Owner (King) view handlers.
+
 Module: king.views
 App: king
-Purpose: Owner (King) authentication, dashboard analytics, and owner-side workorder/revenue/ledger workflows.
-Dependencies: king models, payroll/attendance/billing/expenses aggregates, audit service.
-Author note: Security checks are intentionally strict and duplicated at login + decorator layers.
+Purpose: Owner authentication, dashboard analytics, and work order/revenue/ledger
+workflows.
+Key responsibilities: Owner-only access control, KPI aggregation, and export
+flows for ledger reporting.
+Dependencies: king models, payroll/attendance/billing/expenses aggregates, and
+audit service.
+Author note: Security checks are intentionally strict and duplicated at login
+and decorator layers.
 """
 
-# king/views.py
-from decimal import ROUND_HALF_UP, Decimal
+# ============================================================
+# IMPORTS
+# ============================================================
 import io
 import json
 import logging
 from datetime import date, datetime, timedelta
 from datetime import date as date_class
+from decimal import Decimal, ROUND_HALF_UP
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db.models import Sum, Count, Q
-from django.db.models.functions import TruncMonth, Coalesce
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import get_template
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -35,51 +43,40 @@ from king.models import Revenue as ManualRevenue
 from payroll.models import MonthlySalary, Advance
 from portal.decorators import king_required
 
-from .models import WorkOrder, Revenue, LedgerEntry
-from analytics.services.audit_service import recent_activity_items_for_king, create_audit_log
+from .models import LedgerEntry, Revenue, WorkOrder
+from analytics.services.audit_service import create_audit_log
+from analytics.services.audit_service import recent_activity_items_for_king
 
 
-
-
-
+# ============================================================
+# AUTHENTICATION
+# ============================================================
 
 def king_login(request):
-    """
-    Production-grade King/Owner authentication view.
-    
-    CRITICAL SECURITY FEATURES:
-    1. Strict authentication: Only King group members allowed
-    2. Explicit rejection: Manager group users BLOCKED
-    3. Double-session flag: king_authenticated flag required for access
-    4. Comprehensive logging: All login attempts logged with IP
-    5. Input validation: All POST data validated before use
-    6. Session cleanup: Proper logout and session clearing
-    
-    Security Logic:
-    - Manager credentials cannot login to king dashboard (hard rejection)
-    - Only users with EXPLICIT King group can access
-    - Superusers need King group (no backdoor access)
-    - Session flag prevents direct dashboard URL access
-    - All attempts logged for audit trail
-    
+    """Authenticate owner-only access for the King portal.
+
     Args:
-        request: HTTP request object
-        
+        request (HttpRequest): Incoming login request.
+
     Returns:
-        Redirect to king_dashboard on success
-        Rendered login template on initial request or auth failure
+        HttpResponse: Login page or redirect to king dashboard.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Only users in the King group may authenticate; managers are rejected.
     """
-    
     logger = logging.getLogger(__name__)
     
     client_ip = request.META.get('REMOTE_ADDR', 'Unknown')
     
-    # If already authenticated with valid session flag, redirect to dashboard
+    # Reason: Avoid re-auth prompts for valid king sessions.
     if request.user.is_authenticated and request.session.get('king_authenticated'):
         if request.user.groups.filter(name='King').exists():
             return redirect('king:king_dashboard')
     
-    # Clear any stale king_authenticated flags to prevent session hijacking
+    # Reason: Clear stale flags to prevent session reuse.
     if 'king_authenticated' in request.session:
         del request.session['king_authenticated']
     
@@ -87,7 +84,7 @@ def king_login(request):
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '').strip()
         
-        # INPUT VALIDATION: Prevent empty credentials
+        # Reason: Reject empty credentials to avoid noisy auth checks.
         if not username or not password:
             logger.warning(
                 f"King login: Empty credentials attempt from {client_ip}"
@@ -95,7 +92,7 @@ def king_login(request):
             messages.error(request, "Username and password are required.")
             return render(request, 'king/king_login.html')
         
-        # AUTHENTICATION: Check credentials
+        # Reason: Authenticate before any group checks.
         user = authenticate(request, username=username, password=password)
         
         if user is None:
@@ -126,7 +123,7 @@ def king_login(request):
             messages.error(request, "Your account is inactive. Contact administrator.")
             return render(request, 'king/king_login.html')
         
-        # CRITICAL SECURITY CHECK 1: REJECT Manager group EXPLICITLY
+        # Reason: Manager credentials must never access owner portal.
         if user.groups.filter(name='Manager').exists():
             logger.critical(
                 f"SECURITY ALERT: Manager {username} attempted King login from {client_ip}. "
@@ -139,12 +136,12 @@ def king_login(request):
             )
             return render(request, 'king/king_login.html')
         
-        # CRITICAL SECURITY CHECK 2: VERIFY King group membership
+        # Reason: Only explicit King group membership is allowed.
         is_king = user.groups.filter(name='King').exists()
         is_superuser = user.is_superuser
         
         if is_king:
-            # User has explicit King group - ALLOW LOGIN
+            # Reason: King group users may authenticate into owner portal.
             login(request, user)
             request.session['king_authenticated'] = True
             request.session.set_expiry(3600)  # 1 hour session timeout for security
@@ -168,7 +165,7 @@ def king_login(request):
             return redirect('king:king_dashboard')
         
         elif is_superuser:
-            # Superuser without explicit King group - REJECT (no backdoor)
+            # Reason: Superusers require explicit King group membership.
             logger.critical(
                 f"SECURITY: Superuser {username} attempted King login without King group "
                 f"from {client_ip}. REJECTED."
@@ -181,7 +178,6 @@ def king_login(request):
             return render(request, 'king/king_login.html')
         
         else:
-            # Regular user without King group - REJECT
             logger.warning(
                 f"King login: Unauthorized user {username} attempted access from {client_ip}"
             )
@@ -191,38 +187,46 @@ def king_login(request):
             )
             return render(request, 'king/king_login.html')
     
-    # GET request: Render login form
     return render(request, 'king/king_login.html')
-
-
-#(only king_dashboard changes)
-
-
+# ============================================================
+# DASHBOARD
+# ============================================================
 @king_required
 def king_dashboard(request):
-    """Render owner dashboard with KPI aggregates, trends, and operational alerts."""
+    """Render owner dashboard with KPI aggregates and operational alerts.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Owner dashboard page.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Dashboard totals use month-to-date data and enforce owner-only access.
+    """
 
     today = date.today()
 
-    # ── Helper function: Calculate daily salary using payroll logic ──
     def calculate_daily_salary_for_employee(employee, target_date):
-        """
-        Calculate salary for a single day using payroll logic.
-        
-        SAFETY GUARANTEES:
-        - Returns Decimal('0.00') if no attendance marked
-        - Returns Decimal('0.00') if employee has no role (instead of crashing)
-        - Returns Decimal('0.00') for absences
-        - Safely handles NULL values in employee data
-        
+        """Calculate salary for a single day using payroll logic.
+
         Args:
-            employee: Employee object
-            target_date: Date to calculate salary for
-            
+            employee (Employee): Employee to calculate for.
+            target_date (date): Attendance date.
+
         Returns:
-            Decimal: Daily salary amount (always safe, never crashes)
+            Decimal: Daily salary amount (always safe, never crashes).
+
+        Raises:
+            None.
+
+        Business Rule:
+            Absences and missing attendance return zero to avoid false payouts.
         """
-        # GUARD 1: Check if attendance exists for this day
+        # Reason: Missing attendance should not generate pay.
         att = Attendance.objects.filter(
             employee=employee,
             date=target_date
@@ -231,12 +235,12 @@ def king_dashboard(request):
         if not att:
             return Decimal('0.00')  # No attendance marked
         
-        # GUARD 2: Check if employee has valid daily_wage (prevent NULL errors)
+        # Reason: Guard against invalid wage values to avoid crashes.
         daily_wage = employee.daily_wage
         if not daily_wage or daily_wage <= 0:
             return Decimal('0.00')  # Invalid wage, return zero
         
-        # GUARD 3: Calculate base pay based on attendance status
+        # Reason: Attendance status determines base pay.
         if att.status == 'P':
             day_pay = daily_wage
         elif att.status == 'H':
@@ -246,38 +250,38 @@ def king_dashboard(request):
         else:
             day_pay = Decimal('0.00')
         
-        # GUARD 4: Add overtime with NULL safety (prevents crash if employee.role is None)
-        # If employee has no role assigned, overtime defaults to zero
+        # Reason: Role may be missing; default overtime to zero.
         if att.overtime_hours and att.overtime_hours > 0 and employee.role:
             overtime_rate = employee.role.overtime_rate_per_hour
             if overtime_rate:  # Extra safety check for rate being valid
                 overtime_pay = att.overtime_hours * overtime_rate
                 day_pay += overtime_pay
         
-        # GUARD 5: Return rounded to 2 decimal places (financial precision)
+        # Reason: Monetary values must be rounded to two decimals.
         return day_pay.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     
-    # ── Helper function: Calculate accumulated salary for month so far ──
-    # ── Helper function: Calculate accumulated salary (OPTIMIZED - NO LOOPS) ──
     def calculate_accumulated_salary_for_month(month_start):
-        """
-        OPTIMIZED VERSION - Uses single database query instead of N+1 loops.
-        Combines all attendance for the month, then processes in Python.
-        
+        """Calculate accumulated salary for the month, including pending.
+
         Args:
-            month_start: First day of month
-            
+            month_start (date): First day of the month.
+
         Returns:
-            Decimal: Total net salary (existing + pending)
+            Decimal: Total net salary (existing + pending).
+
+        Raises:
+            None.
+
+        Business Rule:
+            Existing payroll is preserved; pending is computed for today only.
         """
-        
-        # Get next month boundary
+        # Reason: Build a bounded date range for month-to-date queries.
         if month_start.month == 12:
             next_month_date = month_start.replace(year=month_start.year + 1, month=1)
         else:
             next_month_date = month_start.replace(month=month_start.month + 1)
         
-        # STEP 1: Get existing payroll (single query) ✅
+        # Reason: Existing payroll must be included to avoid double counting.
         existing_total = MonthlySalary.objects.filter(
             month=month_start
         ).aggregate(t=Coalesce(Sum('net_pay'), Decimal('0.00')))['t']
@@ -286,7 +290,7 @@ def king_dashboard(request):
             MonthlySalary.objects.filter(month=month_start).values_list('employee_id', flat=True)
         )
         
-        # STEP 2: Fetch ALL attendance data for this month in ONE query ✅
+        # Reason: Single query prevents N+1 loops on attendance.
         all_attendance = Attendance.objects.filter(
             date__gte=month_start,
             date__lt=next_month_date,
@@ -301,7 +305,7 @@ def king_dashboard(request):
                 emp_attendance_map[emp_id] = {'employee': att.employee, 'records': []}
             emp_attendance_map[emp_id]['records'].append(att)
         
-        # STEP 3: Fetch ALL advances in ONE query ✅
+        # Reason: Single query for advances keeps FIFO ordering consistent.
         all_advances = Advance.objects.filter(
             settled=False
         ).select_related('employee').order_by('issued_date')
@@ -314,11 +318,11 @@ def king_dashboard(request):
                 emp_advances_map[emp_id] = []
             emp_advances_map[emp_id].append(adv)
         
-        # STEP 4: Calculate pending payroll from grouped data
+        # Reason: Compute pending payroll for workers without a generated salary.
         pending_total = Decimal('0.00')
         
         for emp_id, att_data in emp_attendance_map.items():
-            # Skip if already has generated payroll
+            # Reason: Avoid double counting employees with generated payroll.
             if emp_id in employees_with_payroll:
                 continue
             
@@ -329,22 +333,22 @@ def king_dashboard(request):
                 continue
             
             try:
-                # Count attendance (single pass through records)
+                # Reason: Single pass reduces per-employee overhead.
                 present_count = sum(1 for r in records if r.status == 'P')
                 half_day_count = sum(1 for r in records if r.status == 'H')
                 absent_count = sum(1 for r in records if r.status == 'A')
                 overtime_hours = sum(r.overtime_hours or 0 for r in records)
                 
-                # Paid leave logic
+                # Reason: Paid leave logic remains capped for liability control.
                 paid_leaves = min(absent_count, 2)
                 
-                # Gross pay
+                # Reason: Use Decimal for monetary accuracy.
                 daily_wage = emp.daily_wage or Decimal('0.00')
                 present_pay = present_count * daily_wage
                 half_day_pay = half_day_count * (daily_wage * Decimal('0.5'))
                 paid_leave_pay = paid_leaves * daily_wage
                 
-                # Overtime
+                # Reason: Role may be missing; default overtime to zero.
                 overtime_rate = emp.role.overtime_rate_per_hour if emp.role else Decimal('0.00')
                 overtime_pay = Decimal(str(overtime_hours)) * (overtime_rate or Decimal('0.00'))
                 
@@ -352,7 +356,7 @@ def king_dashboard(request):
                     Decimal('0.01'), rounding=ROUND_HALF_UP
                 )
                 
-                # Apply FIFO advance deductions
+                # Reason: FIFO advance deductions align with payroll rules.
                 net_pay = gross_pay
                 for advance in emp_advances_map.get(emp_id, []):
                     if net_pay <= 0:
@@ -367,21 +371,25 @@ def king_dashboard(request):
                 logger.warning(f"Error calculating salary for {emp.name}: {str(e)}")
                 continue
         
-        # Return total
+        # Reason: Standardize to two-decimal precision.
         total = (existing_total + pending_total).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         return total
     
-    # ── Helper function: Get today's daily salary (OPTIMIZED) ──
     def get_todays_daily_salary():
-        """Get total salary generated today for all employees using database aggregation"""
-        
+        """Get total salary generated today for all employees.
+
+        Returns:
+            Decimal: Total of daily salaries for today.
+
+        Business Rule:
+            Daily pay is based strictly on today's attendance records.
+        """
         today_attendance = Attendance.objects.filter(
             date=today
         ).select_related('employee__role')
         
         total_salary = Decimal('0.00')
         
-        # Single query to get today's salary calculation
         for att in today_attendance:
             emp = att.employee
             daily_wage = emp.daily_wage or Decimal('0.00')
@@ -395,7 +403,7 @@ def king_dashboard(request):
             else:
                 day_pay = Decimal('0.00')
             
-            # Add overtime
+            # Reason: Overtime defaults to zero when role is missing.
             if att.overtime_hours and emp.role:
                 overtime_rate = emp.role.overtime_rate_per_hour or Decimal('0.00')
                 day_pay += att.overtime_hours * overtime_rate
@@ -404,11 +412,16 @@ def king_dashboard(request):
         
         return total_salary.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     
-    # ── Helper function: Get today's attendance status (OPTIMIZED) ──
     def get_todays_attendance_status(total_emp_count):
-        """Get attendance count for today using single database query"""
+        """Get attendance count for today using a single aggregate query.
 
-        # Single query to get all counts at once
+        Args:
+            total_emp_count (int): Total active employees.
+
+        Returns:
+            dict: Attendance summary for today.
+        """
+        # Reason: Aggregate in one query to reduce DB load.
         today_stats = Attendance.objects.filter(date=today).aggregate(
             present=Count('id', filter=Q(status='P')),
             absent=Count('id', filter=Q(status='A')),
@@ -429,7 +442,7 @@ def king_dashboard(request):
             'total_employees': total_emp_count
         }
     
-    # Time greeting
+    # Reason: Provide contextual greeting in the UI header.
     hour = datetime.now().hour
     if hour < 12:   time_of_day = "Morning"
     elif hour < 17: time_of_day = "Afternoon"
@@ -698,29 +711,40 @@ def king_dashboard(request):
 
 @king_required
 def king_recent_activity_api(request):
-    """Real-time activity feed endpoint for King dashboard."""
+    """Return recent activity items for the King dashboard.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        JsonResponse: Recent activity payload.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Activity feed is owner-only and sourced from audit logs.
+    """
     return JsonResponse({
         'activities': recent_activity_items_for_king(limit=8)
     })
 
 
 def king_logout(request):
-    """
-    Production-grade King/Owner logout function.
-    
-    Security Features:
-    1. Clears king_authenticated session flag
-    2. Destroys all session data (logout)
-    3. Ensures new authentication required for re-access
-    4. Logs logout event for audit trail
-    
+    """Log out King user and clear owner-specific session state.
+
     Args:
-        request: HTTP request object
-        
+        request (HttpRequest): Incoming request.
+
     Returns:
-        Redirect to king_login page
+        HttpResponse: Redirect to king login page.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Owner logout clears the king_authenticated flag and session data.
     """
-    
     logger = logging.getLogger(__name__)
     
     username = request.user.username if request.user.is_authenticated else 'Unknown'
@@ -739,13 +763,12 @@ def king_logout(request):
             request=request,
         )
     
-    # Clear king authentication flag
+    # Reason: Ensure owner-only session flag is cleared on logout.
     request.session.pop('king_authenticated', None)
     
-    # Clear all session data
+    # Reason: Remove all session state to prevent reuse.
     request.session.flush()
     
-    # Logout user
     logout(request)
     
     logger.info(f"King logout: {username} logged out from {client_ip}")
@@ -754,13 +777,26 @@ def king_logout(request):
 
 
 
-# ─────────────────────────────────────────────
+# ============================================================
 # WORK ORDERS
-# ─────────────────────────────────────────────
+# ============================================================
 
 @king_required
 def workorder_dashboard(request):
-    """List and summarize work orders with optional month-level filtering."""
+    """List and summarize work orders with optional month filtering.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Work order dashboard page.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Month filter scopes the list to the selected work order start date.
+    """
     selected_month = request.GET.get('month')
 
     if selected_month:
@@ -776,7 +812,7 @@ def workorder_dashboard(request):
     else:
         workorders = WorkOrder.objects.all()
 
-    # Summary counts
+    # Reason: Summary cards depend on aggregated counts.
     summary = {
         'total':     workorders.count(),
         'pending':   workorders.filter(status='pending').count(),
@@ -795,7 +831,20 @@ def workorder_dashboard(request):
 
 @king_required
 def workorder_add(request):
-    """Create a new work order record from owner form input."""
+    """Create a new work order record from owner form input.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Work order form or redirect on success.
+
+    Raises:
+        ValidationError: When model validation fails.
+
+    Business Rule:
+        Work orders are owner-managed and created from posted form data.
+    """
     if request.method == 'POST':
         WorkOrder.objects.create(
             client_name    = request.POST.get('client_name'),
@@ -821,7 +870,18 @@ def workorder_add(request):
 
 @king_required
 def workorder_detail(request, wo_id):
-    """Show one work order with linked revenue and completion metrics."""
+    """Show one work order with linked revenue and completion metrics.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        wo_id (int): WorkOrder id.
+
+    Returns:
+        HttpResponse: Work order detail view.
+
+    Raises:
+        Http404: When the work order does not exist.
+    """
     wo = get_object_or_404(WorkOrder, id=wo_id)
     revenues = wo.revenues.all()
     total_received = wo.total_revenue_received()
@@ -841,7 +901,18 @@ def workorder_detail(request, wo_id):
 
 @king_required
 def workorder_edit(request, wo_id):
-    """Update an existing work order and persist edited business details."""
+    """Update an existing work order and persist edited business details.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        wo_id (int): WorkOrder id.
+
+    Returns:
+        HttpResponse: Work order form or redirect on success.
+
+    Raises:
+        Http404: When the work order does not exist.
+    """
     wo = get_object_or_404(WorkOrder, id=wo_id)
 
     if request.method == 'POST':
@@ -869,7 +940,15 @@ def workorder_edit(request, wo_id):
 @king_required
 @require_POST
 def workorder_status_update(request, wo_id):
-    """Quick status toggle from dashboard."""
+    """Quick status update from dashboard.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        wo_id (int): WorkOrder id.
+
+    Returns:
+        HttpResponse: Redirect to work order dashboard.
+    """
     wo = get_object_or_404(WorkOrder, id=wo_id)
     new_status = request.POST.get('status')
     if new_status in dict(WorkOrder.STATUS_CHOICES):
@@ -879,13 +958,23 @@ def workorder_status_update(request, wo_id):
     return redirect('king:workorder_dashboard')
 
 
-# ─────────────────────────────────────────────
+# ============================================================
 # MANUAL REVENUE
-# ─────────────────────────────────────────────
+# ============================================================
 
 @king_required
 def revenue_dashboard(request):
-    """Render manual revenue register with monthly totals and category breakdown."""
+    """Render manual revenue register with monthly totals and category breakdown.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Revenue dashboard page.
+
+    Raises:
+        None.
+    """
     selected_month = request.GET.get('month')
 
     if selected_month:
@@ -904,7 +993,7 @@ def revenue_dashboard(request):
         m_end   = date(today.year, today.month+1, 1) if today.month < 12 else date(today.year+1, 1, 1)
         revenues = Revenue.objects.filter(date__gte=m_start, date__lt=m_end)
 
-    # Category breakdown
+    # Reason: Category breakdown drives pie chart data.
     cat_totals = (
         revenues.values('category')
         .annotate(total=Sum('amount'))
@@ -937,7 +1026,17 @@ def revenue_dashboard(request):
 @king_required
 @require_POST
 def revenue_add(request):
-    """Insert a new revenue entry and optionally link it to a work order."""
+    """Insert a new revenue entry and optionally link it to a work order.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Redirect to revenue dashboard.
+
+    Raises:
+        ValidationError: When posted data is invalid.
+    """
     wo_id = request.POST.get('work_order')
     Revenue.objects.create(
         date         = request.POST.get('date'),
@@ -955,19 +1054,34 @@ def revenue_add(request):
 @king_required
 @require_POST
 def revenue_delete(request, rev_id):
-    """Delete a revenue entry by ID from owner dashboard actions."""
+    """Delete a revenue entry by id from owner dashboard actions.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        rev_id (int): Revenue id.
+
+    Returns:
+        HttpResponse: Redirect to revenue dashboard.
+    """
     rev = get_object_or_404(Revenue, id=rev_id)
     rev.delete()
     messages.success(request, 'Revenue entry deleted.')
     return redirect('king:revenue_dashboard')
 
 
-# ─────────────────────────────────────────────
+# ============================================================
 # LEDGER
-# ─────────────────────────────────────────────
+# ============================================================
 
 def _to_decimal(value):
-    """Normalize nullable numeric values into Decimal for safe financial math."""
+    """Normalize nullable numeric values into Decimal for safe financial math.
+
+    Args:
+        value (Any): Input value to normalize.
+
+    Returns:
+        Decimal: Normalized monetary value.
+    """
     if value is None:
         return Decimal('0.00')
     if isinstance(value, Decimal):
@@ -976,7 +1090,14 @@ def _to_decimal(value):
 
 
 def _format_indian_amount(value):
-    """Format Decimal amounts using Indian grouping and fixed 2-decimal precision."""
+    """Format Decimal amounts using Indian grouping and 2-decimal precision.
+
+    Args:
+        value (Any): Value to format.
+
+    Returns:
+        str: Formatted amount string.
+    """
     amount = _to_decimal(value).quantize(Decimal('0.01'))
     sign = '-' if amount < 0 else ''
     amount = abs(amount)
@@ -999,7 +1120,14 @@ def _format_indian_amount(value):
 
 
 def _short_type(entry_type):
-    """Return compact human-friendly labels for ledger entry type badges."""
+    """Return compact labels for ledger entry type badges.
+
+    Args:
+        entry_type (str): Ledger entry type.
+
+    Returns:
+        str: Short display label.
+    """
     return {
         'sale': 'Sale',
         'receipt': 'Rcpt',
@@ -1009,7 +1137,15 @@ def _short_type(entry_type):
 
 
 def _ledger_data(from_date, to_date):
-    """Build ledger rows, running balances, and totals for the date range."""
+    """Build ledger rows, running balances, and totals for the date range.
+
+    Args:
+        from_date (date): Start date (inclusive).
+        to_date (date): End date (inclusive).
+
+    Returns:
+        dict: Ledger rows, totals, and formatted values.
+    """
     entries = LedgerEntry.objects.filter(
         date__gte=from_date,
         date__lte=to_date,
@@ -1065,7 +1201,17 @@ def _ledger_data(from_date, to_date):
 
 @king_required
 def ledger_view(request):
-    """Render owner ledger table with date filter and computed running balances."""
+    """Render owner ledger table with date filter and running balances.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Ledger view with rows and totals.
+
+    Raises:
+        None.
+    """
     from_date_str = request.GET.get('from_date')
     to_date_str   = request.GET.get('to_date')
 
@@ -1077,8 +1223,7 @@ def ledger_view(request):
 
     data = _ledger_data(from_date, to_date)
 
-    # Build a JSON-serialisable dict of all work orders so the JS autofill works
-    # without any extra AJAX endpoint.
+    # Reason: Provide client-side autofill without extra endpoints.
     work_orders_qs = WorkOrder.objects.order_by('wo_number')
     work_orders_json = json.dumps([
         {
@@ -1125,7 +1270,17 @@ def ledger_view(request):
 @king_required
 @require_POST
 def ledger_add_entry(request):
-    """Create a ledger transaction row with validation and audit logging."""
+    """Create a ledger transaction row with validation and audit logging.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Redirect to ledger view.
+
+    Raises:
+        ValidationError: When posted data is invalid.
+    """
     debit      = request.POST.get('debit')  or '0'
     credit     = request.POST.get('credit') or '0'
     date_str   = request.POST.get('date')
@@ -1136,7 +1291,7 @@ def ledger_add_entry(request):
         actual_date  = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.localdate()
         actual_vdate = datetime.strptime(vd_str,   '%Y-%m-%d').date() if vd_str   else None
 
-        # Resolve optional work order
+        # Reason: Work order linkage is optional.
         linked_wo = None
         if wo_id:
             linked_wo = WorkOrder.objects.filter(id=wo_id).first()
@@ -1181,7 +1336,15 @@ def ledger_add_entry(request):
 @king_required
 @require_POST
 def ledger_delete_entry(request, entry_id):
-    """Delete a ledger entry and write an audit trail event."""
+    """Delete a ledger entry and write an audit trail event.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        entry_id (int): LedgerEntry id.
+
+    Returns:
+        HttpResponse: Redirect to ledger view.
+    """
     entry = get_object_or_404(LedgerEntry, id=entry_id)
     entry_name = entry.voucher_number or f"Entry-{entry.id}"
     entry.delete()
@@ -1204,10 +1367,20 @@ def ledger_delete_entry(request, entry_id):
 
 @king_required
 def ledger_pdf(request):
-    """Export filtered ledger view as PDF with current brand identity fields."""
+    """Export filtered ledger view as PDF with brand identity fields.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: PDF download response.
+
+    Raises:
+        None.
+    """
     from_date_str = request.GET.get('from_date')
     to_date_str   = request.GET.get('to_date')
-    # account_name now comes from the header block snapshot on first row, or query param fallback
+    # Reason: Use request parameter when provided, fallback to brand name.
     account_name  = (request.GET.get('account_name') or settings.BRAND_ACCOUNT_NAME).strip()
 
     today     = date_class.today()

@@ -122,20 +122,64 @@ class Revenue(models.Model):
         """Return concise revenue label with date, category, and amount."""
         return f"{self.date} — {self.get_category_display()} — ₹{self.amount}"
 
+class LedgerAccount(models.Model):
+    """
+    Party / account master for the owner ledger.
+ 
+    Each party the contractor transacts with gets one LedgerAccount record.
+    LedgerEntry rows link to this — enabling party-wise account statements.
+ 
+    BUSINESS RULE: name is unique so duplicate parties cannot be created accidentally.
+    """
+    name         = models.CharField(max_length=255, unique=True, verbose_name="Party Name")
+    address      = models.TextField(blank=True, null=True, verbose_name="Address")
+    gst_number   = models.CharField(max_length=15, blank=True, null=True, verbose_name="GST Number")
+    phone        = models.CharField(max_length=15, blank=True, null=True, verbose_name="Phone")
+    work_order   = models.ForeignKey(
+        'WorkOrder', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='ledger_accounts',
+        verbose_name="Linked Work Order"
+    )
+    created_by   = models.ForeignKey(
+        'auth.User', on_delete=models.CASCADE,
+        verbose_name="Created By"
+    )
+    created_at   = models.DateTimeField(auto_now_add=True)
+ 
+    class Meta:
+        ordering = ['name']
+        verbose_name        = "Ledger Account"
+        verbose_name_plural = "Ledger Accounts"
+ 
+    def __str__(self):
+        return self.name
+ 
+    def total_debit(self):
+        """Sum of all debit entries linked to this account."""
+        from django.db.models import Sum
+        return self.ledger_entries.aggregate(t=Sum('debit'))['t'] or 0
+ 
+    def total_credit(self):
+        """Sum of all credit entries linked to this account."""
+        from django.db.models import Sum
+        return self.ledger_entries.aggregate(t=Sum('credit'))['t'] or 0
+ 
+    def balance(self):
+        """Net debit balance for this account."""
+        from decimal import Decimal
+        return Decimal(str(self.total_debit())) - Decimal(str(self.total_credit()))
+
+
+
 
 class LedgerEntry(models.Model):
     """
-    Double-sided ledger entry where debit and credit semantics mirror accounting notation.
-
-    FINANCIAL CRITICAL: Debit/Credit fields are Decimal and validated to block negative or zero-only entries.
-    Added fields (non-destructive migration):
-        value_date  — bank value date (nullable)
-        branch_code — bank branch code (nullable)
-        work_order  — optional FK to WorkOrder (SET_NULL, survives WO deletion)
-        party_name  — free-text party / account name (replaces BRAND_ACCOUNT_NAME lookup)
-        wo_number_snapshot   — WO number at time of entry (editable, survives WO edits)
-        buyer_name_snapshot  — buyer name at time of entry (editable)
-        gst_snapshot         — GST number at time of entry (editable)
+    Double-sided ledger entry linked to a party account (LedgerAccount).
+ 
+    FINANCIAL CRITICAL: Debit/Credit fields are Decimal and validated
+    to block negative or zero-only entries.
+ 
+    account is nullable SET_NULL — entries survive if a party account is deleted.
     """
     ENTRY_TYPE_CHOICES = [
         ('sale',    'Sale'),
@@ -143,54 +187,50 @@ class LedgerEntry(models.Model):
         ('payment', 'Payment'),
         ('journal', 'Journal'),
     ]
-
+ 
     date           = models.DateField()
     value_date     = models.DateField(blank=True, null=True, verbose_name="Value Date")
     entry_type     = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)
     voucher_number = models.CharField(max_length=50, blank=True, null=True,
                                       verbose_name="Ref No. / Cheque No.")
-    particulars    = models.CharField(max_length=255, verbose_name="Description")
+    particulars    = models.CharField(max_length=255, verbose_name="Particulars")
     branch_code    = models.CharField(max_length=20, blank=True, null=True,
                                       verbose_name="Branch Code")
     debit          = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     credit         = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-
-    # Account / party details — stored as snapshots so edits to WO don't alter history
-    work_order          = models.ForeignKey(
+ 
+    # Party account this entry belongs to
+    account        = models.ForeignKey(
+        LedgerAccount, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='ledger_entries',
+        verbose_name="Account / Party"
+    )
+ 
+    # Optional direct work-order link (independent of account's WO)
+    work_order     = models.ForeignKey(
         'WorkOrder', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='ledger_entries',
         verbose_name="Linked Work Order"
     )
-    party_name          = models.CharField(max_length=255, blank=True, null=True,
-                                           verbose_name="Party Name")
-    wo_number_snapshot  = models.CharField(max_length=20, blank=True, null=True,
-                                           verbose_name="WO Number")
-    buyer_name_snapshot = models.CharField(max_length=100, blank=True, null=True,
-                                           verbose_name="Buyer Name")
-    gst_snapshot        = models.CharField(max_length=15, blank=True, null=True,
-                                           verbose_name="GST No.")
-
-    created_by  = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at  = models.DateTimeField(auto_now_add=True)
-
+ 
+    created_by     = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    created_at     = models.DateTimeField(auto_now_add=True)
+ 
     class Meta:
-        """Chronological ordering ensures stable running-balance rendering."""
         ordering = ['date', 'created_at']
-
+ 
     @property
     def voucher_no(self):
-        """Backward-compatible alias for legacy voucher_no attribute access."""
+        """Backward-compatible alias."""
         return self.voucher_number
-
+ 
     def clean(self):
-        """Enforce non-negative debit/credit and non-zero entry amount rules."""
         if self.debit < 0 or self.credit < 0:
             raise ValidationError("Debit/Credit cannot be negative.")
         if self.debit == 0 and self.credit == 0:
             raise ValidationError("Either Debit or Credit must be greater than zero.")
-
+ 
     def _generate_voucher_number(self):
-        """Generate financial-year scoped sequential voucher number by entry type."""
         code_map = {
             'sale':    'SAL',
             'receipt': 'RCPT',
@@ -199,15 +239,13 @@ class LedgerEntry(models.Model):
         }
         prefix   = code_map.get(self.entry_type, 'LED')
         ref_date = self.date or timezone.localdate()
-
+ 
         if ref_date.month >= 4:
-            fy_start = ref_date.year
-            fy_end   = ref_date.year + 1
+            fy_start, fy_end = ref_date.year, ref_date.year + 1
         else:
-            fy_start = ref_date.year - 1
-            fy_end   = ref_date.year
+            fy_start, fy_end = ref_date.year - 1, ref_date.year
         fy_text = f"{str(fy_start)[-2:]}-{str(fy_end)[-2:]}"
-
+ 
         fy_anchor      = date(fy_start, 4, 1)
         next_fy_anchor = date(fy_end,   4, 1)
         seq = LedgerEntry.objects.filter(
@@ -215,16 +253,15 @@ class LedgerEntry(models.Model):
             date__gte=fy_anchor,
             date__lt=next_fy_anchor,
         ).count() + 1
-
+ 
         return f"{prefix}{seq:03d}/{fy_text}"
-
+ 
     def save(self, *args, **kwargs):
-        """Auto-generate voucher number, validate, then persist ledger row."""
         if not self.voucher_number:
             self.voucher_number = self._generate_voucher_number()
         self.full_clean()
         super().save(*args, **kwargs)
-
+ 
     def __str__(self):
-        """Return detailed ledger entry string with voucher and debit/credit values."""
-        return f"{self.date} | {self.entry_type} | {self.voucher_number} | Dr:{self.debit} Cr:{self.credit}"
+        party = self.account.name if self.account else 'Unassigned'
+        return f"{self.date} | {self.entry_type} | {self.voucher_number} | {party} | Dr:{self.debit} Cr:{self.credit}"

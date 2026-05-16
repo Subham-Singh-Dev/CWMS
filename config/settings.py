@@ -214,6 +214,11 @@ BRAND_ACCOUNT_NAME = os.getenv("BRAND_ACCOUNT_NAME", BRAND_COMPANY_NAME.upper())
 BRAND_COMPANY_ADDRESS = os.getenv("BRAND_COMPANY_ADDRESS", "")
 BRAND_COMPANY_GSTIN = os.getenv("BRAND_COMPANY_GSTIN", "")
 
+# ── Company / Brand Details (used in PDF exports) ──
+COMPANY_NAME = 'Sakuntalam India Services'
+COMPANY_ADDRESS = 'kirodimal nagar raigarh chattisgarh'
+COMPANY_GSTIN = '22ABCDE1234F1Z5'
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',

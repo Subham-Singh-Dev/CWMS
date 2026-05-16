@@ -31,6 +31,7 @@ from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import get_template
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from xhtml2pdf import pisa
@@ -43,7 +44,7 @@ from king.models import Revenue as ManualRevenue
 from payroll.models import MonthlySalary, Advance
 from portal.decorators import king_required
 
-from .models import LedgerEntry, Revenue, WorkOrder
+from .models import LedgerEntry, Revenue, WorkOrder, LedgerAccount
 from analytics.services.audit_service import create_audit_log
 from analytics.services.audit_service import recent_activity_items_for_king
 
@@ -1069,6 +1070,84 @@ def revenue_delete(request, rev_id):
     return redirect('king:revenue_dashboard')
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# LEDGER ACCOUNT (PARTY MASTER) VIEWS
+# ─────────────────────────────────────────────────────────────────────────────
+ 
+@king_required
+def account_list(request):
+    """List all ledger accounts (parties) with running balance summary."""
+    accounts = LedgerAccount.objects.filter(created_by=request.user).order_by('name')
+    return render(request, 'king/account_list.html', {
+        'accounts':    accounts,
+        'work_orders': WorkOrder.objects.order_by('wo_number'),
+    })
+ 
+ 
+@king_required
+@require_POST
+def account_add(request):
+    """Create a new ledger account (party)."""
+    name = request.POST.get('name', '').strip()
+    if not name:
+        messages.error(request, 'Party name is required.')
+        return redirect('king:account_list')
+ 
+    if LedgerAccount.objects.filter(name__iexact=name).exists():
+        messages.error(request, f'An account named "{name}" already exists.')
+        return redirect('king:account_list')
+ 
+    wo_id = request.POST.get('work_order') or None
+    LedgerAccount.objects.create(
+        name       = name,
+        address    = request.POST.get('address') or None,
+        gst_number = request.POST.get('gst_number') or None,
+        phone      = request.POST.get('phone') or None,
+        work_order = WorkOrder.objects.filter(id=wo_id).first() if wo_id else None,
+        created_by = request.user,
+    )
+    messages.success(request, f'Account "{name}" created.')
+    return redirect('king:account_list')
+ 
+ 
+@king_required
+@require_POST
+def account_edit(request, account_id):
+    """Update an existing ledger account."""
+    acc = get_object_or_404(LedgerAccount, id=account_id)
+    name = request.POST.get('name', '').strip()
+    if not name:
+        messages.error(request, 'Party name is required.')
+        return redirect('king:account_list')
+ 
+    # Check uniqueness excluding self
+    if LedgerAccount.objects.filter(name__iexact=name).exclude(id=account_id).exists():
+        messages.error(request, f'Another account named "{name}" already exists.')
+        return redirect('king:account_list')
+ 
+    wo_id = request.POST.get('work_order') or None
+    acc.name       = name
+    acc.address    = request.POST.get('address') or None
+    acc.gst_number = request.POST.get('gst_number') or None
+    acc.phone      = request.POST.get('phone') or None
+    acc.work_order = WorkOrder.objects.filter(id=wo_id).first() if wo_id else None
+    acc.save()
+    messages.success(request, f'Account "{name}" updated.')
+    return redirect('king:account_list')
+ 
+ 
+@king_required
+@require_POST
+def account_delete(request, account_id):
+    """Delete a ledger account. Linked entries become unassigned (account=NULL)."""
+    acc = get_object_or_404(LedgerAccount, id=account_id)
+    name = acc.name
+    acc.delete()
+    messages.success(request, f'Account "{name}" deleted. Linked entries are now unassigned.')
+    return redirect('king:account_list')
+
+
+
 # ============================================================
 # LEDGER
 # ============================================================
@@ -1136,106 +1215,90 @@ def _short_type(entry_type):
     }.get(entry_type, (entry_type or '').title())
 
 
-def _ledger_data(from_date, to_date):
+# ─────────────────────────────────────────────────────────────────────────────
+# LEDGER VIEWS  (replace existing versions)
+# ─────────────────────────────────────────────────────────────────────────────
+ 
+def _ledger_data(from_date, to_date, account_id=None):
     """Build ledger rows, running balances, and totals for the date range.
-
-    Args:
-        from_date (date): Start date (inclusive).
-        to_date (date): End date (inclusive).
-
-    Returns:
-        dict: Ledger rows, totals, and formatted values.
-    """
-    entries = LedgerEntry.objects.filter(
+    Optionally filtered to a single LedgerAccount."""
+    qs = LedgerEntry.objects.filter(
         date__gte=from_date,
         date__lte=to_date,
-    ).order_by('date', 'created_at')
-
+    )
+    if account_id:
+        qs = qs.filter(account_id=account_id)
+    entries = qs.order_by('date', 'created_at')
+ 
     running_balance = Decimal('0.00')
     rows = []
     total_debit  = Decimal('0.00')
     total_credit = Decimal('0.00')
-
+ 
     for entry in entries:
         debit  = _to_decimal(entry.debit)
         credit = _to_decimal(entry.credit)
         running_balance += (debit - credit)
         total_debit     += debit
         total_credit    += credit
-
-        balance_type        = 'Dr' if running_balance >= 0 else 'Cr'
-        particulars_prefix  = 'Dr' if debit > 0 else 'Cr'
-
+ 
+        balance_type       = 'Dr' if running_balance >= 0 else 'Cr'
+        particulars_prefix = 'Dr' if debit > 0 else 'Cr'
+ 
         rows.append({
             'entry': entry,
             'type_short': _short_type(entry.entry_type),
             'particulars_with_prefix': f"{particulars_prefix}  {entry.particulars}",
-            # NEW: expose value_date and branch_code for template
-            'value_date':   entry.value_date,
-            'branch_code':  entry.branch_code or '',
-            'debit_fmt':    _format_indian_amount(debit)  if debit  > 0 else '',
-            'credit_fmt':   _format_indian_amount(credit) if credit > 0 else '',
-            'balance_fmt':  _format_indian_amount(abs(running_balance)),
+            'value_date':  entry.value_date,
+            'branch_code': entry.branch_code or '',
+            'debit_fmt':   _format_indian_amount(debit)  if debit  > 0 else '',
+            'credit_fmt':  _format_indian_amount(credit) if credit > 0 else '',
+            'balance_fmt': _format_indian_amount(abs(running_balance)),
             'balance_type': balance_type,
             'balance_display': f"{_format_indian_amount(abs(running_balance))}{balance_type}",
         })
-
+ 
     debit_balance = total_debit - total_credit
     if debit_balance < 0:
         debit_balance = Decimal('0.00')
-
+ 
     grand_total = total_debit if total_debit >= total_credit else total_credit
-
+ 
     return {
-        'entries':          entries,
-        'rows':             rows,
-        'total_debit':      total_debit,
-        'total_credit':     total_credit,
-        'debit_balance':    debit_balance,
-        'grand_total':      grand_total,
-        'total_debit_fmt':  _format_indian_amount(total_debit),
-        'total_credit_fmt': _format_indian_amount(total_credit),
-        'debit_balance_fmt':_format_indian_amount(debit_balance),
-        'grand_total_fmt':  _format_indian_amount(grand_total),
+        'entries':           entries,
+        'rows':              rows,
+        'total_debit':       total_debit,
+        'total_credit':      total_credit,
+        'debit_balance':     debit_balance,
+        'grand_total':       grand_total,
+        'total_debit_fmt':   _format_indian_amount(total_debit),
+        'total_credit_fmt':  _format_indian_amount(total_credit),
+        'debit_balance_fmt': _format_indian_amount(debit_balance),
+        'grand_total_fmt':   _format_indian_amount(grand_total),
     }
 
 @king_required
 def ledger_view(request):
-    """Render owner ledger table with date filter and running balances.
-
-    Args:
-        request (HttpRequest): Incoming request.
-
-    Returns:
-        HttpResponse: Ledger view with rows and totals.
-
-    Raises:
-        None.
-    """
+    """Render owner ledger with party-wise filtering and running Dr/Cr balance."""
     from_date_str = request.GET.get('from_date')
     to_date_str   = request.GET.get('to_date')
-
+    account_id    = request.GET.get('account_id') or None
+ 
     today     = date_class.today()
     from_date = date_class.fromisoformat(from_date_str) if from_date_str else today.replace(day=1)
     to_date   = date_class.fromisoformat(to_date_str)   if to_date_str   else today
     if from_date > to_date:
         from_date, to_date = to_date, from_date
-
-    data = _ledger_data(from_date, to_date)
-
-    # Reason: Provide client-side autofill without extra endpoints.
-    work_orders_qs = WorkOrder.objects.order_by('wo_number')
-    work_orders_json = json.dumps([
-        {
-            'id':           wo.id,
-            'wo_number':    wo.wo_number,
-            'client_name':  wo.client_name,
-            'gst_number':   wo.gst_number or '',
-            'project_name': wo.project_name,
-        }
-        for wo in work_orders_qs
-    ])
-
+ 
+    # Resolve selected account
+    selected_account = None
+    if account_id:
+        selected_account = LedgerAccount.objects.filter(id=account_id).first()
+ 
+    data = _ledger_data(from_date, to_date, account_id=account_id)
+ 
+    all_accounts = LedgerAccount.objects.order_by('name')
+ 
     create_audit_log(
         user=request.user,
         username=request.user.username,
@@ -1244,58 +1307,52 @@ def ledger_view(request):
         entity_type='Ledger',
         entity_id=0,
         entity_name='Ledger View',
-        details=f"Viewed ledger from {from_date} to {to_date}",
+        details=f"Viewed ledger from {from_date} to {to_date}" + (
+            f" for account {selected_account.name}" if selected_account else ""
+        ),
         request=request,
     )
-
+ 
     return render(request, 'king/ledger.html', {
-        'ledger_rows':      data['rows'],
-        'from_date':        from_date,
-        'to_date':          to_date,
-        'entry_types':      LedgerEntry.ENTRY_TYPE_CHOICES,
-        'company_name':     settings.BRAND_COMPANY_NAME,
-        'company_address':  settings.BRAND_COMPANY_ADDRESS,
-        'company_gstin':    settings.BRAND_COMPANY_GSTIN,
-        'total_debit_fmt':  data['total_debit_fmt'],
-        'total_credit_fmt': data['total_credit_fmt'],
-        'debit_balance_fmt':data['debit_balance_fmt'],
-        'grand_total_fmt':  data['grand_total_fmt'],
-        'now':              datetime.now(),
-        # NEW
-        'work_orders':      work_orders_qs,
-        'work_orders_json': work_orders_json,
+        'ledger_rows':       data['rows'],
+        'from_date':         from_date,
+        'to_date':           to_date,
+        'entry_types':       LedgerEntry.ENTRY_TYPE_CHOICES,
+        'company_name':      settings.BRAND_COMPANY_NAME,
+        'company_address':   settings.BRAND_COMPANY_ADDRESS,
+        'company_gstin':     settings.BRAND_COMPANY_GSTIN,
+        'total_debit_fmt':   data['total_debit_fmt'],
+        'total_credit_fmt':  data['total_credit_fmt'],
+        'debit_balance_fmt': data['debit_balance_fmt'],
+        'grand_total_fmt':   data['grand_total_fmt'],
+        'now':               datetime.now(),
+        'all_accounts':      all_accounts,
+        'selected_account':  selected_account,
+        'account_id':        account_id or '',
     })
 
 
 @king_required
 @require_POST
 def ledger_add_entry(request):
-    """Create a ledger transaction row with validation and audit logging.
-
-    Args:
-        request (HttpRequest): Incoming request.
-
-    Returns:
-        HttpResponse: Redirect to ledger view.
-
-    Raises:
-        ValidationError: When posted data is invalid.
-    """
-    debit      = request.POST.get('debit')  or '0'
-    credit     = request.POST.get('credit') or '0'
-    date_str   = request.POST.get('date')
-    vd_str     = request.POST.get('value_date') or None     # NEW
-    wo_id      = request.POST.get('work_order') or None     # NEW
-
+    """Create a ledger transaction row linked to a party account."""
+    debit    = request.POST.get('debit')  or '0'
+    credit   = request.POST.get('credit') or '0'
+    date_str = request.POST.get('date')
+    vd_str   = request.POST.get('value_date') or None
+    acc_id   = request.POST.get('account')    or None
+    wo_id    = request.POST.get('work_order') or None
+ 
+    # Preserve the account filter on redirect so user stays on same party view
+    account_id_param = f"?account_id={acc_id}" if acc_id else ""
+ 
     try:
         actual_date  = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.localdate()
         actual_vdate = datetime.strptime(vd_str,   '%Y-%m-%d').date() if vd_str   else None
-
-        # Reason: Work order linkage is optional.
-        linked_wo = None
-        if wo_id:
-            linked_wo = WorkOrder.objects.filter(id=wo_id).first()
-
+ 
+        linked_account = LedgerAccount.objects.filter(id=acc_id).first() if acc_id else None
+        linked_wo      = WorkOrder.objects.filter(id=wo_id).first()       if wo_id else None
+ 
         entry = LedgerEntry.objects.create(
             date           = actual_date,
             value_date     = actual_vdate,
@@ -1305,18 +1362,15 @@ def ledger_add_entry(request):
             branch_code    = request.POST.get('branch_code') or None,
             debit          = Decimal(debit),
             credit         = Decimal(credit),
-            # Account detail snapshots
-            work_order          = linked_wo,
-            party_name          = request.POST.get('party_name') or None,
-            wo_number_snapshot  = request.POST.get('wo_number_snapshot') or None,
-            buyer_name_snapshot = request.POST.get('buyer_name_snapshot') or None,
-            gst_snapshot        = request.POST.get('gst_snapshot') or None,
-            created_by          = request.user,
+            account        = linked_account,
+            work_order     = linked_wo,
+            created_by     = request.user,
         )
     except (ValidationError, ValueError) as exc:
         messages.error(request, f'Unable to add ledger entry: {exc}')
-        return redirect('king:ledger')
-
+        base_url = reverse('king:ledger')
+        return redirect(f"{base_url}{account_id_param}")
+ 
     create_audit_log(
         user=request.user,
         username=request.user.username,
@@ -1328,9 +1382,13 @@ def ledger_add_entry(request):
         details=f"Created ledger entry {entry.entry_type} on {entry.date}",
         request=request,
     )
-
+ 
     messages.success(request, 'Ledger entry added.')
-    return redirect('king:ledger')
+    # Redirect back preserving account filter
+    from django.urls import reverse
+    base_url = reverse('king:ledger')
+    redirect_url = f"{base_url}?account_id={acc_id}" if acc_id else base_url
+    return redirect(redirect_url)
 
 
 @king_required
@@ -1367,53 +1425,77 @@ def ledger_delete_entry(request, entry_id):
 
 @king_required
 def ledger_pdf(request):
-    """Export filtered ledger view as PDF with brand identity fields.
-
-    Args:
-        request (HttpRequest): Incoming request.
-
-    Returns:
-        HttpResponse: PDF download response.
-
-    Raises:
-        None.
-    """
+    """Export party-filtered ledger as PDF."""
     from_date_str = request.GET.get('from_date')
     to_date_str   = request.GET.get('to_date')
-    # Reason: Use request parameter when provided, fallback to brand name.
-    account_name  = (request.GET.get('account_name') or settings.BRAND_ACCOUNT_NAME).strip()
-
+    account_id    = request.GET.get('account_id') or None
+ 
     today     = date_class.today()
     from_date = date_class.fromisoformat(from_date_str) if from_date_str else today.replace(day=1)
     to_date   = date_class.fromisoformat(to_date_str)   if to_date_str   else today
     if from_date > to_date:
         from_date, to_date = to_date, from_date
+ 
+    selected_account = None
+    if account_id:
+        selected_account = LedgerAccount.objects.filter(id=account_id).first()
+ 
+    data = _ledger_data(from_date, to_date, account_id=account_id)
 
-    data = _ledger_data(from_date, to_date)
+    # Prefer explicit URL value, then selected account name.
+    account_name = (request.GET.get('account_name') or '').strip()
+    if not account_name and selected_account:
+        account_name = selected_account.name
 
+    # Pull party GST from latest entry snapshot when present; fallback to account master GST.
+    latest_entry = data['entries'].order_by('-date', '-created_at').first()
+    party_gstin = (getattr(latest_entry, 'gst_snapshot', '') or '').strip() if latest_entry else ''
+    if not party_gstin and selected_account:
+        party_gstin = (selected_account.gst_number or '').strip()
+
+    # Use account master address as party address fallback.
+    party_address = (selected_account.address or '').strip() if selected_account else ''
+
+    company_name = (
+        getattr(settings, 'COMPANY_NAME', None)
+        or getattr(settings, 'BRAND_COMPANY_NAME', '')
+    )
+    company_address = (
+        getattr(settings, 'COMPANY_ADDRESS', None)
+        or getattr(settings, 'BRAND_COMPANY_ADDRESS', '')
+    )
+    company_gstin = (
+        getattr(settings, 'COMPANY_GSTIN', None)
+        or getattr(settings, 'BRAND_COMPANY_GSTIN', '')
+    )
+ 
     template = get_template('king/ledger_pdf.html')
     html = template.render({
-        'ledger_rows':      data['rows'],
-        'from_date':        from_date,
-        'to_date':          to_date,
-        'account_name':     account_name,
-        'company_name':     settings.BRAND_COMPANY_NAME,
-        'company_address':  settings.BRAND_COMPANY_ADDRESS,
-        'company_gstin':    settings.BRAND_COMPANY_GSTIN,
-        'total_debit_fmt':  data['total_debit_fmt'],
-        'total_credit_fmt': data['total_credit_fmt'],
-        'debit_balance_fmt':data['debit_balance_fmt'],
-        'grand_total_fmt':  data['grand_total_fmt'],
+        'ledger_rows':       data['rows'],
+        'from_date':         from_date,
+        'to_date':           to_date,
+        'company_name':      company_name,
+        'company_address':   company_address,
+        'company_gstin':     company_gstin,
+        'account_name':      account_name,
+        'party_gstin':       party_gstin,
+        'party_address':     party_address,
+        'selected_account':  selected_account,
+        'total_debit_fmt':   data['total_debit_fmt'],
+        'total_credit_fmt':  data['total_credit_fmt'],
+        'debit_balance_fmt': data['debit_balance_fmt'],
+        'grand_total_fmt':   data['grand_total_fmt'],
     })
-
+ 
     result = io.BytesIO()
     pisa.CreatePDF(html, dest=result)
-
+ 
+    party_slug = selected_account.name.replace(' ', '_') if selected_account else 'all'
     response = HttpResponse(result.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = (
-        f'attachment; filename="ledger_{from_date}_to_{to_date}.pdf"'
+        f'attachment; filename="ledger_{party_slug}_{from_date}_to_{to_date}.pdf"'
     )
-
+ 
     create_audit_log(
         user=request.user,
         username=request.user.username,
@@ -1422,9 +1504,11 @@ def ledger_pdf(request):
         entity_type='Ledger',
         entity_id=0,
         entity_name='Ledger PDF',
-        details=f"Exported ledger PDF from {from_date} to {to_date}",
+        details=f"Exported ledger PDF from {from_date} to {to_date}" + (
+            f" for {selected_account.name}" if selected_account else ""
+        ),
         request=request,
     )
-
+ 
     return response
 

@@ -30,10 +30,11 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.core.cache import cache
 from xhtml2pdf import pisa
 
 from employees.models import Employee
@@ -210,6 +211,14 @@ def king_dashboard(request):
     """
 
     today = date.today()
+    cache_key = (
+        f"dashboard:king:{request.user.id}:"
+        f"{today.strftime('%Y-%m')}:"
+        f"{request.session.session_key or 'anon'}"
+    )
+    cached_html = cache.get(cache_key)
+    if cached_html:
+        return HttpResponse(cached_html)
 
     def calculate_daily_salary_for_employee(employee, target_date):
         """Calculate salary for a single day using payroll logic.
@@ -637,10 +646,14 @@ def king_dashboard(request):
     role_counts = [r['count'] for r in role_qs]
 
     # ── Recent Activity (Audit Log) ───────────────────────────────
-    recent_activities = recent_activity_items_for_king(limit=8)
+    activity_cache_key = f"activity:king:{request.user.id}"
+    recent_activities = cache.get(activity_cache_key)
+    if recent_activities is None:
+        recent_activities = recent_activity_items_for_king(limit=8)
+        cache.set(activity_cache_key, recent_activities, timeout=300)
 
     # ── Context ───────────────────────────────────────────────────
-    return render(request, 'king/king_dashboard.html', {
+    context = {
         'today':               today,
         'time_of_day':         time_of_day,
 
@@ -707,7 +720,11 @@ def king_dashboard(request):
 
         # Activity feed
         'recent_activities':   recent_activities,
-    })
+    }
+
+    html = render_to_string('king/king_dashboard.html', context, request=request)
+    cache.set(cache_key, html, timeout=300)
+    return HttpResponse(html)
 
 
 @king_required
@@ -726,9 +743,14 @@ def king_recent_activity_api(request):
     Business Rule:
         Activity feed is owner-only and sourced from audit logs.
     """
-    return JsonResponse({
-        'activities': recent_activity_items_for_king(limit=8)
-    })
+    cache_key = f"activity:king:{request.user.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'activities': cached, 'cached': True})
+
+    activities = recent_activity_items_for_king(limit=8)
+    cache.set(cache_key, activities, timeout=300)
+    return JsonResponse({'activities': activities, 'cached': False})
 
 
 def king_logout(request):

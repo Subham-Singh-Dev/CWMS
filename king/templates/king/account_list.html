@@ -1,0 +1,340 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Account Details | King</title>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('king_theme') || 'light';
+            document.documentElement.setAttribute('data-kingTheme', theme);
+        })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'king/css/theme.css' %}">
+    <link rel="stylesheet" href="{% static 'king/css/ui-utils.css' %}">
+    <style>
+        body { font-size:14px; margin:0; }
+
+        /* ── Add form panel ── */
+        .add-panel {
+            border:1px solid var(--border-strong);
+            border-left:4px solid var(--gold-500);
+            padding:16px;
+            margin-bottom:18px;
+            border-radius:12px;
+            background:var(--card-bg);
+        }
+        .add-panel h3 {
+            margin:0 0 12px;
+            font-size:13px;
+            text-transform:uppercase;
+            letter-spacing:.5px;
+            color:var(--text-muted);
+            font-weight:700;
+        }
+        .form-grid {
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+            gap:10px;
+        }
+        .form-grid label {
+            display:block;
+            font-size:11px;
+            margin-bottom:4px;
+            text-transform:uppercase;
+            color:var(--text-muted);
+            font-weight:700;
+        }
+        .form-grid input,
+        .form-grid select,
+        .form-grid textarea {
+            width:100%;
+            box-sizing:border-box;
+            padding:7px 9px;
+            border:1px solid var(--border-strong);
+            background:rgba(255,255,255,.12);
+            color:var(--text-primary);
+            border-radius:6px;
+            font-size:13px;
+        }
+        .form-grid textarea { resize:vertical; min-height:60px; }
+        .form-actions { margin-top:12px; }
+
+        /* ── Accounts table ── */
+        .table-wrap { overflow-x:auto; }
+        table {
+            width:100%;
+            border-collapse:collapse;
+            background:var(--card-bg);
+            border:1px solid var(--border);
+            border-radius:12px;
+            overflow:hidden;
+        }
+        th, td {
+            border:1px solid var(--border);
+            padding:8px 10px;
+            font-size:13px;
+        }
+        th {
+            background:rgba(255,255,255,.03);
+            font-weight:700;
+            text-align:left;
+            color:var(--text-muted);
+            letter-spacing:.4px;
+            text-transform:uppercase;
+            font-size:11px;
+        }
+        td { color:var(--text-primary); }
+        .right  { text-align:right; }
+        .center { text-align:center; }
+
+        /* ── Edit modal ── */
+        .modal-overlay {
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,.55);
+            z-index:1000;
+            align-items:center;
+            justify-content:center;
+        }
+        .modal-overlay.active { display:flex; }
+        .modal-box {
+            background:var(--card-bg);
+            border:1px solid var(--border-strong);
+            border-radius:14px;
+            padding:24px;
+            width:min(560px, 96vw);
+            max-height:90vh;
+            overflow-y:auto;
+        }
+        .modal-box h3 {
+            margin:0 0 16px;
+            font-size:16px;
+            font-weight:700;
+            color:var(--text-primary);
+        }
+        .modal-actions {
+            display:flex;
+            gap:8px;
+            margin-top:14px;
+        }
+
+        .delete-btn {
+            border:1px solid rgba(239,68,68,.3);
+            background:rgba(239,68,68,.12);
+            color:var(--red-400);
+            border-radius:6px;
+            padding:5px 10px;
+            cursor:pointer;
+            font-size:12px;
+        }
+        .delete-btn:hover { background:rgba(239,68,68,.25); }
+
+        .edit-btn {
+            border:1px solid var(--border-strong);
+            background:rgba(255,255,255,.08);
+            color:var(--text-primary);
+            border-radius:6px;
+            padding:5px 10px;
+            cursor:pointer;
+            font-size:12px;
+        }
+        .edit-btn:hover { background:rgba(255,255,255,.15); }
+
+        .ledger-btn {
+            border:1px solid rgba(var(--gold-rgb),.4);
+            background:rgba(var(--gold-rgb),.1);
+            color:var(--gold-400);
+            border-radius:6px;
+            padding:5px 10px;
+            cursor:pointer;
+            font-size:12px;
+            text-decoration:none;
+        }
+        .ledger-btn:hover { background:rgba(var(--gold-rgb),.2); }
+
+        .balance-dr { color:var(--red-400);  font-weight:600; }
+        .balance-cr { color:#22c55e;          font-weight:600; }
+        .no-data { text-align:center; padding:24px; color:var(--text-muted); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <div>
+            <div class="title">Account Details</div>
+            <div class="sub">Manage parties for party-wise ledger statements</div>
+        </div>
+        <div class="top-actions">
+            <a class="btn" href="{% url 'king:ledger' %}">Ledger</a>
+            <a class="btn" href="{% url 'king:king_dashboard' %}">Dashboard</a>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="message-wrap">
+        {% for message in messages %}
+        <div class="message-item">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ── Add Account Form ─────────────────────────────────────────────────── #}
+    <div class="add-panel">
+        <h3>Add New Account / Party</h3>
+        <form method="post" action="{% url 'king:account_add' %}">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div>
+                    <label>Party Name *</label>
+                    <input type="text" name="name" required placeholder="e.g. EXCEL INFRA">
+                </div>
+                <div>
+                    <label>GST Number</label>
+                    <input type="text" name="gst_number" placeholder="22AAAAA0000A1Z5">
+                </div>
+                <div>
+                    <label>Phone</label>
+                    <input type="text" name="phone" placeholder="9876543210">
+                </div>
+                <div>
+                    <label>Link Work Order (optional)</label>
+                    <select name="work_order">
+                        <option value="">— None —</option>
+                        {% for wo in work_orders %}
+                        <option value="{{ wo.id }}">{{ wo.wo_number }} — {{ wo.client_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="grid-column:span 2;">
+                    <label>Address</label>
+                    <textarea name="address" placeholder="Full address of the party"></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-gold" type="submit">Create Account</button>
+            </div>
+        </form>
+    </div>
+
+    {# ── Accounts Table ───────────────────────────────────────────────────── #}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Party Name</th>
+                    <th>GST Number</th>
+                    <th>Phone</th>
+                    <th>Linked WO</th>
+                    <th class="right">Total Debit</th>
+                    <th class="right">Total Credit</th>
+                    <th class="right">Balance</th>
+                    <th class="center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for acc in accounts %}
+                <tr>
+                    <td><strong>{{ acc.name }}</strong><br>
+                        {% if acc.address %}<span style="font-size:11px;color:var(--text-muted);">{{ acc.address }}</span>{% endif %}
+                    </td>
+                    <td>{{ acc.gst_number|default:"—" }}</td>
+                    <td>{{ acc.phone|default:"—" }}</td>
+                    <td>{% if acc.work_order %}<span style="font-size:12px;">{{ acc.work_order.wo_number }}</span>{% else %}—{% endif %}</td>
+                    <td class="right">{{ acc.total_debit }}</td>
+                    <td class="right">{{ acc.total_credit }}</td>
+                    <td class="right">
+                        {% with bal=acc.balance %}
+                        {% if bal >= 0 %}
+                        <span class="balance-dr">{{ bal }} Dr</span>
+                        {% else %}
+                        <span class="balance-cr">{{ bal|stringformat:".2f"|slice:"1:" }} Cr</span>
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td class="center" style="white-space:nowrap;gap:4px;display:flex;justify-content:center;padding:8px;">
+                        <a class="ledger-btn" href="{% url 'king:ledger' %}?account_id={{ acc.id }}">View Ledger</a>
+                        <button class="edit-btn" onclick="openEdit({{ acc.id }}, '{{ acc.name|escapejs }}', '{{ acc.gst_number|default:''|escapejs }}', '{{ acc.phone|default:''|escapejs }}', '{{ acc.address|default:''|escapejs }}', '{{ acc.work_order.id|default:'' }}')">Edit</button>
+                        <form method="post" action="{% url 'king:account_delete' acc.id %}" onsubmit="return confirm('Delete account {{ acc.name|escapejs }}? Linked entries will become unassigned.');" style="margin:0;">
+                            {% csrf_token %}
+                            <button class="delete-btn" type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="no-data">No accounts yet. Create your first party above.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ── Edit Modal ───────────────────────────────────────────────────────────── #}
+<div class="modal-overlay" id="edit-modal">
+    <div class="modal-box">
+        <h3>Edit Account</h3>
+        <form method="post" id="edit-form" action="">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div>
+                    <label>Party Name *</label>
+                    <input type="text" name="name" id="edit-name" required>
+                </div>
+                <div>
+                    <label>GST Number</label>
+                    <input type="text" name="gst_number" id="edit-gst">
+                </div>
+                <div>
+                    <label>Phone</label>
+                    <input type="text" name="phone" id="edit-phone">
+                </div>
+                <div>
+                    <label>Link Work Order</label>
+                    <select name="work_order" id="edit-wo">
+                        <option value="">— None —</option>
+                        {% for wo in work_orders %}
+                        <option value="{{ wo.id }}">{{ wo.wo_number }} — {{ wo.client_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="grid-column:span 2;">
+                    <label>Address</label>
+                    <textarea name="address" id="edit-address"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-gold" type="submit">Save Changes</button>
+                <button class="btn" type="button" onclick="closeEdit()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEdit(id, name, gst, phone, address, woId) {
+    document.getElementById('edit-form').action = '/king/accounts/' + id + '/edit/';
+    document.getElementById('edit-name').value    = name;
+    document.getElementById('edit-gst').value     = gst;
+    document.getElementById('edit-phone').value   = phone;
+    document.getElementById('edit-address').value = address;
+    const woSelect = document.getElementById('edit-wo');
+    for (let opt of woSelect.options) {
+        opt.selected = (opt.value === String(woId));
+    }
+    document.getElementById('edit-modal').classList.add('active');
+}
+function closeEdit() {
+    document.getElementById('edit-modal').classList.remove('active');
+}
+// Close on backdrop click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEdit();
+});
+</script>
+</body>
+</html>

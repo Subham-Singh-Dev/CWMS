@@ -108,7 +108,7 @@ Expenses cannot be edited or deleted after 7 days, enforced at the view layer. T
 
 ## Performance
 - Redis caching on dashboard API: **2118ms → 26ms (98.8% faster)**
-- 52 pytest tests | 62% coverage
+- pytest + pytest-django | **64% coverage**
 - CI/CD via GitHub Actions on every push
 
 
@@ -195,7 +195,7 @@ Expenses cannot be edited or deleted after 7 days, enforced at the view layer. T
 | Frontend | Django Templates + Vanilla JS + CSS3 |
 | CI/CD | GitHub Actions → auto-deploy to Render on push to `main` |
 | Deployment | Render (web service + managed PostgreSQL) |
-| Testing | pytest + pytest-django (60 tests, 50% coverage) |
+| Testing | pytest + pytest-django (**64% coverage**) |
 
 ---
 
@@ -244,6 +244,7 @@ CWMS/
 
 - Python 3.11+
 - SQLite3 (development) or PostgreSQL 14+ (production)
+- Redis 7+ (dashboard/activity caching)
 - pip
 
 ### Steps
@@ -263,13 +264,14 @@ pip install -r requirements.txt
 
 # 4. Configure environment variables
 cp .env.example .env
-# Edit .env with your SECRET_KEY and database credentials
+# Edit .env with your SECRET_KEY, database, and Redis settings
 
 # 5. Run migrations
 python manage.py migrate
 
-# 6. Create a superuser (Manager access)
+# 6. Create a superuser (Admin/Owner)
 python manage.py createsuperuser
+# Managers and workers are created via Django admin or app flows/groups
 
 # 7. Start the development server
 python manage.py runserver
@@ -282,7 +284,19 @@ SECRET_KEY=your-secret-key-here
 DEBUG=True
 DATABASE_URL=sqlite:///db.sqlite3
 ALLOWED_HOSTS=localhost,127.0.0.1,testserver
+CSRF_TRUSTED_ORIGINS=http://localhost:8000
+REDIS_URL=redis://127.0.0.1:6379/1
+
+# Optional branding used in PDF exports
+BRAND_COMPANY_NAME=Sakuntalam India Services
+BRAND_SHORT_NAME=CWMS
+BRAND_PRODUCT_NAME=Construction Workforce Management
+BRAND_ACCOUNT_NAME=SAKUNTALAM INDIA SERVICES
+BRAND_COMPANY_ADDRESS=
+BRAND_COMPANY_GSTIN=
 ```
+
+> Docker users: see `docker-compose.yml` and configure `.env.docker`.
 
 ---
 
@@ -304,10 +318,15 @@ Access token: valid 5 minutes. Refresh token: valid 24 hours. All endpoints requ
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/employees/` | List all active employees |
+| GET | `/api/employees/<id>/` | Get a single employee |
+| PUT | `/api/employees/<id>/` | Partial update (PATCH-style) |
+| DELETE | `/api/employees/<id>/` | Delete employee |
 | GET | `/api/attendance/?date=YYYY-MM-DD` | Attendance records for a date |
 | POST | `/api/attendance/` | Mark single attendance record |
-| GET | `/api/activity/` | Recent audit activity feed |
-| GET | /portal/manager/dashboard/recent-activity/ | Dashboard feed (Redis cached) | Session |
+| GET | `/api/payroll/?month=YYYY-MM` | Salary list for a month |
+| GET | `/api/advances/?employee_id=<id>` | Advances for an employee |
+| POST | `/api/advances/` | Issue a new advance |
+| GET | `/api/activity/` | Recent audit activity feed (Redis cached) |
 
 
 ### Quick Start
@@ -348,6 +367,7 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 | GET/POST | `/portal/manager/attendance/bulk/` | Bulk attendance entry |
 | POST | `/portal/manager/run-payroll/` | Trigger payroll run |
 | GET/POST | `/portal/manager/advances/issue/` | Issue worker advance |
+| GET/POST | `/portal/manager/advances/register/` | Advance register |
 </details>
 
 <details>
@@ -370,12 +390,15 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 |---|---|---|
 | GET/POST | `/manager/billing/` | Billing dashboard / upload |
 | POST | `/toggle_bill_status/<bill_id>/` | Toggle paid/unpaid |
+| POST | `/record-payment/<bill_id>/` | Record bill payment |
+| GET | `/manager/billing/pdf/` | Billing PDF export |
 | GET/POST | `/manager/expenses/` | Expenses dashboard / add |
 | GET/POST | `/manager/expenses/edit/<expense_id>/` | Edit (7-day lock) |
 | GET | `/manager/expenses/export/` | CSV export |
 | GET | `/manager/expenses/pdf/` | PDF export |
 | GET | `/manager/employees/` | Employee list |
 | GET/POST | `/manager/employees/add/` | Add employee |
+| GET | `/manager/employees/profile/<employee_id>/` | Employee profile |
 </details>
 
 <details>
@@ -395,12 +418,31 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 | Method | URL | Description |
 |---|---|---|
 | GET | `/king/dashboard/` | Business analytics overview |
+| GET | `/king/dashboard/recent-activity/` | Recent activity JSON |
 | GET | `/king/workorders/` | Work order dashboard |
 | GET | `/king/revenue/` | Revenue dashboard |
 | GET | `/king/ledger/` | Ledger view |
+| GET | `/king/ledger/pdf/` | Ledger PDF export |
+| GET | `/king/accounts/` | Account list |
+| GET/POST | `/king/accounts/add/` | Add account |
+| GET/POST | `/king/accounts/<account_id>/edit/` | Edit account |
+| POST | `/king/accounts/<account_id>/delete/` | Delete account |
 | GET | `/king/audit/` | Full audit history |
 | GET | `/king/audit/export/csv/` | Audit CSV export |
+| GET | `/king/audit/export/pdf/` | Audit PDF export |
 | GET | `/portal/manager/audit/` | Manager audit history |
+| GET | `/portal/manager/audit/export/csv/` | Manager audit CSV export |
+| GET | `/portal/manager/audit/export/pdf/` | Manager audit PDF export |
+</details>
+
+<details>
+<summary><strong>Leaves</strong></summary>
+
+| Method | URL | Description |
+|---|---|---|
+| GET/POST | `/leaves/assign/` | Assign leave |
+| GET | `/leaves/list/` | Leave list |
+| GET | `/leaves/pdf/<leave_id>/` | Leave approval PDF |
 </details>
 
 ---

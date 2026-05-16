@@ -28,9 +28,10 @@ from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.core.cache import cache
 from django.views.decorators.http import require_POST
 
 try:
@@ -40,6 +41,13 @@ except ImportError:
 
 from employees.models import Employee
 from payroll.services import SalaryAlreadyGeneratedError, generate_monthly_salary
+
+def _cache_delete_pattern(pattern: str) -> None:
+    from config.cache_utils import delete_pattern as _delete_pattern
+    try:
+        _delete_pattern(pattern)
+    except Exception:
+        pass
 from portal.decorators import manager_required
 
 from .models import Advance, MonthlySalary
@@ -651,6 +659,14 @@ def issue_advance_view(request):
 
             issue_advance(employee, amount, issued_date)
 
+            from config.cache_utils import delete_patterns
+            delete_patterns([
+                "api:advances:*",
+                "advance:register:*",
+                "dashboard:manager:*",
+                "dashboard:king:*",
+            ])
+
             return render(
                 request,
                 "payroll/issue_advance.html",
@@ -701,6 +717,15 @@ def advance_register_view(request):
         Filters are applied before pagination to keep totals accurate.
     """
     # Reason: Select related data for list rendering without extra queries.
+    cache_key = (
+        f"advance:register:{request.user.id}:"
+        f"{request.session.session_key or 'anon'}:"
+        f"{request.GET.urlencode()}"
+    )
+    cached_html = cache.get(cache_key)
+    if cached_html:
+        return HttpResponse(cached_html)
+
     advances_qs = Advance.objects.select_related(
         "employee", "employee__user"
     ).all()
@@ -757,7 +782,9 @@ def advance_register_view(request):
         "outstanding_employee_count": totals["outstanding_employee_count"],
         "viewing_as_owner": request.viewing_as_owner,
     }
-    return render(request, "payroll/advance_register.html", context)
+    html = render_to_string("payroll/advance_register.html", context, request=request)
+    cache.set(cache_key, html, timeout=3600)
+    return HttpResponse(html)
 
 
 

@@ -31,4 +31,8 @@ urlpatterns = [
     path('ledger/add/',                      views.ledger_add_entry,    name='ledger_add'),
     path('ledger/delete/<int:entry_id>/',    views.ledger_delete_entry, name='ledger_delete'),
     path('ledger/pdf/',                      views.ledger_pdf,          name='ledger_pdf'),
+    path('accounts/',                  views.account_list,   name='account_list'),
+    path('accounts/add/',              views.account_add,    name='account_add'),
+    path('accounts/<int:account_id>/edit/',   views.account_edit,   name='account_edit'),
+    path('accounts/<int:account_id>/delete/', views.account_delete, name='account_delete'),
 ]

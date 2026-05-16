@@ -17,6 +17,7 @@
     <style>
         body { font-size:14px; margin:0; }
 
+        /* ── Filter bar ── */
         .filter-form {
             display:flex;
             gap:8px;
@@ -33,6 +34,7 @@
             letter-spacing:.4px;
             color:var(--text-muted);
             text-transform:uppercase;
+            white-space:nowrap;
         }
         .filter-form input,
         .filter-form select {
@@ -42,7 +44,9 @@
             color:var(--text-primary);
             border-radius:6px;
         }
+        .filter-form select { min-width:220px; }
 
+        /* ── Company + party header ── */
         .header-block {
             background:var(--card-bg);
             border:1px solid var(--border);
@@ -50,28 +54,33 @@
             padding:18px;
             text-align:center;
             margin-bottom:14px;
-            line-height:1.4;
+            line-height:1.5;
         }
-        .line-1 { font-size:26px; font-weight:700; color:var(--gold-400); }
-        .line-2, .line-3, .line-5 { font-size:13px; color:var(--text-secondary); }
-        .line-4 {
-            font-size:18px;
-            font-weight:700;
-            letter-spacing:6px;
-            margin-top:4px;
-            color:var(--text-primary);
-        }
-        .line-6 { font-size:14px; font-weight:700; color:var(--text-primary); }
+        .line-company  { font-size:26px; font-weight:700; color:var(--gold-400); }
+        .line-addr     { font-size:13px; color:var(--text-secondary); }
+        .line-gstin    { font-size:13px; color:var(--text-secondary); }
+        .line-ledger   { font-size:18px; font-weight:700; letter-spacing:6px; margin-top:4px; color:var(--text-primary); }
+        .line-period   { font-size:13px; color:var(--text-secondary); }
+        .line-account  { font-size:15px; font-weight:700; color:var(--text-primary); margin-top:4px; }
+        .line-party-sub{ font-size:12px; color:var(--text-muted); }
 
-        .account-panel {
+        .no-account-hint {
+            font-size:13px;
+            color:var(--text-muted);
+            font-style:italic;
+            margin-top:4px;
+        }
+
+        /* ── Add-entry panel ── */
+        .add-panel {
             border:1px solid var(--border-strong);
             border-left:4px solid var(--gold-500);
-            padding:14px 16px;
+            padding:14px;
             margin-bottom:14px;
             border-radius:12px;
             background:var(--card-bg);
         }
-        .account-panel h3 {
+        .add-panel h3 {
             margin:0 0 10px;
             font-size:13px;
             text-transform:uppercase;
@@ -79,41 +88,9 @@
             color:var(--text-muted);
             font-weight:700;
         }
-        .account-grid {
-            display:grid;
-            grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
-            gap:10px;
-        }
-        .account-grid label {
-            display:block;
-            font-size:11px;
-            margin-bottom:4px;
-            text-transform:uppercase;
-            color:var(--text-muted);
-            font-weight:700;
-        }
-        .account-grid input,
-        .account-grid select {
-            width:100%;
-            box-sizing:border-box;
-            padding:6px 8px;
-            border:1px solid var(--border-strong);
-            background:rgba(255,255,255,.12);
-            color:var(--text-primary);
-            border-radius:6px;
-        }
-
-        .add-panel {
-            border:1px solid var(--border-strong);
-            border-left:4px solid var(--gold-500);
-            padding:12px;
-            margin-bottom:14px;
-            border-radius:12px;
-            background:var(--card-bg);
-        }
         .add-grid {
             display:grid;
-            grid-template-columns:130px 120px 110px 150px 1fr 110px 120px 120px;
+            grid-template-columns:130px 120px 120px 170px 1fr 110px 130px 130px;
             gap:8px;
             align-items:end;
         }
@@ -136,6 +113,8 @@
             border-radius:6px;
         }
 
+        /* ── Table ── */
+        .table-wrap { overflow-x:auto; }
         table {
             width:100%;
             border-collapse:collapse;
@@ -143,9 +122,8 @@
             border:1px solid var(--border);
             border-radius:12px;
             overflow:hidden;
-            min-width: 1000px;
+            min-width:860px;
         }
-        .table-wrap { overflow-x:auto; }
         th, td {
             border:1px solid var(--border);
             padding:6px 8px;
@@ -159,19 +137,11 @@
             letter-spacing:.4px;
             text-transform:uppercase;
         }
-        td { color:var(--text-primary); }
-        .right { text-align:right; }
+        td { color:var(--text-primary); word-break:break-word; }
+        .right  { text-align:right; }
         .center { text-align:center; }
-        .footer-row td {
-            font-weight:700;
-            background:rgba(255,255,255,.04);
-        }
-        .summary-label {
-            text-align:right;
-            padding-right:10px;
-            font-weight:700;
-            color:var(--gold-400);
-        }
+        .footer-row td { font-weight:700; background:rgba(255,255,255,.04); }
+        .summary-label { text-align:right; padding-right:10px; font-weight:700; color:var(--gold-400); }
         .delete-btn {
             border:1px solid rgba(239,68,68,.3);
             background:rgba(239,68,68,.12);
@@ -181,49 +151,10 @@
             cursor:pointer;
         }
         .delete-btn:hover { background:rgba(239,68,68,.2); }
+        .generated-at { margin-top:10px; font-size:11px; color:var(--text-muted); text-align:center; }
 
-        .generated-at {
-            margin-top:10px;
-            font-size:11px;
-            color:var(--text-muted);
-            text-align:center;
-        }
-        
-        /* =========================================
-           FIX: BUTTON VISIBILITY IN DARK THEME
-           ========================================= */
-        .btn {
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            border: 1px solid var(--border-strong, #555);
-            color: var(--text-primary, #e2e8f0);
-            background: rgba(255, 255, 255, 0.05);
-            transition: all 0.2s;
-        }
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        .btn-gold {
-            background: var(--gold-500, #d4af37) !important;
-            color: #111 !important; /* Force dark text for contrast */
-            border: none !important;
-        }
-        .btn-gold:hover {
-            background: var(--gold-400, #f3c746) !important;
-            transform: translateY(-1px);
-        }
-        /* ========================================= */
-
-        @media(max-width:1200px) {
-            .add-grid { grid-template-columns:repeat(4, 1fr); }
-        }
-        @media(max-width:700px) {
-            .add-grid { grid-template-columns:repeat(2, 1fr); }
-        }
+        @media(max-width:1200px) { .add-grid { grid-template-columns:repeat(4,1fr); } }
+        @media(max-width:700px)  { .add-grid { grid-template-columns:repeat(2,1fr); } }
     </style>
 </head>
 <body>
@@ -231,12 +162,17 @@
     <div class="page-header">
         <div>
             <div class="title">King Ledger</div>
-            <div class="sub">Financial ledger with running Dr/Cr balance</div>
+            <div class="sub">Party-wise financial ledger with running Dr/Cr balance</div>
         </div>
         <div class="top-actions">
+            <a class="btn" href="{% url 'king:account_list' %}">Account Details</a>
             <a class="btn" href="{% url 'king:king_dashboard' %}">Dashboard</a>
             <a class="btn" href="{% url 'king:workorder_dashboard' %}">Work Orders</a>
-            <a class="btn" href="{% url 'king:ledger_pdf' %}?from_date={{ from_date|date:'Y-m-d' }}&to_date={{ to_date|date:'Y-m-d' }}&account_name={{ account_name|urlencode }}">Export PDF</a>
+            {% if selected_account %}
+            <a class="btn btn-gold" href="{% url 'king:ledger_pdf' %}?from_date={{ from_date|date:'Y-m-d' }}&to_date={{ to_date|date:'Y-m-d' }}&account_id={{ selected_account.id }}">Export PDF</a>
+            {% else %}
+            <a class="btn" href="{% url 'king:ledger_pdf' %}?from_date={{ from_date|date:'Y-m-d' }}&to_date={{ to_date|date:'Y-m-d' }}">Export PDF</a>
+            {% endif %}
         </div>
     </div>
 
@@ -248,66 +184,54 @@
     </div>
     {% endif %}
 
+    {# ── Filter bar ─────────────────────────────────────────────────────── #}
     <form method="get" class="filter-form">
-        <strong>Date Range</strong>
-        <input type="date" name="from_date" value="{{ from_date|date:'Y-m-d' }}">
-        <span>to</span>
-        <input type="date" name="to_date" value="{{ to_date|date:'Y-m-d' }}">
         <strong>Account</strong>
-        <input type="text" name="account_name" value="{{ account_name }}" style="min-width:240px;">
+        <select name="account_id">
+            <option value="">— All Entries —</option>
+            {% for acc in all_accounts %}
+            <option value="{{ acc.id }}" {% if account_id == acc.id|stringformat:"s" %}selected{% endif %}>
+                {{ acc.name }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <strong>From</strong>
+        <input type="date" name="from_date" value="{{ from_date|date:'Y-m-d' }}">
+        <strong>To</strong>
+        <input type="date" name="to_date" value="{{ to_date|date:'Y-m-d' }}">
+
         <button class="btn btn-gold" type="submit">Apply</button>
         <a class="btn" href="{% url 'king:ledger' %}">Reset</a>
     </form>
 
+    {# ── Header block — company on top, party below ───────────────────── #}
     <div class="header-block">
-        <div class="line-1">{{ company_name }}</div>
-        <div class="line-2">{{ company_address|default:"" }}</div>
-        <div class="line-3">GSTIN : {{ company_gstin|default:"" }}</div>
-        <div class="line-4">L E D G E R</div>
-        <div class="line-5">( From {{ from_date|date:"d/m/Y" }} to {{ to_date|date:"d/m/Y" }} )</div>
+        <div class="line-company">{{ company_name }}</div>
+        {% if company_address %}<div class="line-addr">{{ company_address }}</div>{% endif %}
+        {% if company_gstin %}<div class="line-gstin">GSTIN : {{ company_gstin }}</div>{% endif %}
+        <div class="line-ledger">L E D G E R</div>
+        <div class="line-period">( From {{ from_date|date:"d/m/Y" }} to {{ to_date|date:"d/m/Y" }} )</div>
+        {% if selected_account %}
+            <div class="line-account">Account : {{ selected_account.name }}</div>
+            {% if selected_account.gst_number %}
+            <div class="line-party-sub">GSTIN : {{ selected_account.gst_number }}</div>
+            {% endif %}
+            {% if selected_account.address %}
+            <div class="line-party-sub">{{ selected_account.address }}</div>
+            {% endif %}
+        {% else %}
+            <div class="no-account-hint">Select an account above to view party-wise ledger</div>
+        {% endif %}
     </div>
 
-    <form method="post" action="{% url 'king:ledger_add' %}" id="ledger-form">
-        {% csrf_token %}
-        
-        <div class="account-panel">
-            <h3>Account Details</h3>
-            <div class="account-grid">
-                <div>
-                    <label>Link Work Order (optional)</label>
-                    <select name="work_order" id="wo-select">
-                        <option value="">— None / Manual Entry —</option>
-                        {% for wo in work_orders %}
-                        <option value="{{ wo.id }}"
-                                data-wo-number="{{ wo.wo_number }}"
-                                data-client="{{ wo.client_name }}"
-                                data-gst="{{ wo.gst_number|default:'' }}"
-                                data-project="{{ wo.project_name }}">
-                            {{ wo.wo_number }} — {{ wo.client_name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label>Party Name</label>
-                    <input type="text" name="party_name" id="party-name" placeholder="Enter party name">
-                </div>
-                <div>
-                    <label>WO Number</label>
-                    <input type="text" name="wo_number_snapshot" id="wo-number" placeholder="Auto-filled">
-                </div>
-                <div>
-                    <label>Buyer Name</label>
-                    <input type="text" name="buyer_name_snapshot" id="buyer-name" placeholder="Auto-filled">
-                </div>
-                <div>
-                    <label>GST No.</label>
-                    <input type="text" name="gst_snapshot" id="gst-no" placeholder="Auto-filled">
-                </div>
-            </div>
-        </div>
-
-        <div class="add-panel">
+    {# ── Add-entry form ──────────────────────────────────────────────────── #}
+    <div class="add-panel">
+        <h3>New Entry{% if selected_account %} — {{ selected_account.name }}{% endif %}</h3>
+        <form method="post" action="{% url 'king:ledger_add' %}">
+            {% csrf_token %}
+            {# Pass selected account silently so redirect stays on same party #}
+            <input type="hidden" name="account" value="{{ selected_account.id|default:'' }}">
             <div class="add-grid">
                 <div>
                     <label>Txn Date *</label>
@@ -326,46 +250,60 @@
                     </select>
                 </div>
                 <div>
-                    <label>Ref No./Cheque No.</label>
+                    <label>Ref No. / Cheque No.</label>
                     <input type="text" name="voucher_number" placeholder="Auto if blank">
                 </div>
                 <div>
-                    <label>Description *</label>
-                    <input type="text" name="particulars" required>
+                    <label>Particulars *</label>
+                    <input type="text" name="particulars" required placeholder="Transfer details, NEFT UTR, etc.">
                 </div>
                 <div>
                     <label>Branch Code</label>
                     <input type="text" name="branch_code" placeholder="e.g. 001234">
                 </div>
                 <div>
-                    <label>Debit(Rs.)</label>
+                    <label>Debit (Rs.)</label>
                     <input type="number" min="0" step="0.01" name="debit" placeholder="0.00">
                 </div>
                 <div>
-                    <label>Credit(Rs.)</label>
+                    <label>Credit (Rs.)</label>
                     <input type="number" min="0" step="0.01" name="credit" placeholder="0.00">
                 </div>
             </div>
-            <div style="margin-top:12px;">
+            {% if not selected_account %}
+            <div style="margin-top:10px;">
+                <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;display:block;">
+                    Assign to Account
+                </label>
+                <select name="account" style="padding:6px 8px;border:1px solid var(--border-strong);background:rgba(255,255,255,.12);color:var(--text-primary);border-radius:6px;min-width:240px;">
+                    <option value="">— Unassigned —</option>
+                    {% for acc in all_accounts %}
+                    <option value="{{ acc.id }}">{{ acc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div style="margin-top:10px;">
                 <button class="btn btn-gold" type="submit">Add Entry</button>
             </div>
-        </div>
-    </form>
+        </form>
+    </div>
 
+    {# ── Ledger table ────────────────────────────────────────────────────── #}
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th style="width:9%;">Date</th>
+                    <th style="width:9%;">Txn Date</th>
                     <th style="width:9%;">Value Date</th>
-                    <th style="width:5%;" class="center">Type</th>
-                    <th style="width:13%;" class="center">Ref No./Cheque No.</th>
-                    <th style="width:26%;">Description</th>
-                    <th style="width:8%;" class="center">Branch Code</th>
-                    <th style="width:9%;" class="right">Debit(Rs.)</th>
-                    <th style="width:9%;" class="right">Credit(Rs.)</th>
-                    <th style="width:9%;" class="right">Balance(Rs.)</th>
-                    <th style="width:3%;"></th>
+                    <th style="width:6%;" class="center">Type</th>
+                    <th style="width:13%;">Ref No./Cheque No.</th>
+                    <th style="width:29%;">Particulars</th>
+                    <th style="width:7%;" class="center">Branch</th>
+                    <th style="width:8%;" class="right">Debit (Rs.)</th>
+                    <th style="width:8%;" class="right">Credit (Rs.)</th>
+                    <th style="width:8%;" class="right">Balance (Rs.)</th>
+                    <th style="width:4%;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -374,7 +312,7 @@
                     <td>{{ row.entry.date|date:"d/m/Y" }}</td>
                     <td>{% if row.value_date %}{{ row.value_date|date:"d/m/Y" }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</td>
                     <td class="center">{{ row.type_short }}</td>
-                    <td class="center">{{ row.entry.voucher_number|default:"" }}</td>
+                    <td>{{ row.entry.voucher_number|default:"" }}</td>
                     <td>{{ row.entry.particulars }}</td>
                     <td class="center">{{ row.branch_code|default:"—" }}</td>
                     <td class="right">{{ row.debit_fmt }}</td>
@@ -389,7 +327,13 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="10" class="center" style="padding:16px; color:var(--text-muted);">No entries found for this date range.</td>
+                    <td colspan="10" class="center" style="padding:20px;color:var(--text-muted);">
+                        {% if selected_account %}
+                            No entries for {{ selected_account.name }} in this date range.
+                        {% else %}
+                            No entries found. Select an account or add entries above.
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
 
@@ -398,59 +342,26 @@
                     <td colspan="6" class="summary-label">Total</td>
                     <td class="right">{{ total_debit_fmt }}</td>
                     <td class="right">{{ total_credit_fmt }}</td>
-                    <td></td>
-                    <td></td>
+                    <td></td><td></td>
                 </tr>
                 <tr class="footer-row">
                     <td colspan="6" class="summary-label">Debit Balance</td>
                     <td></td>
                     <td class="right">{{ debit_balance_fmt }}</td>
-                    <td></td>
-                    <td></td>
+                    <td></td><td></td>
                 </tr>
                 <tr class="footer-row">
                     <td colspan="6" class="summary-label">Grand Total</td>
                     <td class="right">{{ grand_total_fmt }}</td>
                     <td class="right">{{ grand_total_fmt }}</td>
-                    <td></td>
-                    <td></td>
+                    <td></td><td></td>
                 </tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
 
-    <div class="generated-at">
-        Generated on {{ now|date:"d M Y, h:i A" }}
-    </div>
+    <div class="generated-at">Generated on {{ now|date:"d M Y, h:i A" }}</div>
 </div>
-
-<script>
-(function () {
-    const woSelect  = document.getElementById('wo-select');
-    const partyName = document.getElementById('party-name');
-    const woNumber  = document.getElementById('wo-number');
-    const buyerName = document.getElementById('buyer-name');
-    const gstNo     = document.getElementById('gst-no');
-
-    const woData = {{ work_orders_json|safe }};
-    const woMap  = {};
-    woData.forEach(function(wo) { woMap[wo.id] = wo; });
-
-    woSelect.addEventListener('change', function () {
-        const selected = woMap[this.value];
-        if (selected) {
-            if (!partyName.value) partyName.value = selected.client_name;
-            woNumber.value  = selected.wo_number;
-            buyerName.value = selected.client_name;
-            gstNo.value     = selected.gst_number || '';
-        } else {
-            woNumber.value  = '';
-            buyerName.value = '';
-            gstNo.value     = '';
-        }
-    });
-}());
-</script>
 </body>
 </html>

@@ -13,6 +13,7 @@ from .serializers import AttendanceSerializer, EmployeeSerializer
 from payroll.models import MonthlySalary, Advance
 from .serializers import MonthlySalarySerializer, AdvanceSerializer
 from django.core.cache import cache
+from config.cache_utils import delete_pattern, delete_patterns
 
 
 class RecentActivityAPIView(APIView):
@@ -88,16 +89,23 @@ class AttendanceListAPIView(APIView):
         else:
             filter_date = timezone.now().date()
 
+        cache_key = f"api:attendance:{request.user.id}:{filter_date.isoformat()}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         attendance = Attendance.objects.filter(
             date=filter_date
         ).select_related('employee')
 
         serializer = AttendanceSerializer(attendance, many=True)
-        return Response({
+        payload = {
             "date": filter_date,
             "count": attendance.count(),
             "attendance": serializer.data
-        })
+        }
+        cache.set(cache_key, payload, timeout=300)
+        return Response(payload)
 
     def post(self, request):
         is_manager = (
@@ -113,6 +121,12 @@ class AttendanceListAPIView(APIView):
         serializer = AttendanceSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+            # batch invalidation using single redis connection
+            delete_patterns([
+                "api:attendance:*",
+                "dashboard:manager:*",
+                "dashboard:king:*",
+            ])
             return Response(
                 serializer.data,
                 status=status.HTTP_201_CREATED
@@ -140,15 +154,22 @@ class EmployeeListAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        cache_key = f"api:employees:{request.user.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         employees = Employee.objects.filter(
             is_active=True
         ).order_by('name')
 
         serializer = EmployeeSerializer(employees, many=True)
-        return Response({
+        payload = {
             "count": employees.count(),
             "employees": serializer.data
-        })
+        }
+        cache.set(cache_key, payload, timeout=300)
+        return Response(payload)
 
 class PayrollListAPIView(APIView):
     """
@@ -212,6 +233,10 @@ class AdvanceListAPIView(APIView):
             )
 
         employee_id = request.query_params.get('employee_id')
+        cache_key = f"api:advances:{request.user.id}:{employee_id or 'all'}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
         queryset = Advance.objects.select_related('employee')
 
         if employee_id:
@@ -219,10 +244,12 @@ class AdvanceListAPIView(APIView):
 
         queryset = queryset.order_by('issued_date')
         serializer = AdvanceSerializer(queryset, many=True)
-        return Response({
+        payload = {
             "count": queryset.count(),
             "advances": serializer.data
-        })
+        }
+        cache.set(cache_key, payload, timeout=3600)
+        return Response(payload)
 
     def post(self, request):
         is_manager = (
@@ -238,6 +265,12 @@ class AdvanceListAPIView(APIView):
         serializer = AdvanceSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+            delete_patterns([
+                "api:advances:*",
+                "advance:register:*",
+                "dashboard:manager:*",
+                "dashboard:king:*",
+            ])
             return Response(
                 serializer.data,
                 status=status.HTTP_201_CREATED
@@ -270,12 +303,24 @@ class EmployeeDetailView(APIView):
         )
         if serializer.is_valid():
             serializer.save()
+            delete_patterns([
+                "api:employees:*",
+                "employee:list:*",
+                "dashboard:manager:*",
+                "dashboard:king:*",
+            ])
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         employee = get_object_or_404(Employee, pk=pk)
         employee.delete()
+        delete_patterns([
+            "api:employees:*",
+            "employee:list:*",
+            "dashboard:manager:*",
+            "dashboard:king:*",
+        ])
         return Response(
             {"message": "Employee deleted successfully."},
             status=status.HTTP_204_NO_CONTENT

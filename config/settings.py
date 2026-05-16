@@ -135,20 +135,32 @@ DATABASES = {
 }
 
 # Redis Cache Configuration
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.environ.get(
-            "REDIS_URL", 
-            "redis://127.0.0.1:6379/1"
-        ),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-        "KEY_PREFIX": "cwms",
-        "TIMEOUT": 300,  # 5 minutes default TTL
+REDIS_URL = os.environ.get('REDIS_URL')
+if not REDIS_URL:
+    # No Redis configured — use DummyCache to avoid errors in environments
+    # where Redis is intentionally absent (e.g., demo or simple deploys).
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                # Production safety: avoid cache errors causing 500s
+                # django-redis honors IGNORE_EXCEPTIONS to allow graceful fallback
+                "IGNORE_EXCEPTIONS": True,
+                "SOCKET_CONNECT_TIMEOUT": 5,
+                "SOCKET_TIMEOUT": 5,
+            },
+            "KEY_PREFIX": "cwms",
+            "TIMEOUT": 300,  # 5 minutes default TTL
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

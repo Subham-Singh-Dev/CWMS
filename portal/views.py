@@ -25,10 +25,10 @@ from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.cache import cache_page
+from django.core.cache import cache
 from xhtml2pdf import pisa
 
 from analytics.services.audit_service import create_audit_log
@@ -39,6 +39,15 @@ from payroll.models import Advance, MonthlySalary
 from payroll.services import SalaryAlreadyGeneratedError, generate_monthly_salary
 
 from .decorators import manager_required, worker_required
+
+
+def _cache_delete_pattern(pattern: str) -> None:
+    from config.cache_utils import delete_pattern as _delete_pattern
+    try:
+        _delete_pattern(pattern)
+    except Exception:
+        # best-effort invalidation; do not raise to avoid user-facing errors
+        pass
 
 # ============================================================
 # WORKER PORTAL VIEWS
@@ -345,6 +354,15 @@ def manager_dashboard(request, viewing_as_owner=False):
 
     # Reason: Used by downstream payroll and summary navigation.
     context['selected_month'] = selected_month.strftime('%Y-%m')
+
+    cache_key = (
+        f"dashboard:manager:{request.user.id}:"
+        f"{context['selected_month']}:"
+        f"{request.session.session_key or 'anon'}"
+    )
+    cached_html = cache.get(cache_key)
+    if cached_html:
+        return HttpResponse(cached_html)
     
     # Reason: Toggle payroll actions based on existing batch for the month.
     month_date = datetime.strptime(
@@ -390,6 +408,12 @@ def manager_dashboard(request, viewing_as_owner=False):
     )['total']
 
     # Reason: Update context in a single, consistent step.
+    activity_cache_key = f"activity:manager:{request.user.id}"
+    recent_activities = cache.get(activity_cache_key)
+    if recent_activities is None:
+        recent_activities = recent_activity_items_for_manager(limit=8)
+        cache.set(activity_cache_key, recent_activities, timeout=300)
+
     context.update(
         {
             'current_month': current_time,
@@ -398,14 +422,15 @@ def manager_dashboard(request, viewing_as_owner=False):
             'financials': financials,
             'outstanding_liability': outstanding_liability,
             'advances_given': advances_given,
-            'recent_activities': recent_activity_items_for_manager(limit=8),
+            'recent_activities': recent_activities,
         }
     )
 
-    return render(request, 'portal/manager_dashboard.html', context)
+    html = render_to_string('portal/manager_dashboard.html', context, request=request)
+    cache.set(cache_key, html, timeout=300)
+    return HttpResponse(html)
 
 @manager_required
-@cache_page(60 * 5)
 def manager_recent_activity_api(request):
     """Provide recent activity items for the manager dashboard.
 
@@ -421,9 +446,14 @@ def manager_recent_activity_api(request):
     Business Rule:
         Results are cached briefly to reduce audit-service load.
     """
-    return JsonResponse(
-        {'activities': recent_activity_items_for_manager(limit=8)}
-    )
+    cache_key = f"activity:manager:{request.user.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'activities': cached, 'cached': True})
+
+    activities = recent_activity_items_for_manager(limit=8)
+    cache.set(cache_key, activities, timeout=300)
+    return JsonResponse({'activities': activities, 'cached': False})
 
 
 @manager_required
@@ -548,6 +578,13 @@ def bulk_attendance(request):
                     f"✓ Attendance saved for {selected_date} | "
                     f"Present: {present} | Half Day: {half_day} | Absent: {absent}"
                 )
+
+                from config.cache_utils import delete_patterns
+                delete_patterns([
+                    "api:attendance:*",
+                    "dashboard:manager:*",
+                    "dashboard:king:*",
+                ])
                 
             except Exception as exc:
                 messages.error(request, f"Error: {exc}")

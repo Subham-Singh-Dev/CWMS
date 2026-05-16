@@ -9,6 +9,8 @@ metadata (like IP) is missing.
 """
 
 from analytics.models import AuditLog
+from django.core.cache import cache
+from config.cache_utils import delete_pattern
 
 
 def infer_user_role(user):
@@ -51,7 +53,7 @@ def create_audit_log(
         else:
             ip_address = request.META.get('REMOTE_ADDR')
 
-    return AuditLog.objects.create(
+    log = AuditLog.objects.create(
         user=user,
         username=username or 'SYSTEM',
         user_role=infer_user_role(user),
@@ -65,6 +67,12 @@ def create_audit_log(
         status=status,
         error_message=error_message,
     )
+
+    # NOTE: cache invalidation moved out of audit log write path to avoid
+    # unnecessary busting of activity caches on every audit entry.
+    # Callers that change visible dashboard data should invalidate explicitly.
+
+    return log
 
 
 def to_activity_item(log):

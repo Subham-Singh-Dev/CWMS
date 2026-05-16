@@ -7,16 +7,27 @@ Author note: Validation is duplicated at service/model boundaries intentionally 
 """
 
 from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse
 from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from portal.decorators import manager_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
+from django.template.loader import render_to_string
 from decimal import Decimal, InvalidOperation
 from .models import Role, Employee
 from .services import create_employee_with_user
 from analytics.services.audit_service import create_audit_log
+
+
+def _cache_delete_pattern(pattern: str) -> None:
+    from config.cache_utils import delete_pattern as _delete_pattern
+    try:
+        _delete_pattern(pattern)
+    except Exception:
+        pass
 
 
 def _humanize_validation_error(exc: ValidationError) -> str:
@@ -166,6 +177,14 @@ def add_employee_view(request):
                     request=request,
                 )
 
+            from config.cache_utils import delete_patterns
+            delete_patterns([
+                "employee:list:*",
+                "api:employees:*",
+                "dashboard:manager:*",
+                "dashboard:king:*",
+            ])
+
             return render(
                 request,
                 "employees/add_employee.html",
@@ -303,6 +322,14 @@ def edit_employee_view(request, employee_id):
                     request=request,
                 )
 
+            from config.cache_utils import delete_patterns
+            delete_patterns([
+                "employee:list:*",
+                "api:employees:*",
+                "dashboard:manager:*",
+                "dashboard:king:*",
+            ])
+
             return render(request, "employees/edit_employee.html", {
                 "roles": roles,
                 "employee": employee,
@@ -343,6 +370,15 @@ def employee_profile_view(request, employee_id):
 @manager_required
 def employee_list_view(request, viewing_as_owner=False):
     """List/filter employee master records for manager operations."""
+    cache_key = (
+        f"employee:list:{request.user.id}:"
+        f"{request.session.session_key or 'anon'}:"
+        f"{request.GET.urlencode()}"
+    )
+    cached_html = cache.get(cache_key)
+    if cached_html:
+        return HttpResponse(cached_html)
+
     employees = Employee.objects.select_related("role", "user").all()
     roles = Role.objects.filter(is_active=True)
 
@@ -372,10 +408,14 @@ def employee_list_view(request, viewing_as_owner=False):
     active_count = employees.filter(is_active=True).count()
     inactive_count = employees.filter(is_active=False).count()
 
-    return render(request, "employees/employee_list.html", {
+    context = {
         "employees": employees,
         "roles": roles,
         "total_count": total_count,
         "active_count": active_count,
         "inactive_count": inactive_count,
-    })
+    }
+
+    html = render_to_string("employees/employee_list.html", context, request=request)
+    cache.set(cache_key, html, timeout=3600)
+    return HttpResponse(html)

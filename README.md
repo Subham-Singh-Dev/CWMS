@@ -111,6 +111,36 @@ Expenses cannot be edited or deleted after 7 days, enforced at the view layer. T
 - pytest + pytest-django | **64% coverage**
 - CI/CD via GitHub Actions on every push
 
+---
+
+## Caching & Redis (Updated)
+
+CWMS uses Redis (via `django-redis`) for read-heavy dashboard and API caching. Recent changes centralize cache invalidation and add a robust fallback when Redis is not available.
+
+- Key prefix: `cwms` (configured in `config/settings.py`). Keys are namespaced as `{KEY_PREFIX}:{VERSION}:{key}` — for example `cwms:1:api:attendance:101:2026-05-16`.
+- Cache patterns used (examples):
+  - `api:attendance:{user_id}:{YYYY-MM-DD}` — attendance list for a date (TTL: 300s)
+  - `api:employees:{user_id}` — employees list per manager (TTL: 300s)
+  - `api:advances:{user_id}:{employee_id|all}` — advances list (TTL: 3600s)
+  - `activity:manager:{user_id}` / `activity:king:{user_id}` — recent activity payloads (TTL: 300s)
+  - `dashboard:manager:{user_id}:{YYYY-MM}:<session>` — rendered manager dashboard HTML (TTL: 300s)
+  - `dashboard:king:{user_id}:{YYYY-MM}:<session>` — owner dashboard HTML (TTL: 300s)
+  - `employee:list:{user_id}:{session}:{query}` — rendered employee list (TTL: 3600s)
+  - `advance:register:*` — advance register cached HTML (TTL: 3600s)
+
+Design notes:
+- TTL choices: dashboards and recent-activity are short-lived (5 minutes) to keep data fresh; heavier views (lists/registers) use longer TTLs (1 hour) to reduce load.
+- Invalidation: write paths (create/update/delete for attendance, employees, advances, payroll actions) call a central batched invalidation helper (`config.cache_utils.delete_patterns`) which constructs the correct redis key patterns (including `KEY_PREFIX` and `VERSION`) and removes matching keys using SCAN+DEL. Batched invalidation reuses a single Redis connection to reduce overhead.
+- Safety: If `REDIS_URL` is not set, CWMS falls back to Django's `DummyCache` (no-op cache) to avoid runtime errors in demo or simple deployments. The invalidation helper detects `DummyCache` and skips Redis operations, ensuring POST/PUT flows do not raise 500s when Redis is absent.
+- Observability: cache operations log to the `cwms.cache` logger — route this to your logging/monitoring stack (Sentry/file) in production to surface cache failures.
+
+Operational checklist before production push:
+- Set `REDIS_URL` (include auth and TLS if available) and ensure it uses the intended Redis DB index (CWMS defaults to `/1` in development). Verify `config/settings.py` `CACHES` LOCATION matches production `REDIS_URL`.
+- Set `DEBUG=False` and provide a secure `SECRET_KEY` via environment/secret manager.
+- Configure `cwms.cache` logger to ship errors to Sentry or a file for alerting on Redis failures.
+- Configure Redis `maxmemory` and eviction policy appropriate for your cache footprint.
+- (Optional) Add a `manage.py cache_healthcheck` command or readiness probe that does a set/get/delete of a probe key before deploying.
+
 
 ## Features
 

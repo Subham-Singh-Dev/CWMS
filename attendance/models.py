@@ -1,10 +1,19 @@
-"""
+"""Attendance model definitions.
+
 Module: attendance.models
 App: attendance
-Purpose: Stores day-wise attendance inputs that become the primary source for payroll computation.
+Purpose: Store day-wise attendance inputs that become the primary source for
+payroll computation.
+Key responsibilities: Enforce one-row-per-day constraints, validate overtime
+rules, and prevent retroactive or speculative entries.
 Dependencies: employees.models.Employee, timezone-aware validation rules.
-Author note: Validation intentionally enforces current-month discipline to reduce retroactive manipulation.
+Author note: Validation intentionally enforces current-month discipline to
+reduce retroactive manipulation.
 """
+
+# ============================================================
+# IMPORTS
+# ============================================================
 
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -30,17 +39,16 @@ class Attendance(models.Model):
     employee = models.ForeignKey(
         Employee,
         on_delete=models.PROTECT,
-        related_name='attendances'
+        related_name='attendances',
     )
     date = models.DateField()
     status = models.CharField(max_length=1, choices=STATUS_CHOICES)
     overtime_hours = models.DecimalField(max_digits=4, decimal_places=1, default=0)
     marked_at = models.DateTimeField(auto_now_add=True)
-        
-    
+
 
     class Meta:
-        """Model metadata enforcing uniqueness and default attendance ordering behavior."""
+        """Model metadata enforcing uniqueness for payroll integrity."""
         constraints = [
             # BUSINESS RULE: This uniqueness is critical for payroll integrity.
             models.UniqueConstraint(
@@ -51,7 +59,14 @@ class Attendance(models.Model):
         
 
     def clean(self):
-        """Validate temporal and overtime rules before persisting attendance rows."""
+        """Validate temporal and overtime rules before persisting attendance rows.
+
+        Raises:
+            ValidationError: When dates are out of range or overtime is invalid.
+
+        Business Rule:
+            Attendance must be current-month and overtime only for Present status.
+        """
         today = timezone.now().date()
         
         # BUSINESS RULE: Future attendance is blocked to prevent speculative wage entries.
@@ -75,7 +90,7 @@ class Attendance(models.Model):
 
     def save(self, *args, **kwargs):
         """Run full validation before save to guarantee integrity at model boundary."""
-        # Always validate before saving
+        # Reason: Enforce model-level rules even when called outside forms.
         self.clean()
         super().save(*args, **kwargs)
 

@@ -1,36 +1,56 @@
-"""
+"""Billing view handlers.
+
 Module: billing.views
 App: billing
-Purpose: Manager-facing bill upload/listing and payment-state transitions.
-Dependencies: billing.models.Bill, manager_required decorator.
+Purpose: Manager-facing bill upload/listing and payment state transitions.
+Key responsibilities: PRG-safe uploads, bill status updates, partial payment
+tracking, and PDF exports for summaries.
+Dependencies: billing.models.Bill, manager_required decorator, xhtml2pdf.
 Author note: Uses PRG (Post-Redirect-Get) to avoid duplicate uploads on refresh.
 """
 
-from django.shortcuts import render, redirect, get_object_or_404
+# ============================================================
+# IMPORTS
+# ============================================================
+from datetime import datetime
+from decimal import Decimal
+
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
-from decimal import Decimal
-from django.utils.dateparse import parse_date
-from django.utils import timezone
-from django.views.decorators.http import require_POST
-from datetime import datetime
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import get_template
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_POST
+from xhtml2pdf import pisa
 
 from portal.decorators import manager_required
+
 from .models import Bill
-from django.template.loader import get_template
-from django.http import HttpResponse
-from xhtml2pdf import pisa
-from datetime import datetime
-from .models import Bill
-from django.db import transaction
 
 
 
 @manager_required
 def billing_dashboard(request, viewing_as_owner=False):
-    """Render bill dashboard and handle upload form submissions."""
+    """Render bill dashboard and handle upload form submissions.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        viewing_as_owner (bool): Flag for owner-only views (unused here).
+
+    Returns:
+        HttpResponse: Billing dashboard page.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Bill uploads must use PRG flow to prevent duplicate POSTs on refresh.
+    """
     selected_type = request.GET.get("type", Bill.BILL_TYPE_DEBTOR).strip().lower()
     if selected_type not in {Bill.BILL_TYPE_CLIENT, Bill.BILL_TYPE_DEBTOR}:
         selected_type = Bill.BILL_TYPE_DEBTOR
@@ -42,9 +62,9 @@ def billing_dashboard(request, viewing_as_owner=False):
         selected_month = timezone.now()
         selected_month_str = selected_month.strftime("%Y-%m")
 
-    # ==========================
+    # ============================================================
     # HANDLE BILL UPLOAD (POST)
-    # ==========================
+    # ============================================================
     if request.method == "POST":
         description = request.POST.get("description")
         amount = request.POST.get("amount")
@@ -59,6 +79,7 @@ def billing_dashboard(request, viewing_as_owner=False):
             return redirect(redirect_url)
 
         try:
+            # Reason: Decimal avoids float drift in financial values.
             bill_amount = Decimal(amount).quantize(Decimal('0.01'))
         except (ValueError, TypeError):
             messages.error(request, "Invalid amount. Please enter a valid number.")
@@ -75,10 +96,12 @@ def billing_dashboard(request, viewing_as_owner=False):
         messages.success(request, "Bill uploaded successfully.")
         return redirect(redirect_url)  # 🔒 PRG pattern
 
-    # ==========================
+    # ============================================================
     # GET: DASHBOARD DATA
-    # ==========================
+    # ============================================================
+    # Reason: Filter by type for accurate debtor/client views.
     bills = Bill.objects.filter(bill_type=selected_type).order_by("-created_at")
+    # Reason: Month filter drives KPI totals and charts.
     filtered_bills = bills.filter(
         created_at__year=selected_month.year,
         created_at__month=selected_month.month,
@@ -86,7 +109,7 @@ def billing_dashboard(request, viewing_as_owner=False):
 
     total_bills = filtered_bills.count()
 
-    # --- FIX: Calculate total unpaid against the GST-included amount ---
+    # Reason: Use GST-included totals for accurate outstanding balance.
     taxable_amount = filtered_bills.aggregate(
         total=Coalesce(Sum("amount"), Decimal("0.00"))
     )["total"]
@@ -100,8 +123,6 @@ def billing_dashboard(request, viewing_as_owner=False):
     )["total"]
 
     total_unpaid = total_amount_with_gst - total_paid
-    # -------------------------------------
-
     unpaid_count = filtered_bills.filter(is_paid=False).count()
 
     # Monthly summary cards
@@ -113,7 +134,7 @@ def billing_dashboard(request, viewing_as_owner=False):
     gst_amount = (taxable_amount * gst_rate).quantize(Decimal("0.01"))
     total_amount_with_gst = (taxable_amount + gst_amount).quantize(Decimal("0.01"))
 
-    # percentages (safe)
+    # Reason: Guard against division by zero in percentage calculations.
     total_amount = total_paid + total_unpaid
     paid_percentage = int((total_paid / total_amount) * 100) if total_amount else 0
     unpaid_percentage = 100 - paid_percentage
@@ -158,9 +179,20 @@ def billing_dashboard(request, viewing_as_owner=False):
 @manager_required
 @require_POST
 def toggle_bill_status(request, bill_id):
-    """
-    Toggle paid/unpaid state for a bill.
-    Uses optional paid_on from POST to set a specific payment date.
+    """Toggle paid/unpaid state for a bill.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        bill_id (int): Bill id.
+
+    Returns:
+        HttpResponse: Redirect to billing dashboard.
+
+    Raises:
+        Http404: When the bill does not exist.
+
+    Business Rule:
+        Paid bills use the GST-inclusive total as the paid amount.
     """
     bill = get_object_or_404(Bill, id=bill_id)
     selected_type = request.POST.get("type", bill.bill_type)
@@ -188,9 +220,20 @@ def toggle_bill_status(request, bill_id):
 @require_POST
 @transaction.atomic()
 def record_payment(request, bill_id):
-    """
-    Safely record a partial or full payment.
-    Atomic wrapper ensures DB consistency.
+    """Record a partial or full payment against a bill.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        bill_id (int): Bill id.
+
+    Returns:
+        HttpResponse: Redirect to billing dashboard.
+
+    Raises:
+        Http404: When the bill does not exist.
+
+    Business Rule:
+        Payment updates are atomic to avoid partial writes under concurrency.
     """
     bill = get_object_or_404(Bill, id=bill_id)
     selected_type = request.POST.get("type", bill.bill_type)
@@ -199,17 +242,26 @@ def record_payment(request, bill_id):
     payment_str = request.POST.get("payment_amount", "0").strip()
     
     try:
+        # Reason: Decimal avoids float drift in financial values.
         payment_amount = Decimal(payment_str).quantize(Decimal('0.01'))
         
         if payment_amount <= 0:
             messages.error(request, "Payment amount must be greater than zero.")
         elif (bill.paid_amount + payment_amount) > bill.total_with_gst:
-            messages.error(request, f"Payment of ₹{payment_amount} exceeds the remaining balance of ₹{bill.balance}!")
+            messages.error(
+                request,
+                f"Payment of ₹{payment_amount} exceeds the remaining balance "
+                f"of ₹{bill.balance}!",
+            )
         else:
             bill.paid_amount += payment_amount
             # The model's save() method will auto-calculate if is_paid=True based on this new amount
             bill.save()
-            messages.success(request, f"Payment of ₹{payment_amount} recorded successfully for BILL-{bill.id:04d}.")
+            messages.success(
+                request,
+                f"Payment of ₹{payment_amount} recorded successfully for "
+                f"BILL-{bill.id:04d}.",
+            )
             
     except (ValueError, TypeError):
         messages.error(request, "Invalid payment amount entered.")
@@ -220,18 +272,46 @@ def record_payment(request, bill_id):
 @manager_required
 @require_POST
 def delete_bill(request, bill_id):
-    """Hard-delete a bill row from dashboard action."""
+    """Hard-delete a bill row from dashboard action.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        bill_id (int): Bill id.
+
+    Returns:
+        HttpResponse: Redirect to billing dashboard.
+
+    Raises:
+        Http404: When the bill does not exist.
+
+    Business Rule:
+        Deletes are POST-only to prevent accidental data loss.
+    """
     selected_type = request.POST.get("type", Bill.BILL_TYPE_DEBTOR)
     selected_month = request.POST.get("month", timezone.now().strftime("%Y-%m"))
     bill = get_object_or_404(Bill, id=bill_id)
     bill.delete()
     messages.success(request, "Bill deleted successfully.")
-    return redirect(f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}")
-
-
+    return redirect(
+        f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}"
+    )
 
 def billing_pdf(request):
-    # Safely get month/year, fallback to current if empty or None
+    """Export billing summary as PDF for a selected month/year.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: PDF response containing billing summary.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Uses created_at timestamps to match bill lifecycle records.
+    """
+    # Reason: Normalize missing month/year to current period.
     month = request.GET.get('month')
     year = request.GET.get('year')
     
@@ -240,8 +320,11 @@ def billing_pdf(request):
     if not year:
         year = datetime.today().year
         
-    # Use 'created_at' instead of 'date' to match your model
-    bills = Bill.objects.filter(created_at__month=month, created_at__year=year).order_by('created_at')
+    # Reason: created_at is the authoritative timestamp for bill lifecycle.
+    bills = Bill.objects.filter(
+        created_at__month=month,
+        created_at__year=year,
+    ).order_by('created_at')
     
     # Calculate totals by type
     total_credit = sum(b.amount for b in bills if b.bill_type == 'Credit')
@@ -254,14 +337,16 @@ def billing_pdf(request):
         'total_credit': total_credit,
         'total_debtor': total_debtor,
         'grand_total': grand_total,
-        'BRAND_SHORT_NAME': 'CWMS' 
+        'BRAND_SHORT_NAME': 'CWMS'
     }
     
     template = get_template('billing/billing_pdf.html')
     html = template.render(context)
     
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Billing_Summary_{month}_{year}.pdf"'
+    response['Content-Disposition'] = (
+        f'attachment; filename="Billing_Summary_{month}_{year}.pdf"'
+    )
     
     # Generate PDF
     pisa_status = pisa.CreatePDF(html, dest=response)

@@ -1,13 +1,21 @@
-"""
+"""Analytics model definitions.
+
 Module: analytics.models
 App: analytics
-Purpose: Defines persistent audit trail entities used for compliance, forensics, and dashboard activity feeds.
+Purpose: Defines persistent audit trail entities used for compliance, forensics,
+and dashboard activity feeds.
+Key responsibilities: Store immutable audit events, enable timeline queries,
+and support export/reporting use cases.
 Dependencies: Django auth User and indexed query patterns for reporting/export.
-Author note: AuditLog is append-only by convention; updates should be avoided outside retention cleanup.
+Author note: AuditLog is append-only by convention; updates should be avoided
+outside retention cleanup.
 """
-from django.db import models
+
+# ============================================================
+# IMPORTS
+# ============================================================
 from django.contrib.auth.models import User
-from django.utils import timezone
+from django.db import models
 
 
 class AuditLog(models.Model):
@@ -15,7 +23,7 @@ class AuditLog(models.Model):
     Comprehensive audit trail for all system actions.
     Tracks what was done, who did it, when, and on what entity.
     """
-    
+
     # Activity Categories
     ACTIVITY_CHOICES = [
         ('attendance', 'Attendance'),
@@ -139,15 +147,40 @@ class AuditLog(models.Model):
     
     def __str__(self):
         """Return compact audit event descriptor for admin/debug displays."""
-        return f"[{self.activity}] {self.action} - {self.entity_name} by {self.username} on {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+        return (
+            f"[{self.activity}] {self.action} - {self.entity_name} by "
+            f"{self.username} on {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+        )
     
     @classmethod
     def log_attendance(cls, user, employee_name, status, date, ip_address=None):
-        """Log attendance marking"""
+        """Log attendance marking.
+
+        Args:
+            user (User | None): Acting user.
+            employee_name (str): Employee display name.
+            status (str): Attendance status label.
+            date (date): Attendance date.
+            ip_address (str | None): Optional IP address.
+
+        Returns:
+            AuditLog: Created audit log entry.
+
+        Business Rule:
+            Attendance logs always record the actor role snapshot.
+        """
+        # Reason: Preserve role at time of action for audit accuracy.
+        role = (
+            'King'
+            if hasattr(user, 'king_profile')
+            else 'Manager'
+            if hasattr(user, 'manager_profile')
+            else 'Unknown'
+        )
         return cls.objects.create(
             user=user,
             username=user.username if user else 'SYSTEM',
-            user_role='King' if hasattr(user, 'king_profile') else 'Manager' if hasattr(user, 'manager_profile') else 'Unknown',
+            user_role=role,
             activity='attendance',
             action=f'mark_{status.lower()}' if status in ['present', 'absent', 'halfday'] else 'mark_present',
             entity_type='Attendance',
@@ -160,11 +193,34 @@ class AuditLog(models.Model):
     
     @classmethod
     def log_payroll(cls, user, action, employee_name, month, amount, ip_address=None):
-        """Log payroll actions"""
+        """Log payroll actions.
+
+        Args:
+            user (User | None): Acting user.
+            action (str): Payroll action (generate/mark_paid/issue).
+            employee_name (str): Employee display name.
+            month (str | date): Payroll month label.
+            amount (Decimal | str): Amount involved in the action.
+            ip_address (str | None): Optional IP address.
+
+        Returns:
+            AuditLog: Created audit log entry.
+
+        Business Rule:
+            Payroll logs capture the month and amount for audit traceability.
+        """
+        # Reason: Preserve role at time of action for audit accuracy.
+        role = (
+            'King'
+            if hasattr(user, 'king_profile')
+            else 'Manager'
+            if hasattr(user, 'manager_profile')
+            else 'Unknown'
+        )
         return cls.objects.create(
             user=user,
             username=user.username if user else 'SYSTEM',
-            user_role='King' if hasattr(user, 'king_profile') else 'Manager' if hasattr(user, 'manager_profile') else 'Unknown',
+            user_role=role,
             activity='payroll',
             action=action,  # 'generate', 'mark_paid', 'issue'
             entity_type='MonthlySalary',
@@ -177,11 +233,34 @@ class AuditLog(models.Model):
     
     @classmethod
     def log_expense(cls, user, action, category, amount, date, ip_address=None):
-        """Log expense actions"""
+        """Log expense actions.
+
+        Args:
+            user (User | None): Acting user.
+            action (str): Expense action label.
+            category (str): Expense category label.
+            amount (Decimal | str): Expense amount.
+            date (date): Expense date.
+            ip_address (str | None): Optional IP address.
+
+        Returns:
+            AuditLog: Created audit log entry.
+
+        Business Rule:
+            Expense logs preserve category and amount for audit clarity.
+        """
+        # Reason: Preserve role at time of action for audit accuracy.
+        role = (
+            'King'
+            if hasattr(user, 'king_profile')
+            else 'Manager'
+            if hasattr(user, 'manager_profile')
+            else 'Unknown'
+        )
         return cls.objects.create(
             user=user,
             username=user.username if user else 'SYSTEM',
-            user_role='King' if hasattr(user, 'king_profile') else 'Manager' if hasattr(user, 'manager_profile') else 'Unknown',
+            user_role=role,
             activity='expense',
             action=action,
             entity_type='Expense',
@@ -194,11 +273,33 @@ class AuditLog(models.Model):
     
     @classmethod
     def log_bill(cls, user, action, bill_name, amount, ip_address=None):
-        """Log bill actions"""
+        """Log bill actions.
+
+        Args:
+            user (User | None): Acting user.
+            action (str): Bill action label.
+            bill_name (str): Bill display name.
+            amount (Decimal | str): Bill amount.
+            ip_address (str | None): Optional IP address.
+
+        Returns:
+            AuditLog: Created audit log entry.
+
+        Business Rule:
+            Bill logs preserve label and amount for audit clarity.
+        """
+        # Reason: Preserve role at time of action for audit accuracy.
+        role = (
+            'King'
+            if hasattr(user, 'king_profile')
+            else 'Manager'
+            if hasattr(user, 'manager_profile')
+            else 'Unknown'
+        )
         return cls.objects.create(
             user=user,
             username=user.username if user else 'SYSTEM',
-            user_role='King' if hasattr(user, 'king_profile') else 'Manager' if hasattr(user, 'manager_profile') else 'Unknown',
+            user_role=role,
             activity='bill',
             action=action,
             entity_type='Bill',
@@ -211,11 +312,32 @@ class AuditLog(models.Model):
     
     @classmethod
     def log_user_action(cls, user, action, details, ip_address=None):
-        """Log user login/logout/system actions"""
+        """Log user login/logout/system actions.
+
+        Args:
+            user (User | None): Acting user.
+            action (str): User action label.
+            details (str): Action details.
+            ip_address (str | None): Optional IP address.
+
+        Returns:
+            AuditLog: Created audit log entry.
+
+        Business Rule:
+            User activity logs preserve actor identity for compliance.
+        """
+        # Reason: Preserve role at time of action for audit accuracy.
+        role = (
+            'King'
+            if user and hasattr(user, 'king_profile')
+            else 'Manager'
+            if user and hasattr(user, 'manager_profile')
+            else 'Unknown'
+        )
         return cls.objects.create(
             user=user,
             username=user.username if user else 'SYSTEM',
-            user_role='King' if user and hasattr(user, 'king_profile') else 'Manager' if user and hasattr(user, 'manager_profile') else 'Unknown',
+            user_role=role,
             activity='user',
             action=action,
             entity_type='User',

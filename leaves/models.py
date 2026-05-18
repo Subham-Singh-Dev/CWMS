@@ -1,7 +1,19 @@
-from django.db import models
+"""Leave management model definitions.
 
-from django.db import models
+Module: leaves.models
+App: leaves
+Purpose: Track leave policies, allocations, and approved leave records.
+Key responsibilities: Enforce per-year leave quotas and keep approvals aligned
+with official leave forms.
+Dependencies: employees.Employee, auth.User, timezone-aware validation rules.
+Author note: Leave records are append-only; cancellations are modeled via status.
+"""
+
+# ============================================================
+# IMPORTS
+# ============================================================
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils import timezone
 
 
@@ -27,6 +39,7 @@ class LeavePolicy(models.Model):
         verbose_name_plural = "Leave Policies"
 
     def __str__(self):
+        """Return display label with employment type and annual quota."""
         return f"{self.employment_type} — {self.annual_leave_days} days/year"
 
 
@@ -52,12 +65,21 @@ class LeaveAllocation(models.Model):
 
     @property
     def remaining_days(self):
-        # Fallback to 0 if the database accidentally contains None/Null
+        """Return remaining leave days for the year.
+
+        Returns:
+            int: Remaining leave days for the employee-year allocation.
+
+        Business Rule:
+            Remaining days never go below zero when derived from stored values.
+        """
+        # Reason: Guard against nulls to avoid arithmetic errors.
         t_days = self.total_days if self.total_days is not None else 0
         u_days = self.used_days if self.used_days is not None else 0
         return t_days - u_days
 
     def __str__(self):
+        """Return readable allocation label for admin and logs."""
         return (
             f"{self.employee.name} — {self.year} — "
             f"{self.remaining_days}/{self.total_days} days remaining"
@@ -126,6 +148,14 @@ class LeaveRecord(models.Model):
         ordering = ['-from_date']
 
     def clean(self):
+        """Validate date range and year boundaries for leave records.
+
+        Raises:
+            ValidationError: When dates are invalid or span multiple years.
+
+        Business Rule:
+            Leave records cannot span across calendar years.
+        """
         if self.from_date and self.to_date:
             if self.to_date < self.from_date:
                 raise ValidationError("To date cannot be before From date.")
@@ -136,7 +166,12 @@ class LeaveRecord(models.Model):
                 )
 
     def save(self, *args, **kwargs):
-        # Auto-generate SL number on first save
+        """Generate SL number and persist leave record.
+
+        Business Rule:
+            SL numbers are sequential per year for traceability.
+        """
+        # Reason: Sequential SL numbers keep records traceable to paper forms.
         if not self.sl_number:
             year = self.from_date.year if self.from_date else timezone.now().year
             last = LeaveRecord.objects.filter(
@@ -146,6 +181,7 @@ class LeaveRecord(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
+        """Return human-readable leave record label."""
         return (
             f"{self.sl_number} — {self.employee.name} — "
             f"{self.leave_type} — {self.from_date} to {self.to_date}"

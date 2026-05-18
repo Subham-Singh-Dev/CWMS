@@ -1,14 +1,22 @@
-"""
+"""Billing model definitions.
+
 Module: billing.models
 App: billing
-Purpose: Stores uploaded vendor/client bills and payment state for manager cashflow control.
+Purpose: Store vendor/client bills and payment state for cashflow control.
+Key responsibilities: Track bill type, payment status, and attachment metadata
+for dashboard summaries.
 Dependencies: Django file storage, timezone helpers.
-Author note: Bill state is intentionally simple (paid/unpaid) to support fast dashboard summaries.
+Author note: Bill state is intentionally simple (paid/unpaid) to support fast
+dashboard summaries.
 """
+
+# ============================================================
+# IMPORTS
+# ============================================================
+from decimal import Decimal
 
 from django.db import models
 from django.utils import timezone
-from decimal import Decimal
 
 
 class Bill(models.Model):
@@ -66,7 +74,15 @@ class Bill(models.Model):
 
     @property
     def total_with_gst(self):
-        """Calculate total amount including 18% GST dynamically."""
+        """Calculate total amount including 18% GST dynamically.
+
+        Returns:
+            Decimal: Bill total with GST.
+
+        Business Rule:
+            GST is applied at a fixed 18% rate.
+        """
+        # Reason: GST must be computed dynamically to avoid stale totals.
         gst_rate = Decimal("0.18")
         gst_amount = (self.amount * gst_rate).quantize(Decimal('0.01'))
         return self.amount + gst_amount
@@ -74,7 +90,15 @@ class Bill(models.Model):
     # PROPERTY added for quick access to payment status in templates and logic without extra method calls
     @property
     def balance(self):
-        """calculate remaining amount dynamically for display and logic without storing redundant data."""
+        """Calculate remaining amount dynamically.
+
+        Returns:
+            Decimal: Remaining balance after payments.
+
+        Business Rule:
+            Balance is never negative and is derived from paid_amount.
+        """
+        # Reason: Derived value prevents redundant storage and drift.
         return max(Decimal("0.00"), self.total_with_gst - self.paid_amount)
 
     def __str__(self):
@@ -86,14 +110,14 @@ class Bill(models.Model):
         Auto-calculate is_paid status based on partial payments.
         Synchronizes paid_on date from payment status before persisting.
         """
-        # Ensure we don't accidentally get negative balances or None types
+        # Reason: Normalize missing values to protect financial calculations.
         if not self.paid_amount:
             self.paid_amount = Decimal("0.00")
 
         if not self.amount:
             self.amount = Decimal("0.00")
         
-        # Business Logic: If paid amount matches or exceeds total amount, it's fully paid
+        # Business Rule: If paid amount matches or exceeds total amount, it's fully paid.
         if self.paid_amount >= self.total_with_gst and self.total_with_gst > 0:
             self.is_paid = True
             if not self.paid_on:

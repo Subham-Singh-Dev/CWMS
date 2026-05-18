@@ -1,37 +1,47 @@
-"""
+"""Employee view handlers.
+
 Module: employees.views
 App: employees
 Purpose: Manager-side CRUD operations for employee master records.
-Dependencies: employees.models/services, manager_required decorator.
-Author note: Validation is duplicated at service/model boundaries intentionally for defense in depth.
+Key responsibilities: Employee creation, updates, profile views, and list
+filtering with audit logging and cache invalidation.
+Dependencies: employees.models/services, manager_required decorator, audit
+service, cache utilities.
+Author note: Validation is duplicated at service/model boundaries intentionally
+for defense in depth.
 """
 
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
+# ============================================================
+# IMPORTS
+# ============================================================
+from decimal import Decimal, InvalidOperation
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.contrib import messages
-from portal.decorators import manager_required
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from django.core.cache import cache
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
-from decimal import Decimal, InvalidOperation
-from .models import Role, Employee
-from .services import create_employee_with_user
+
 from analytics.services.audit_service import create_audit_log
+from portal.decorators import manager_required
 
-
-def _cache_delete_pattern(pattern: str) -> None:
-    from config.cache_utils import delete_pattern as _delete_pattern
-    try:
-        _delete_pattern(pattern)
-    except Exception:
-        pass
+from .models import Employee, Role
+from .services import create_employee_with_user
 
 
 def _humanize_validation_error(exc: ValidationError) -> str:
-    """Convert Django ValidationError payload into clean, readable message text."""
+    """Convert Django ValidationError payload into clean message text.
+
+    Args:
+        exc (ValidationError): Django validation error.
+
+    Returns:
+        str: Human-readable validation message.
+    """
     if hasattr(exc, 'message_dict') and exc.message_dict:
         parts = []
         for field, messages in exc.message_dict.items():
@@ -47,7 +57,14 @@ def _humanize_validation_error(exc: ValidationError) -> str:
 
 
 def _validation_error_list(exc: ValidationError) -> list[str]:
-    """Return validation errors as clean list items for UI alerts."""
+    """Return validation errors as clean list items for UI alerts.
+
+    Args:
+        exc (ValidationError): Django validation error.
+
+    Returns:
+        list[str]: Error messages for display.
+    """
     if hasattr(exc, 'message_dict') and exc.message_dict:
         items = []
         for field, messages in exc.message_dict.items():
@@ -65,8 +82,21 @@ def _validation_error_list(exc: ValidationError) -> list[str]:
 @login_required
 @manager_required
 def add_employee_view(request):
-    """Create employee + linked auth user using service layer."""
+    """Create employee and linked auth user using service layer.
 
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Add employee form or success response.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Employee creation is atomic to avoid partial user/profile rows.
+    """
+    # Reason: Only active roles should be selectable in creation.
     roles = Role.objects.filter(is_active=True)
 
     if request.method == "POST":
@@ -92,7 +122,7 @@ def add_employee_view(request):
         esic_number       = request.POST.get("esic_number") or None
         bank_account_no   = request.POST.get("bank_account_no") or None
 
-        # ✅ Prevent duplicate phone BEFORE service call
+        # Reason: Prevent duplicate phone before service call.
         if phone and Employee.objects.filter(phone_number=phone).exists():
             return render(
                 request,
@@ -106,7 +136,11 @@ def add_employee_view(request):
         try:
             role = Role.objects.get(id=role_id)
         except Role.DoesNotExist:
-            messages.error(request, "Selected role is invalid or no longer available. Please choose a valid role.")
+            messages.error(
+                request,
+                "Selected role is invalid or no longer available. "
+                "Please choose a valid role.",
+            )
             return render(
                 request,
                 "employees/add_employee.html",
@@ -121,6 +155,7 @@ def add_employee_view(request):
             esic_applicable = False
 
         try:
+            # Reason: Decimal prevents float drift in rate fields.
             pf_rate = Decimal(pf_rate).quantize(Decimal('0.0001'))
             esic_rate = Decimal(esic_rate).quantize(Decimal('0.0001'))
         except InvalidOperation:
@@ -134,6 +169,7 @@ def add_employee_view(request):
             )
 
         try:
+            # Reason: Ensure user + employee records are created atomically.
             with transaction.atomic():
                 employee, temp_password = create_employee_with_user(
                     name=name,
@@ -171,8 +207,8 @@ def add_employee_view(request):
                     entity_id=employee.id,
                     entity_name=employee.name,
                     details=(
-                        f"Created employee {employee.name} (System ID: {employee.user.username}) "
-                        f"with role {employee.role.name}"
+                        f"Created employee {employee.name} (System ID: "
+                        f"{employee.user.username}) with role {employee.role.name}"
                     ),
                     request=request,
                 )
@@ -218,10 +254,27 @@ def add_employee_view(request):
 @login_required
 @manager_required
 def edit_employee_view(request, employee_id):
-    """Update employee profile and synchronize linked user active state."""
+    """Update employee profile and sync linked user active state.
 
+    Args:
+        request (HttpRequest): Incoming request.
+        employee_id (int): Employee id.
+
+    Returns:
+        HttpResponse: Edit employee form or success response.
+
+    Raises:
+        Http404: When the employee does not exist.
+
+    Business Rule:
+        Edits are atomic to keep user and employee in sync.
+    """
+    # Reason: Only active roles should be selectable in edits.
     roles = Role.objects.filter(is_active=True)
-    employee = Employee.objects.select_related("user").get(id=employee_id)
+    employee = get_object_or_404(
+        Employee.objects.select_related("user"),
+        id=employee_id,
+    )
 
     if request.method == "POST":
         name = request.POST.get("name")
@@ -246,8 +299,10 @@ def edit_employee_view(request, employee_id):
         esic_number = request.POST.get("esic_number") or None
         bank_account_no = request.POST.get("bank_account_no") or None
 
-        # Duplicate phone check (exclude current employee)
-        if phone and Employee.objects.filter(phone_number=phone).exclude(id=employee.id).exists():
+        # Reason: Prevent duplicate phone, excluding current employee.
+        if phone and Employee.objects.filter(phone_number=phone).exclude(
+            id=employee.id
+        ).exists():
             return render(request, "employees/edit_employee.html", {
                 "roles": roles,
                 "employee": employee,
@@ -257,7 +312,11 @@ def edit_employee_view(request, employee_id):
         try:
             role = Role.objects.get(id=role_id)
         except Role.DoesNotExist:
-            messages.error(request, "Selected role is invalid or no longer available. Please choose a valid role.")
+            messages.error(
+                request,
+                "Selected role is invalid or no longer available. "
+                "Please choose a valid role.",
+            )
             return render(request, "employees/edit_employee.html", {
                 "roles": roles,
                 "employee": employee,
@@ -269,6 +328,7 @@ def edit_employee_view(request, employee_id):
             esic_applicable = False
 
         try:
+            # Reason: Decimal prevents float drift in rate fields.
             pf_rate = Decimal(pf_rate).quantize(Decimal('0.0001'))
             esic_rate = Decimal(esic_rate).quantize(Decimal('0.0001'))
         except InvalidOperation:
@@ -279,6 +339,7 @@ def edit_employee_view(request, employee_id):
             })
 
         try:
+            # Reason: Keep employee + user state in sync within one transaction.
             with transaction.atomic():
                 employee.name = name
                 employee.phone_number = phone
@@ -305,7 +366,7 @@ def edit_employee_view(request, employee_id):
                 employee.full_clean()
                 employee.save()
 
-                # Sync user active status
+                # Reason: Sync auth user status with employee status.
                 if employee.user.is_active != is_active:
                     employee.user.is_active = is_active
                     employee.user.save(update_fields=["is_active"])
@@ -354,7 +415,18 @@ def edit_employee_view(request, employee_id):
 @login_required
 @manager_required
 def employee_profile_view(request, employee_id):
-    """Render a manager-facing read-only employee profile with quick actions."""
+    """Render a manager-facing read-only employee profile with quick actions.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        employee_id (int): Employee id.
+
+    Returns:
+        HttpResponse: Employee profile page.
+
+    Raises:
+        Http404: When the employee does not exist.
+    """
     employee = get_object_or_404(
         Employee.objects.select_related("role", "user"),
         id=employee_id,
@@ -369,7 +441,21 @@ def employee_profile_view(request, employee_id):
 @login_required
 @manager_required
 def employee_list_view(request, viewing_as_owner=False):
-    """List/filter employee master records for manager operations."""
+    """List/filter employee master records for manager operations.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        viewing_as_owner (bool): Owner view flag (unused here).
+
+    Returns:
+        HttpResponse: Employee list page.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Results are scoped to active/role filters supplied by the manager.
+    """
     cache_key = (
         f"employee:list:{request.user.id}:"
         f"{request.session.session_key or 'anon'}:"
@@ -379,7 +465,9 @@ def employee_list_view(request, viewing_as_owner=False):
     if cached_html:
         return HttpResponse(cached_html)
 
+    # Reason: Prefetch role and user to avoid N+1 in list rendering.
     employees = Employee.objects.select_related("role", "user").all()
+    # Reason: Only active roles should be shown in filters.
     roles = Role.objects.filter(is_active=True)
 
     search = request.GET.get("search")

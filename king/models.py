@@ -1,26 +1,36 @@
-"""
+"""Owner financial control models.
+
 Module: king.models
 App: king
-Purpose: Owner-facing financial control entities (work orders, revenue, ledger) used by King dashboard.
-Dependencies: Django auth User and Decimal-backed monetary fields.
-Author note: Ledger and revenue entries are intentionally append-oriented for auditability.
+Purpose: Owner-facing financial control entities (work orders, revenue, ledger)
+used by King dashboard.
+Key responsibilities: Track work orders, revenue inflows, ledger accounts, and
+ledger entries with audit-friendly ordering.
+Dependencies: Django auth User, Decimal-backed monetary fields.
+Author note: Ledger and revenue entries are intentionally append-oriented for
+auditability.
 """
 
-from django.db import models
+# ============================================================
+# IMPORTS
+# ============================================================
+from datetime import date
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
+from django.db import models
 from django.utils import timezone
-from datetime import date
 
 
 
 
 class WorkOrder(models.Model):
-    """
-    Contract/work-order master tracked through a lifecycle (pending->active->completed/cancelled).
+    """Contract/work-order master tracked through a lifecycle.
 
-    BUSINESS RULE: `wo_number` is auto-generated and immutable to keep external references stable.
+    Business Rules:
+        - `wo_number` is auto-generated and immutable to keep references stable.
+        - Status progresses through pending/active/completed/cancelled.
     """
     STATUS_CHOICES = [
         ('pending',   'Pending'),
@@ -53,13 +63,18 @@ class WorkOrder(models.Model):
     )
 
     class Meta:
-        """Default ordering by creation time for latest-first owner workflows."""
+        """Default ordering by creation time for latest-first workflows."""
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        """Assign sequential work-order number on first save and persist record."""
+        """Assign sequential work-order number on first save and persist record.
+
+        Business Rule:
+            Work order numbers are human-friendly and sequential.
+        """
         # BUSINESS RULE: Human-friendly sequential WO number for contractor operations.
         if not self.wo_number:
+            # Reason: Latest ID is used to build the next sequential WO number.
             last = WorkOrder.objects.order_by('-id').first()
             next_num = (last.id + 1) if last else 1
             self.wo_number = f"WO-{next_num:03d}"
@@ -70,22 +85,30 @@ class WorkOrder(models.Model):
         return f"{self.wo_number} — {self.project_name}"
 
     def total_revenue_received(self):
-        """Sum of all manual revenue entries linked to this work order."""
+        """Sum of all manual revenue entries linked to this work order.
+
+        Returns:
+            Decimal: Total revenue received for this work order.
+        """
         return self.revenues.aggregate(
             t=models.Sum('amount')
         )['t'] or 0
 
     def balance_remaining(self):
-        """Return remaining collectible amount after received revenues."""
+        """Return remaining collectible amount after received revenues.
+
+        Returns:
+            Decimal: Remaining collectible value.
+        """
         return self.order_value - self.total_revenue_received()
 
 
 class Revenue(models.Model):
-    """
-    Manual revenue inflow entry optionally linked to a work order.
+    """Manual revenue inflow entry optionally linked to a work order.
 
-    BUSINESS RULE: work_order is nullable SET_NULL so revenue history survives if a work order
-    is removed/archived.
+    Business Rule:
+        `work_order` is nullable SET_NULL so revenue history survives if a work
+        order is removed/archived.
     """
     CATEGORY_CHOICES = [
         ('contract', 'Contract Payment'),
@@ -131,10 +154,28 @@ class LedgerAccount(models.Model):
  
     BUSINESS RULE: name is unique so duplicate parties cannot be created accidentally.
     """
-    name         = models.CharField(max_length=255, unique=True, verbose_name="Party Name")
-    address      = models.TextField(blank=True, null=True, verbose_name="Address")
-    gst_number   = models.CharField(max_length=15, blank=True, null=True, verbose_name="GST Number")
-    phone        = models.CharField(max_length=15, blank=True, null=True, verbose_name="Phone")
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name="Party Name",
+    )
+    address = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Address",
+    )
+    gst_number = models.CharField(
+        max_length=15,
+        blank=True,
+        null=True,
+        verbose_name="GST Number",
+    )
+    phone = models.CharField(
+        max_length=15,
+        blank=True,
+        null=True,
+        verbose_name="Phone",
+    )
     work_order   = models.ForeignKey(
         'WorkOrder', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='ledger_accounts',
@@ -152,21 +193,35 @@ class LedgerAccount(models.Model):
         verbose_name_plural = "Ledger Accounts"
  
     def __str__(self):
+        """Return party name for admin and selections."""
         return self.name
  
     def total_debit(self):
-        """Sum of all debit entries linked to this account."""
+        """Sum of all debit entries linked to this account.
+
+        Returns:
+            Decimal: Total debit for the party.
+        """
         from django.db.models import Sum
         return self.ledger_entries.aggregate(t=Sum('debit'))['t'] or 0
  
     def total_credit(self):
-        """Sum of all credit entries linked to this account."""
+        """Sum of all credit entries linked to this account.
+
+        Returns:
+            Decimal: Total credit for the party.
+        """
         from django.db.models import Sum
         return self.ledger_entries.aggregate(t=Sum('credit'))['t'] or 0
  
     def balance(self):
-        """Net debit balance for this account."""
+        """Net debit balance for this account.
+
+        Returns:
+            Decimal: Net debit minus credit.
+        """
         from decimal import Decimal
+        # Reason: Cast to Decimal to avoid float drift from aggregates.
         return Decimal(str(self.total_debit())) - Decimal(str(self.total_credit()))
 
 
@@ -191,22 +246,33 @@ class LedgerEntry(models.Model):
     date           = models.DateField()
     value_date     = models.DateField(blank=True, null=True, verbose_name="Value Date")
     entry_type     = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)
-    voucher_number = models.CharField(max_length=50, blank=True, null=True,
-                                      verbose_name="Ref No. / Cheque No.")
-    particulars    = models.CharField(max_length=255, verbose_name="Particulars")
-    branch_code    = models.CharField(max_length=20, blank=True, null=True,
-                                      verbose_name="Branch Code")
+    voucher_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name="Ref No. / Cheque No.",
+    )
+    particulars = models.CharField(
+        max_length=255,
+        verbose_name="Particulars",
+    )
+    branch_code = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        verbose_name="Branch Code",
+    )
     debit          = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     credit         = models.DecimalField(max_digits=12, decimal_places=2, default=0)
  
-    # Party account this entry belongs to
+    # Reason: Party links enable account-wise statements and filtering.
     account        = models.ForeignKey(
         LedgerAccount, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='ledger_entries',
         verbose_name="Account / Party"
     )
  
-    # Optional direct work-order link (independent of account's WO)
+    # Reason: Some ledger entries map to a work order even if the party is missing.
     work_order     = models.ForeignKey(
         'WorkOrder', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='ledger_entries',
@@ -217,6 +283,7 @@ class LedgerEntry(models.Model):
     created_at     = models.DateTimeField(auto_now_add=True)
  
     class Meta:
+        """Sort by date then creation to preserve ledger sequencing."""
         ordering = ['date', 'created_at']
  
     @property
@@ -225,12 +292,28 @@ class LedgerEntry(models.Model):
         return self.voucher_number
  
     def clean(self):
+        """Validate ledger entry amounts.
+
+        Raises:
+            ValidationError: When debit/credit are invalid.
+
+        Business Rule:
+            Entries must have either debit or credit greater than zero.
+        """
         if self.debit < 0 or self.credit < 0:
             raise ValidationError("Debit/Credit cannot be negative.")
         if self.debit == 0 and self.credit == 0:
             raise ValidationError("Either Debit or Credit must be greater than zero.")
  
     def _generate_voucher_number(self):
+        """Generate a sequential voucher number within the financial year.
+
+        Returns:
+            str: Voucher number prefixed by entry type and fiscal year.
+
+        Business Rule:
+            Sequencing resets per financial year and per entry type.
+        """
         code_map = {
             'sale':    'SAL',
             'receipt': 'RCPT',
@@ -257,11 +340,20 @@ class LedgerEntry(models.Model):
         return f"{prefix}{seq:03d}/{fy_text}"
  
     def save(self, *args, **kwargs):
+        """Assign voucher number and validate before persisting.
+
+        Business Rule:
+            Ledger entries are validated at model boundary to prevent bad data.
+        """
         if not self.voucher_number:
             self.voucher_number = self._generate_voucher_number()
+        # Reason: Always validate before saving for audit integrity.
         self.full_clean()
         super().save(*args, **kwargs)
  
     def __str__(self):
         party = self.account.name if self.account else 'Unassigned'
-        return f"{self.date} | {self.entry_type} | {self.voucher_number} | {party} | Dr:{self.debit} Cr:{self.credit}"
+        return (
+            f"{self.date} | {self.entry_type} | {self.voucher_number} | "
+            f"{party} | Dr:{self.debit} Cr:{self.credit}"
+        )

@@ -1,13 +1,27 @@
+"""Audit history views and exports.
+
+Module: analytics.views
+App: analytics
+Purpose: Render audit history lists and provide CSV/PDF exports for owner and
+manager scopes.
+Key responsibilities: Apply role-based scoping, filter audit queries, paginate
+history, and produce exports with audit trail entries.
+Dependencies: analytics.models.AuditLog, audit_service, xhtml2pdf.
+Author note: Managers have restricted visibility; owners see full history.
+"""
+
+# ============================================================
+# IMPORTS
+# ============================================================
 import csv
 from datetime import datetime
 
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import render
-from django.db.models import Q
 from django.template.loader import get_template
 from xhtml2pdf import pisa
-
 
 from analytics.models import AuditLog
 from analytics.services.audit_service import create_audit_log
@@ -15,6 +29,14 @@ from portal.decorators import king_required, manager_required
 
 
 def _current_filters(request):
+    """Return request filter values for UI state persistence.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        dict: Current filter values to rehydrate the UI.
+    """
     return {
         'activity': request.GET.get('activity', ''),
         'action': request.GET.get('action', ''),
@@ -25,6 +47,19 @@ def _current_filters(request):
 
 
 def _filtered_queryset(request, is_king_view):
+    """Build the filtered audit queryset for the request.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        is_king_view (bool): Whether to apply owner scope.
+
+    Returns:
+        QuerySet: Filtered AuditLog queryset.
+
+    Business Rule:
+        Manager scope excludes most user-auth logs except their own.
+    """
+    # Reason: Newest-first ordering is required for audit timeline UX.
     queryset = AuditLog.objects.all().order_by('-timestamp')
     if not is_king_view:
         queryset = _manager_scope(queryset, request)
@@ -32,6 +67,15 @@ def _filtered_queryset(request, is_king_view):
 
 
 def _apply_audit_filters(queryset, request):
+    """Apply querystring filters to the audit queryset.
+
+    Args:
+        queryset (QuerySet): Base audit queryset.
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        QuerySet: Filtered queryset.
+    """
     activity = request.GET.get('activity', '').strip()
     action = request.GET.get('action', '').strip()
     username = request.GET.get('username', '').strip()
@@ -61,6 +105,18 @@ def _apply_audit_filters(queryset, request):
 
 
 def _manager_scope(queryset, request):
+    """Apply manager visibility rules to audit logs.
+
+    Args:
+        queryset (QuerySet): Base audit queryset.
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        QuerySet: Scoped queryset for managers.
+
+    Business Rule:
+        Managers see operational logs and their own auth events.
+    """
     # Managers can see operational activities + their own auth events.
     if request.user.groups.filter(name='King').exists() or request.user.is_superuser:
         return queryset
@@ -70,6 +126,14 @@ def _manager_scope(queryset, request):
 
 
 def _mask_ip(ip_address):
+    """Mask IP address for manager views.
+
+    Args:
+        ip_address (str | None): Raw IP address.
+
+    Returns:
+        str: Masked IP address.
+    """
     if not ip_address:
         return '-'
     parts = ip_address.split('.')
@@ -79,6 +143,15 @@ def _mask_ip(ip_address):
 
 
 def _serialize_logs(logs, is_king_view):
+    """Serialize AuditLog rows for templates and exports.
+
+    Args:
+        logs (Iterable[AuditLog]): Audit log rows.
+        is_king_view (bool): Whether full IP visibility is allowed.
+
+    Returns:
+        list[dict]: Serialized log rows.
+    """
     rows = []
     for log in logs:
         rows.append({
@@ -98,6 +171,15 @@ def _serialize_logs(logs, is_king_view):
 
 
 def _render_audit_history(request, is_king_view):
+    """Render audit history list with pagination.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        is_king_view (bool): Whether to apply owner scope.
+
+    Returns:
+        HttpResponse: Rendered audit history page.
+    """
     queryset = _filtered_queryset(request, is_king_view=is_king_view)
 
     paginator = Paginator(queryset, 20)
@@ -115,6 +197,13 @@ def _render_audit_history(request, is_king_view):
 
 
 def _create_export_audit_log(request, entity_name, exported_rows):
+    """Create an audit entry for export actions.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        entity_name (str): Export descriptor.
+        exported_rows (int): Number of rows exported.
+    """
     create_audit_log(
         user=request.user,
         username=request.user.username,
@@ -130,22 +219,47 @@ def _create_export_audit_log(request, entity_name, exported_rows):
 
 @king_required
 def king_audit_history(request):
+    """Render audit history for owner scope.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Audit history page.
+    """
     return _render_audit_history(request, is_king_view=True)
 
 
 @manager_required
 def manager_audit_history(request):
+    """Render audit history for manager scope.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Audit history page.
+    """
     return _render_audit_history(request, is_king_view=False)
 
 
 def _audit_csv_response(filename, queryset):
+    """Return a CSV response for audit logs.
+
+    Args:
+        filename (str): Attachment filename.
+        queryset (QuerySet): AuditLog queryset.
+
+    Returns:
+        HttpResponse: CSV file response.
+    """
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     writer = csv.writer(response)
     writer.writerow([
         'timestamp', 'username', 'user_role', 'activity', 'action', 'entity_type',
-        'entity_id', 'entity_name', 'details', 'status', 'ip_address'
+        'entity_id', 'entity_name', 'details', 'status', 'ip_address',
     ])
 
     for log in queryset:
@@ -167,7 +281,17 @@ def _audit_csv_response(filename, queryset):
 
 
 def _audit_pdf_response(filename, rows, request, is_king_view):
-    
+    """Return a PDF response for audit logs.
+
+    Args:
+        filename (str): Attachment filename.
+        rows (list[dict]): Serialized audit rows.
+        request (HttpRequest): Incoming request.
+        is_king_view (bool): Whether full IP visibility is allowed.
+
+    Returns:
+        HttpResponse: PDF file response.
+    """
     generated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     company_name = 'Sakuntalam India Services · CWMS'
 
@@ -176,7 +300,11 @@ def _audit_pdf_response(filename, rows, request, is_king_view):
         'report_title': 'System Audit Trail',
         'generated_at': generated_at,
         'generated_by': request.user.username if request.user.is_authenticated else 'SYSTEM',
-        'scope_label': 'Owner scope: full system visibility' if is_king_view else 'Manager scope: operational visibility',
+        'scope_label': (
+            'Owner scope: full system visibility'
+            if is_king_view
+            else 'Manager scope: operational visibility'
+        ),
         'rows': rows,
         'filters': {
             'activity': request.GET.get('activity', '') or 'All',
@@ -200,6 +328,14 @@ def _audit_pdf_response(filename, rows, request, is_king_view):
 
 @king_required
 def king_audit_export_csv(request):
+    """Export owner audit history as CSV.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: CSV response.
+    """
     queryset = _filtered_queryset(request, is_king_view=True)
     _create_export_audit_log(request, 'King Audit CSV Export', queryset.count())
     return _audit_csv_response('king_audit_log.csv', queryset)
@@ -207,6 +343,14 @@ def king_audit_export_csv(request):
 
 @king_required
 def king_audit_export_pdf(request):
+    """Export owner audit history as PDF.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: PDF response.
+    """
     queryset = _filtered_queryset(request, is_king_view=True)
     rows = _serialize_logs(queryset, is_king_view=True)
 
@@ -216,6 +360,14 @@ def king_audit_export_pdf(request):
 
 @manager_required
 def manager_audit_export_csv(request):
+    """Export manager audit history as CSV.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: CSV response.
+    """
     queryset = _filtered_queryset(request, is_king_view=False)
     _create_export_audit_log(request, 'Manager Audit CSV Export', queryset.count())
     return _audit_csv_response('manager_audit_log.csv', queryset)
@@ -223,6 +375,14 @@ def manager_audit_export_csv(request):
 
 @manager_required
 def manager_audit_export_pdf(request):
+    """Export manager audit history as PDF.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: PDF response.
+    """
     queryset = _filtered_queryset(request, is_king_view=False)
     rows = _serialize_logs(queryset, is_king_view=False)
 

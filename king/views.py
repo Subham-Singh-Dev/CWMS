@@ -1098,8 +1098,24 @@ def revenue_delete(request, rev_id):
  
 @king_required
 def account_list(request):
-    """List all ledger accounts (parties) with running balance summary."""
-    accounts = LedgerAccount.objects.filter(created_by=request.user).order_by('name')
+    """List ledger accounts (parties) for the owner.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Account list page with work order options.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Owners can only view accounts they created.
+    """
+    # Reason: Ledger accounts are owner-scoped for audit safety.
+    accounts = LedgerAccount.objects.filter(
+        created_by=request.user
+    ).order_by('name')
     return render(request, 'king/account_list.html', {
         'accounts':    accounts,
         'work_orders': WorkOrder.objects.order_by('wo_number'),
@@ -1109,7 +1125,20 @@ def account_list(request):
 @king_required
 @require_POST
 def account_add(request):
-    """Create a new ledger account (party)."""
+    """Create a new ledger account (party).
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Redirect to account list.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Party names must be unique (case-insensitive).
+    """
     name = request.POST.get('name', '').strip()
     if not name:
         messages.error(request, 'Party name is required.')
@@ -1135,7 +1164,21 @@ def account_add(request):
 @king_required
 @require_POST
 def account_edit(request, account_id):
-    """Update an existing ledger account."""
+    """Update an existing ledger account.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        account_id (int): LedgerAccount id.
+
+    Returns:
+        HttpResponse: Redirect to account list.
+
+    Raises:
+        Http404: When the account does not exist.
+
+    Business Rule:
+        Party names must remain unique across accounts.
+    """
     acc = get_object_or_404(LedgerAccount, id=account_id)
     name = request.POST.get('name', '').strip()
     if not name:
@@ -1161,11 +1204,28 @@ def account_edit(request, account_id):
 @king_required
 @require_POST
 def account_delete(request, account_id):
-    """Delete a ledger account. Linked entries become unassigned (account=NULL)."""
+    """Delete a ledger account and keep entries unassigned.
+
+    Args:
+        request (HttpRequest): Incoming request.
+        account_id (int): LedgerAccount id.
+
+    Returns:
+        HttpResponse: Redirect to account list.
+
+    Raises:
+        Http404: When the account does not exist.
+
+    Business Rule:
+        Ledger entries are preserved; account is cleared to avoid data loss.
+    """
     acc = get_object_or_404(LedgerAccount, id=account_id)
     name = acc.name
     acc.delete()
-    messages.success(request, f'Account "{name}" deleted. Linked entries are now unassigned.')
+    messages.success(
+        request,
+        f'Account "{name}" deleted. Linked entries are now unassigned.',
+    )
     return redirect('king:account_list')
 
 
@@ -1242,14 +1302,29 @@ def _short_type(entry_type):
 # ─────────────────────────────────────────────────────────────────────────────
  
 def _ledger_data(from_date, to_date, account_id=None):
-    """Build ledger rows, running balances, and totals for the date range.
-    Optionally filtered to a single LedgerAccount."""
+    """Build ledger rows, running balances, and totals for a date range.
+
+    Args:
+        from_date (date): Start date (inclusive).
+        to_date (date): End date (inclusive).
+        account_id (int | None): Optional LedgerAccount id filter.
+
+    Returns:
+        dict: Aggregated ledger rows and totals for rendering.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Ledger rows are ordered by value date then creation for audit order.
+    """
     qs = LedgerEntry.objects.filter(
         date__gte=from_date,
         date__lte=to_date,
     )
     if account_id:
         qs = qs.filter(account_id=account_id)
+    # Reason: Stable ordering preserves running balance auditability.
     entries = qs.order_by('date', 'created_at')
  
     running_balance = Decimal('0.00')
@@ -1301,7 +1376,20 @@ def _ledger_data(from_date, to_date, account_id=None):
 
 @king_required
 def ledger_view(request):
-    """Render owner ledger with party-wise filtering and running Dr/Cr balance."""
+    """Render owner ledger with party filtering and running Dr/Cr balance.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Ledger view page.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Date range is normalized and audited for owner visibility.
+    """
     from_date_str = request.GET.get('from_date')
     to_date_str   = request.GET.get('to_date')
     account_id    = request.GET.get('account_id') or None
@@ -1319,6 +1407,7 @@ def ledger_view(request):
  
     data = _ledger_data(from_date, to_date, account_id=account_id)
  
+    # Reason: Account picker must include all parties for owner.
     all_accounts = LedgerAccount.objects.order_by('name')
  
     create_audit_log(
@@ -1357,7 +1446,20 @@ def ledger_view(request):
 @king_required
 @require_POST
 def ledger_add_entry(request):
-    """Create a ledger transaction row linked to a party account."""
+    """Create a ledger transaction row linked to a party account.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: Redirect to ledger view.
+
+    Raises:
+        ValidationError: When posted data is invalid.
+
+    Business Rule:
+        Ledger entries preserve user-entered voucher metadata for audits.
+    """
     debit    = request.POST.get('debit')  or '0'
     credit   = request.POST.get('credit') or '0'
     date_str = request.POST.get('date')
@@ -1407,7 +1509,6 @@ def ledger_add_entry(request):
  
     messages.success(request, 'Ledger entry added.')
     # Redirect back preserving account filter
-    from django.urls import reverse
     base_url = reverse('king:ledger')
     redirect_url = f"{base_url}?account_id={acc_id}" if acc_id else base_url
     return redirect(redirect_url)
@@ -1447,7 +1548,20 @@ def ledger_delete_entry(request, entry_id):
 
 @king_required
 def ledger_pdf(request):
-    """Export party-filtered ledger as PDF."""
+    """Export party-filtered ledger as PDF.
+
+    Args:
+        request (HttpRequest): Incoming request.
+
+    Returns:
+        HttpResponse: PDF response with ledger export.
+
+    Raises:
+        None.
+
+    Business Rule:
+        Export uses the same date range and account filter as the ledger view.
+    """
     from_date_str = request.GET.get('from_date')
     to_date_str   = request.GET.get('to_date')
     account_id    = request.GET.get('account_id') or None

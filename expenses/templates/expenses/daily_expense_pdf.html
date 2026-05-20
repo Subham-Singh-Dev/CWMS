@@ -1,693 +1,410 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Professional Expense Report</title>
+<meta charset="UTF-8">
+<title>Daily Expense Report</title>
+<style>
 
-    <style>
+@page {
+    size: A4;
+    margin: 12mm 14mm 12mm 14mm;
+}
 
-        /* =====================================================
-           PAGE SETUP
-        ====================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-        @page {
-            size: A4;
-            margin: 14mm;
-        }
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    color: #1a2b3c;
+    background: #ffffff;
+    line-height: 1.35;
+}
 
-        * {
-            box-sizing: border-box;
-        }
+/* ── HEADER ─────────────────────────────────────────────── */
+.header-band {
+    background: #0f2d4a;
+    color: #ffffff;
+    padding: 10px 14px 8px 14px;
+    margin-bottom: 0;
+}
+.company-name {
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #ffffff;
+}
+.report-subtitle {
+    font-size: 10px;
+    color: #9fc3e0;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.accent-stripe {
+    height: 3px;
+    background: #c9a84c;
+    margin-bottom: 8px;
+}
 
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 11px;
-            color: #1f2937;
-            margin: 0;
-            padding: 0;
-            background: #ffffff;
-            line-height: 1.4;
-        }
+/* ── META ───────────────────────────────────────────────── */
+.meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    border: 1px solid #d0dce8;
+}
+.meta-table td {
+    padding: 6px 10px;
+    width: 50%;
+    vertical-align: top;
+    border: 1px solid #d0dce8;
+    background: #f4f7fb;
+}
+.meta-label {
+    font-size: 8px;
+    color: #6b7f90;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+.meta-value {
+    font-size: 12px;
+    font-weight: bold;
+    color: #0f2d4a;
+}
 
-        .container {
-            width: 100%;
-        }
+/* ── SUMMARY STATS ──────────────────────────────────────── */
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    border: 1px solid #d0dce8;
+}
+.stats-table td {
+    padding: 7px 10px;
+    text-align: center;
+    border: 1px solid #d0dce8;
+    background: #ffffff;
+    vertical-align: middle;
+}
+.stat-label {
+    font-size: 8px;
+    color: #6b7f90;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+.stat-value {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0f2d4a;
+}
+.stat-value.highlight { color: #c9a84c; }
 
-        /* =====================================================
-           HEADER
-        ====================================================== */
+/* ── PAYMENT SUMMARY BAR ────────────────────────────────── */
+.payment-bar-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #d0dce8;
+}
+.payment-bar-table td {
+    padding: 5px 10px;
+    border: 1px solid #d0dce8;
+    text-align: center;
+    vertical-align: middle;
+}
+.payment-header-cell {
+    background: #1e4d78;
+    color: #ffffff;
+    font-size: 8px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    width: 18%;
+}
+.payment-label-cell {
+    background: #f4f7fb;
+    font-size: 8px;
+    color: #6b7f90;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.payment-value-cell {
+    background: #ffffff;
+    font-size: 11px;
+    font-weight: bold;
+    color: #0f2d4a;
+}
 
-        .company-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+/* ── SECTION HEADING ────────────────────────────────────── */
+.section-heading {
+    font-size: 9px;
+    font-weight: bold;
+    color: #0f2d4a;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 4px 8px;
+    background: #e8f0f8;
+    border-left: 4px solid #1e4d78;
+    margin-bottom: 4px;
+}
 
-        .company-name {
-            font-size: 30px;
-            font-weight: bold;
-            color: #163b65;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
+/* ── MAIN CATEGORY TABLE ────────────────────────────────── */
+.cat-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #d0dce8;
+    table-layout: fixed;
+}
 
-        .report-name {
-            font-size: 18px;
-            color: #374151;
-            font-weight: bold;
-        }
+/* Two-row header */
+.cat-table thead tr.row1 th {
+    padding: 6px 6px 3px 6px;
+    font-size: 8px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border: 1px solid #1a3f6a;
+    background: #1e4d78;
+    color: #ffffff;
+    text-align: center;
+    vertical-align: bottom;
+}
+.cat-table thead tr.row1 th.left { text-align: left; }
+.cat-table thead tr.row1 th.right { text-align: right; }
 
-        .top-divider {
-            height: 3px;
-            background: #163b65;
-            margin-top: 14px;
-        }
+/* Sub-header row for payment mode breakdown */
+.cat-table thead tr.row2 th {
+    padding: 3px 4px 5px 4px;
+    font-size: 7.5px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border: 1px solid #1a3f6a;
+    text-align: center;
+    vertical-align: top;
+}
+.sub-cash { background: #1a5c2a; color: #d4f0db; }
+.sub-upi  { background: #1a3d78; color: #c8ddf8; }
+.sub-bank { background: #3d3d3d; color: #e0e0e0; }
 
-        /* =====================================================
-           META SECTION
-        ====================================================== */
+/* Body cells */
+.cat-table tbody td {
+    padding: 5px 6px;
+    border: 1px solid #d8e4ef;
+    font-size: 10px;
+    vertical-align: middle;
+    color: #1a2b3c;
+    text-align: center;
+    word-wrap: break-word;
+}
+.cat-table tbody tr:nth-child(even) td { background: #f6f9fd; }
+.cat-table tbody tr:nth-child(odd)  td { background: #ffffff; }
+.cat-table td.left  { text-align: left; }
+.cat-table td.right { text-align: right; }
+.cat-table td.bold  { font-weight: bold; }
 
-        .meta-wrapper {
-            margin-top: 18px;
-            margin-bottom: 26px;
-        }
+/* Payment count pills — lightweight colored text, no radius */
+.p-cash { color: #1a7a2e; font-weight: bold; }
+.p-upi  { color: #1348a0; font-weight: bold; }
+.p-bank { color: #444444; font-weight: bold; }
+.p-zero { color: #c0c8d0; }
 
-        .meta-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 12px;
-        }
+/* Share bar */
+.share-pct {
+    font-size: 8px;
+    color: #6b7f90;
+    display: block;
+    margin-top: 2px;
+}
 
-        .meta-box {
-            width: 50%;
-            border: 1px solid #dbe2ea;
-            border-radius: 8px;
-            background: #fafbfd;
-            padding: 14px 16px;
-            vertical-align: top;
-        }
+/* Footer row */
+.cat-table tfoot td {
+    padding: 6px 6px;
+    font-size: 10px;
+    font-weight: bold;
+    background: #0f2d4a;
+    color: #ffffff;
+    border: 1px solid #0a1e30;
+    text-align: center;
+}
+.cat-table tfoot td.left  { text-align: left; }
+.cat-table tfoot td.right { text-align: right; }
 
-        .meta-label {
-            font-size: 10px;
-            color: #6b7280;
-            text-transform: uppercase;
-            font-weight: bold;
-            margin-bottom: 6px;
-            letter-spacing: 0.5px;
-        }
+/* ── FOOTER ─────────────────────────────────────────────── */
+.footer-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    border-top: 2px solid #0f2d4a;
+}
+.footer-table td {
+    padding: 4px 0;
+    font-size: 8px;
+    color: #6b7f90;
+}
+.footer-table td.right { text-align: right; }
 
-        .meta-value {
-            font-size: 14px;
-            font-weight: bold;
-            color: #111827;
-        }
-
-        /* =====================================================
-           SUMMARY CARDS
-        ====================================================== */
-
-        .summary-grid {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 12px 0;
-            margin-bottom: 28px;
-        }
-
-        .summary-card {
-            border: 1px solid #dbe2ea;
-            border-radius: 10px;
-            background: #ffffff;
-            padding: 18px 12px;
-            text-align: center;
-            height: 120px;
-        }
-
-        .summary-title {
-            font-size: 10px;
-            color: #6b7280;
-            text-transform: uppercase;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-
-        .summary-value {
-            font-size: 30px;
-            color: #163b65;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .summary-sub {
-            font-size: 10px;
-            color: #6b7280;
-        }
-
-        /* =====================================================
-           SECTION TITLE
-        ====================================================== */
-
-        .section-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #163b65;
-            text-transform: uppercase;
-            margin-bottom: 12px;
-            padding-left: 10px;
-            border-left: 5px solid #163b65;
-            letter-spacing: 0.5px;
-        }
-
-        /* =====================================================
-           TABLE
-        ====================================================== */
-
-        .expense-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #dbe2ea;
-        }
-
-        .expense-table thead tr {
-            background: #163b65;
-            color: #ffffff;
-        }
-
-        .expense-table thead th {
-            padding: 12px 10px;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border: 1px solid #163b65;
-            text-align: left;
-        }
-
-        .expense-table tbody td {
-            padding: 12px 10px;
-            border: 1px solid #e5e7eb;
-            vertical-align: middle;
-            font-size: 11px;
-        }
-
-        .expense-table tbody tr:nth-child(even) {
-            background: #f8fafc;
-        }
-
-        .center {
-            text-align: center;
-        }
-
-        .right {
-            text-align: right;
-        }
-
-        /* =====================================================
-           CATEGORY
-        ====================================================== */
-
-        .category-name {
-            font-size: 12px;
-            font-weight: bold;
-            color: #111827;
-            margin-bottom: 4px;
-        }
-
-        .category-meta {
-            font-size: 10px;
-            color: #6b7280;
-        }
-
-        /* =====================================================
-           AMOUNT
-        ====================================================== */
-
-        .amount {
-            font-size: 13px;
-            font-weight: bold;
-            color: #111827;
-        }
-
-        /* =====================================================
-           PAYMENT BADGES
-        ====================================================== */
-
-        .payment-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 14px;
-            font-size: 10px;
-            font-weight: bold;
-            border: 1px solid #d1d5db;
-            white-space: nowrap;
-        }
-
-        .cash {
-            background: #edfdf1;
-            color: #2e7d32;
-            border-color: #4caf50;
-        }
-
-        .upi {
-            background: #e8f4fd;
-            color: #1565c0;
-            border-color: #2196f3;
-        }
-
-        .bank {
-            background: #f4f4f5;
-            color: #3f3f46;
-            border-color: #a1a1aa;
-        }
-
-        /* =====================================================
-           PROGRESS BAR
-        ====================================================== */
-
-        .progress-track {
-            width: 100%;
-            height: 6px;
-            background: #e5e7eb;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 4px;
-        }
-
-        .progress-fill {
-            height: 6px;
-            background: #163b65;
-        }
-
-        .progress-text {
-            font-size: 10px;
-            color: #6b7280;
-        }
-
-        /* =====================================================
-           TOTAL ROW
-        ====================================================== */
-
-        .total-row td {
-            background: #163b65 !important;
-            color: #ffffff !important;
-            font-weight: bold;
-            border-color: #163b65 !important;
-        }
-
-        /* =====================================================
-           FOOTER
-        ====================================================== */
-
-        .footer {
-            margin-top: 28px;
-            padding-top: 12px;
-            border-top: 1px solid #dbe2ea;
-            font-size: 10px;
-            color: #6b7280;
-        }
-
-        .footer-left {
-            float: left;
-        }
-
-        .footer-right {
-            float: right;
-        }
-
-        .clearfix::after {
-            content: "";
-            display: block;
-            clear: both;
-        }
-
-        /* =====================================================
-           PDF SAFETY
-        ====================================================== */
-
-        table {
-            page-break-inside: auto;
-        }
-
-        tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-        }
-
-        thead {
-            display: table-header-group;
-        }
-
-        tfoot {
-            display: table-footer-group;
-        }
-
-    </style>
-
+</style>
 </head>
-
 <body>
 
-<div class="container">
-
-    <!-- =====================================================
-         COMPANY HEADER
-    ====================================================== -->
-
-    <div class="company-header">
-
-        <div class="company-name">
-            SAKUNTALAM INDIA SERVICES
-        </div>
-
-        <div class="report-name">
-            Daily Expense Report
-        </div>
-
-        <div class="top-divider"></div>
-
-    </div>
-
-    <!-- =====================================================
-         META SECTION
-    ====================================================== -->
-
-    <div class="meta-wrapper">
-
-        <table class="meta-table">
-
-            <tr>
-
-                <td class="meta-box">
-
-                    <div class="meta-label">
-                        Report Date
-                    </div>
-
-                    <div class="meta-value">
-                        {{ report_date }}
-                    </div>
-
-                </td>
-
-                <td class="meta-box">
-
-                    <div class="meta-label">
-                        Generated On
-                    </div>
-
-                    <div class="meta-value">
-                        {{ generated_at }}
-                    </div>
-
-                </td>
-
-            </tr>
-
-        </table>
-
-    </div>
-
-    <!-- =====================================================
-         SUMMARY CARDS
-    ====================================================== -->
-
-    <table class="summary-grid">
-
-        <tr>
-
-            <td width="33.33%">
-
-                <div class="summary-card">
-
-                    <div class="summary-title">
-                        Total Expense
-                    </div>
-
-                    <div class="summary-value">
-                        ₹ {{ total_amount }}
-                    </div>
-
-                    <div class="summary-sub">
-                        Total spent amount
-                    </div>
-
-                </div>
-
-            </td>
-
-            <td width="33.33%">
-
-                <div class="summary-card">
-
-                    <div class="summary-title">
-                        Total Entries
-                    </div>
-
-                    <div class="summary-value">
-                        {{ total_entries }}
-                    </div>
-
-                    <div class="summary-sub">
-                        Expense records
-                    </div>
-
-                </div>
-
-            </td>
-
-            <td width="33.33%">
-
-                <div class="summary-card">
-
-                    <div class="summary-title">
-                        Grouped Rows
-                    </div>
-
-                    <div class="summary-value">
-                        {{ grouped_expenses|length }}
-                    </div>
-
-                    <div class="summary-sub">
-                        Backend grouped results
-                    </div>
-
-                </div>
-
-            </td>
-
-        </tr>
-
-    </table>
-
-    <!-- =====================================================
-         SECTION TITLE
-    ====================================================== -->
-
-    <div class="section-title">
-        Expense Summary By Category
-    </div>
-
-    <!-- =====================================================
-         MAIN TABLE
-    ====================================================== -->
-
-    <table class="expense-table">
-
-        <thead>
-
-            <tr>
-
-                <th style="width: 30%;">
-                    Category
-                </th>
-
-                <th style="width: 15%;" class="center">
-                    Entries
-                </th>
-
-                <th style="width: 22%;" class="right">
-                    Total Amount
-                </th>
-
-                <th style="width: 18%;" class="center">
-                    Payment
-                </th>
-
-                <th style="width: 15%;">
-                    Contribution
-                </th>
-
-            </tr>
-
-        </thead>
-
-        <tbody>
-
-            {% for row in grouped_expenses %}
-
-            <tr>
-
-                <!-- CATEGORY -->
-
-                <td>
-
-                    <div class="category-name">
-                        {{ row.category }}
-                    </div>
-
-                    <div class="category-meta">
-                        Expense category summary
-                    </div>
-
-                </td>
-
-                <!-- ENTRIES -->
-
-                <td class="center">
-                    {{ row.entry_count }}
-                </td>
-
-                <!-- AMOUNT -->
-
-                <td class="right">
-
-                    <div class="amount">
-                        ₹ {{ row.total_amount }}
-                    </div>
-
-                </td>
-
-                <!-- PAYMENT -->
-
-                <td class="center">
-
-                    {% if row.payment_mode == "Cash" %}
-
-                        <span class="payment-badge cash">
-                            Cash
-                        </span>
-
-                    {% elif row.payment_mode == "UPI" %}
-
-                        <span class="payment-badge upi">
-                            UPI
-                        </span>
-
-                    {% elif row.payment_mode == "Bank" %}
-
-                        <span class="payment-badge bank">
-                            Bank Transfer
-                        </span>
-
-                    {% else %}
-
-                        <span class="payment-badge">
-                            {{ row.payment_mode }}
-                        </span>
-
-                    {% endif %}
-
-                </td>
-
-                <!-- CONTRIBUTION -->
-
-                <td>
-
-                    <div class="progress-track">
-
-                        {% if total_amount %}
-                        <div
-                            class="progress-fill"
-                            style="width:{% widthratio row.total_amount total_amount 100 %}%;"
-                        ></div>
-                        {% endif %}
-
-                    </div>
-
-                    <div class="progress-text">
-
-                        {% if total_amount %}
-                            {% widthratio row.total_amount total_amount 100 %}%
-                        {% else %}
-                            0%
-                        {% endif %}
-
-                    </div>
-
-                </td>
-
-            </tr>
-
-            {% empty %}
-
-            <tr>
-
-                <td colspan="5" class="center" style="padding:20px; color:#9ca3af;">
-
-                    No expenses recorded for this date.
-
-                </td>
-
-            </tr>
-
-            {% endfor %}
-
-            <!-- =====================================================
-                 GRAND TOTAL
-            ====================================================== -->
-
-            {% if grouped_expenses %}
-
-            <tr class="total-row">
-
-                <td>
-                    GRAND TOTAL
-                </td>
-
-                <td class="center">
-                    {{ total_entries }}
-                </td>
-
-                <td class="right">
-                    ₹ {{ total_amount }}
-                </td>
-
-                <td class="center">
-                    —
-                </td>
-
-                <td>
-                    100%
-                </td>
-
-            </tr>
-
-            {% endif %}
-
-        </tbody>
-
-    </table>
-
-    <!-- =====================================================
-         FOOTER
-    ====================================================== -->
-
-    <div class="footer clearfix">
-
-        <div class="footer-left">
-
-            System Generated Expense Report
-
-        </div>
-
-        <div class="footer-right">
-
-            Generated: {{ generated_at }}
-
-        </div>
-
-    </div>
-
+<!-- HEADER -->
+<div class="header-band">
+    <div class="company-name">SAKUNTALAM INDIA SERVICES</div>
+    <div class="report-subtitle">Daily Expense Report &mdash; {{ report_date|date:"l, d F Y" }}</div>
 </div>
+<div class="accent-stripe"></div>
+
+<!-- META -->
+<table class="meta-table">
+    <tr>
+        <td>
+            <div class="meta-label">Report Date</div>
+            <div class="meta-value">{{ report_date|date:"d M Y" }}</div>
+        </td>
+        <td>
+            <div class="meta-label">Generated On</div>
+            <div class="meta-value">{{ generated_at }}</div>
+        </td>
+    </tr>
+</table>
+
+<!-- SUMMARY STATS -->
+<table class="stats-table">
+    <tr>
+        <td width="34%">
+            <div class="stat-label">Total Spent</div>
+            <div class="stat-value highlight">Rs. {{ total_amount }}</div>
+        </td>
+        <td width="33%">
+            <div class="stat-label">Total Entries</div>
+            <div class="stat-value">{{ total_entries }}</div>
+        </td>
+        <td width="33%">
+            <div class="stat-label">Categories Used</div>
+            <div class="stat-value">{{ categories_count }}</div>
+        </td>
+    </tr>
+</table>
+
+<!-- PAYMENT SUMMARY BAR -->
+{% if payment_totals %}
+<table class="payment-bar-table">
+    <tr>
+        <td class="payment-header-cell">Payment<br>Breakdown</td>
+        {% for p in payment_totals %}
+        <td class="payment-label-cell">{{ p.label }}</td>
+        <td class="payment-value-cell">Rs. {{ p.total }}</td>
+        {% endfor %}
+    </tr>
+</table>
+{% endif %}
+
+<!-- MAIN CATEGORY TABLE -->
+<div class="section-heading">Expense Breakdown &mdash; Category Wise</div>
+
+<table class="cat-table">
+    <thead>
+        <!--
+            Row 1: main column headers.
+            "Payment Breakdown" spans 3 sub-columns (Cash | UPI | Bank).
+        -->
+        <tr class="row1">
+            <th class="left"  style="width:4%;"  rowspan="2">#</th>
+            <th class="left"  style="width:18%;" rowspan="2">Category</th>
+            <th               style="width:9%;"  rowspan="2">Total<br>Entries</th>
+            <th               style="width:27%;" colspan="3">Payment Breakdown</th>
+            <th class="right" style="width:18%;" rowspan="2">Amount<br>(Rs.)</th>
+            <th               style="width:24%;" rowspan="2">Share</th>
+        </tr>
+        <!-- Row 2: payment sub-headers -->
+        <tr class="row2">
+            <th class="sub-cash" style="width:9%;">Cash</th>
+            <th class="sub-upi"  style="width:9%;">UPI</th>
+            <th class="sub-bank" style="width:9%;">Bank</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in grouped_expenses %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="left bold">{{ row.category }}</td>
+            <td>{{ row.entry_count }}</td>
+
+            <!-- Cash count -->
+            <td>
+                {% if row.cash_count %}
+                    <span class="p-cash">{{ row.cash_count }}</span>
+                {% else %}
+                    <span class="p-zero">—</span>
+                {% endif %}
+            </td>
+
+            <!-- UPI count -->
+            <td>
+                {% if row.upi_count %}
+                    <span class="p-upi">{{ row.upi_count }}</span>
+                {% else %}
+                    <span class="p-zero">—</span>
+                {% endif %}
+            </td>
+
+            <!-- Bank count -->
+            <td>
+                {% if row.bank_count %}
+                    <span class="p-bank">{{ row.bank_count }}</span>
+                {% else %}
+                    <span class="p-zero">—</span>
+                {% endif %}
+            </td>
+
+            <td class="right bold">{{ row.total_amount }}</td>
+
+            <!-- Share: table-based bar + % text -->
+            <td>
+                <table style="width:100%; border-collapse:collapse; height:5px; margin-bottom:2px;">
+                    <tr>
+                        <td style="width:{{ row.pct }}%; background:#1e4d78; height:5px; padding:0;"></td>
+                        <td style="background:#dde6f0; height:5px; padding:0;"></td>
+                    </tr>
+                </table>
+                <span class="share-pct">{{ row.pct }}%</span>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" style="padding:14px; text-align:center; color:#9ca3af;">
+                No expenses recorded for this date.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    {% if grouped_expenses %}
+    <tfoot>
+        <tr>
+            <td class="left" colspan="2">GRAND TOTAL</td>
+            <td>{{ total_entries }}</td>
+            <td colspan="3">&nbsp;</td>
+            <td class="right">{{ total_amount }}</td>
+            <td>100%</td>
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>
+
+<!-- FOOTER -->
+<table class="footer-table">
+    <tr>
+        <td>System Generated &mdash; Sakuntalam India Services &mdash; Confidential</td>
+        <td class="right">Generated: {{ generated_at }}</td>
+    </tr>
+</table>
 
 </body>
 </html>

@@ -1,0 +1,969 @@
+{% load static %}
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Dashboard | {{ employee.name }}</title>
+    <script>
+    // Critical execution path block to prevent light flash transitions
+    const savedTheme = localStorage.getItem('cwms-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── SYSTEM DESIGN TOKENS (LIGHT THEME DEFAULT) ── */
+        :root {
+            --bg:            #f4f5f7;
+            --surface:      #ffffff;
+            --surface2:     #f9fafb;
+            --border:       #e5e7eb;
+            --text-primary: #111827;
+            --text-muted:   #6b7280;
+            --text-hint:    #9ca3af;
+            --amber:        #f59e0b;
+            --amber-light:  #fef3c7;
+            --amber-dark:   #92400e;
+            --green:        #10b981;
+            --green-light:  #d1fae5;
+            --green-dark:   #065f46;
+            --red:          #ef4444;
+            --red-light:    #fee2e2;
+            --red-dark:     #991b1b;
+            --blue:         #3b82f6;
+            --blue-light:   #dbeafe;
+            --blue-dark:    #1e40af;
+            --orange:       #f97316;
+            --orange-light: #ffedd5;
+            --orange-dark:  #9a3412;
+            --purple:       #8b5cf6;
+            --purple-light: #ede9fe;
+            --purple-dark:  #5b21b6;
+            --slate:        #0f172a;
+        }
+
+        /* ── SYSTEM DESIGN TOKENS (DARK THEME OVERRIDES) ── */
+        [data-theme="dark"] {
+            --bg:            #0a0f1a;
+            --surface:      #0f172a;
+            --surface2:     #1e293b;
+            --border:       #273449;
+            --text-primary: #f8fafc;
+            --text-muted:   #94a3b8;
+            --text-hint:    #475569;
+            --slate:        #111c30;
+        }
+
+        /* Smooth hardware accelerated theme transitions */
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .card, .nav-tabs, .topbar, .stat-card {
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        /* ── TOP NAV ── */
+        .topbar {
+            background: var(--slate);
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-brand {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .topbar-brand .dot {
+            width: 8px; height: 8px;
+            background: var(--amber);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .topbar-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #94a3b8;
+        }
+
+        .btn-logout {
+            font-size: 12px;
+            font-weight: 500;
+            color: #94a3b8;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 6px 12px;
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+        }
+
+        /* ── NAV TABS ── */
+        .nav-tabs {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            display: flex;
+            gap: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .nav-tabs::-webkit-scrollbar { display: none; }
+
+        .nav-tab {
+            padding: 14px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            transition: color 0.15s, border-color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-tab svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+        .nav-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--amber);
+            font-weight: 600;
+        }
+
+        .nav-tab:hover:not(.active) { color: var(--text-primary); }
+
+        /* ── MAIN LAYOUT ── */
+        .main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 16px 60px;
+        }
+
+        /* ── SECTION HEADER ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-body { padding: 18px 20px; }
+        .card-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title svg { width: 15px; height: 15px; color: var(--text-muted); }
+
+        /* ── PROFILE CARD ── */
+        .profile-card {
+            background: var(--slate);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 200px; height: 100%;
+            background: radial-gradient(ellipse at right, rgba(245,158,11,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .avatar {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: var(--amber);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--slate);
+            flex-shrink: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .profile-info { flex: 1; min-width: 0; }
+
+        .profile-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .profile-role {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .profile-meta {
+            display: flex;
+            gap: 16px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .profile-meta-item {
+            font-size: 11px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .profile-meta-item svg { width: 12px; height: 12px; }
+
+        .profile-meta-item strong {
+            color: #94a3b8;
+            font-family: 'DM Mono', monospace;
+        }
+
+        /* ── STAT PILLS ── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 480px) {
+            .stat-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+            letter-spacing: 0.03em;
+        }
+
+        .stat-present .stat-value { color: var(--green); }
+        .stat-absent  .stat-value { color: var(--red); }
+        .stat-half    .stat-value { color: var(--orange); }
+        .stat-leave   .stat-value { color: var(--blue); }
+
+        /* ── ATTENDANCE CALENDAR ── */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            padding: 16px 20px;
+        }
+
+        .cal-day-label {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-hint);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 0;
+        }
+
+        .cal-day {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: 'DM Mono', monospace;
+            position: relative;
+        }
+
+        .cal-day.empty { background: transparent; }
+        .cal-day.future { background: var(--surface2); color: var(--text-hint); }
+        .cal-day.present { background: var(--green-light); color: var(--green-dark); }
+        .cal-day.absent  { background: var(--red-light);   color: var(--red-dark); }
+        .cal-day.half    { background: var(--orange-light); color: var(--orange-dark); }
+        .cal-day.on-leave { background: var(--blue-light); color: var(--blue-dark); }
+        .cal-day.today {
+            outline: 2px solid var(--amber);
+            outline-offset: 1px;
+        }
+
+        .cal-legend {
+            display: flex;
+            gap: 14px;
+            padding: 12px 20px 16px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .legend-dot {
+            width: 10px; height: 10px;
+            border-radius: 3px;
+        }
+
+        .legend-dot.present { background: var(--green-light); border: 1px solid var(--green); }
+        .legend-dot.absent  { background: var(--red-light);   border: 1px solid var(--red); }
+        .legend-dot.half    { background: var(--orange-light); border: 1px solid var(--orange); }
+        .legend-dot.leave   { background: var(--blue-light);  border: 1px solid var(--blue); }
+
+        /* ── LEAVE BALANCES ── */
+        .leave-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            padding: 0;
+        }
+
+        .leave-item {
+            padding: 16px 14px;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+
+        .leave-item:last-child { border-right: none; }
+
+        .leave-type {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .leave-remaining {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .leave-total {
+            font-size: 11px;
+            color: var(--text-hint);
+            margin-top: 4px;
+        }
+
+        .leave-bar {
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .leave-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .leave-bar-fill.el { background: var(--green); }
+        .leave-bar-fill.cl { background: var(--blue); }
+        .leave-bar-fill.sl { background: var(--purple); }
+
+        /* ── ADVANCE CARD ── */
+        .advance-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .advance-label { font-size: 13px; color: var(--text-muted); }
+        .advance-amount {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'DM Mono', monospace;
+            color: var(--red);
+        }
+
+        .advance-amount.zero { color: var(--green); font-size: 16px; }
+
+        .advance-list { padding: 0; }
+
+        .advance-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+        .advance-row:last-child { border-bottom: none; }
+
+        .advance-date { color: var(--text-muted); font-family: 'DM Mono', monospace; font-size: 12px; }
+        .advance-val  { font-weight: 600; font-family: 'DM Mono', monospace; }
+        .advance-given    { color: var(--red); }
+        .advance-recovered { color: var(--green); }
+
+        .empty-state {
+            padding: 28px 20px;
+            text-align: center;
+            color: var(--text-hint);
+            font-size: 13px;
+        }
+
+        /* ── PAYSLIPS ── */
+        .payslip-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+
+        .payslip-row:last-child { border-bottom: none; }
+
+        .payslip-month-block {
+            width: 42px; height: 42px;
+            border-radius: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .payslip-month-abbr {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .payslip-month-year {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .payslip-info { flex: 1; min-width: 0; }
+
+        .payslip-label { font-size: 14px; font-weight: 600; }
+        .payslip-net   {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: 'DM Mono', monospace;
+            margin-top: 1px;
+        }
+
+        .badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .badge-paid    { background: var(--green-light); color: var(--green-dark); }
+        .badge-pending { background: var(--amber-light); color: var(--amber-dark); }
+
+        .btn-pdf {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--blue-dark);
+            background: var(--blue-light);
+            border-radius: 6px;
+            padding: 7px 12px;
+            text-decoration: none;
+            transition: opacity 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-pdf:hover { opacity: 0.8; }
+        .btn-pdf svg { width: 12px; height: 12px; }
+
+        .btn-pdf-disabled {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-hint);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 7px 12px;
+            white-space: nowrap;
+        }
+
+        /* ── CURRENT SALARY HERO ── */
+        .salary-hero {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .salary-hero-left .salary-month {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .salary-hero-left .salary-amount {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'DM Mono', monospace;
+            letter-spacing: -1px;
+        }
+
+        .salary-hero-left .salary-amount .rs-symbol {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-right: 2px;
+        }
+
+        .salary-breakdown {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .salary-breakdown-item { font-size: 11px; color: var(--text-hint); }
+        .salary-breakdown-item strong { color: var(--text-muted); font-weight: 600; display: block; }
+
+        /* ── SECTION SPACING ── */
+        .section { margin-bottom: 22px; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 480px) {
+            .topbar-name { display: none; }
+            .main { padding: 16px 12px 60px; }
+            .salary-hero { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topbar">
+    <div class="topbar-brand">
+        <span class="dot"></span>
+        {{ BRAND_SHORT_NAME }} Portal
+    </div>
+    <div class="topbar-right">
+        <span class="topbar-name">{{ employee.name }}</span>
+
+        <button id="theme-toggle" class="btn-logout" title="Toggle Light/Dark Theme" style="display: inline-flex; align-items: center; justify-content: center; padding: 6px; cursor: pointer; margin-right: 2px;">
+            <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="display: none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+
+        <a href="{% url 'worker_logout' %}" class="btn-logout">Logout</a>
+    </div>
+</nav>
+
+<!-- SUB-NAV TABS -->
+<div class="nav-tabs">
+    <a href="{% url 'worker_dashboard' %}" class="nav-tab active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+    </a>
+    <a href="{% url 'worker_profile' %}" class="nav-tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        My Profile
+    </a>
+</div>
+
+<div class="main">
+
+    <!-- PROFILE HERO -->
+    <div class="profile-card">
+        <div class="avatar">{{ employee.name|slice:":2"|upper }}</div>
+        <div class="profile-info">
+            <div class="profile-name">{{ employee.name }}</div>
+            <div class="profile-role">{{ employee.role.name }} &middot; {{ employee.get_employment_type_display }}</div>
+            <div class="profile-meta">
+                <div class="profile-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.55a16 16 0 0 0 5.55 5.55l.95-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>
+                    <strong>{{ employee.phone_number|default:"—" }}</strong>
+                </div>
+                <div class="profile-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Joined <strong>{{ employee.join_date|date:"d M Y" }}</strong>
+                </div>
+                <div class="profile-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Daily Wage: <strong>₹{{ employee.daily_wage }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── CURRENT MONTH SALARY ── -->
+    {% if current_salary %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">This Month's Salary</span>
+        </div>
+        <div class="card">
+            <div class="salary-hero">
+                <div class="salary-hero-left">
+                    <div class="salary-month">{{ current_salary.month|date:"F Y" }} &mdash; Net Pay</div>
+                    <div class="salary-amount">
+                        <span class="rs-symbol">₹</span>{{ current_salary.net_pay|floatformat:2 }}
+                    </div>
+                    <div class="salary-breakdown">
+                        <div class="salary-breakdown-item">
+                            <strong>Gross</strong>₹{{ current_salary.gross_pay|floatformat:0 }}
+                        </div>
+                        {% if current_salary.advance_deducted %}
+                        <div class="salary-breakdown-item">
+                            <strong>Advance Deducted</strong>₹{{ current_salary.advance_deducted|floatformat:0 }}
+                        </div>
+                        {% endif %}
+                        {% if current_salary.pf_deduction %}
+                        <div class="salary-breakdown-item">
+                            <strong>PF</strong>₹{{ current_salary.pf_deduction|floatformat:0 }}
+                        </div>
+                        {% endif %}
+                        {% if current_salary.esic_deduction %}
+                        <div class="salary-breakdown-item">
+                            <strong>ESIC</strong>₹{{ current_salary.esic_deduction|floatformat:0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    {% if current_salary.is_paid %}
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+                            <span class="badge badge-paid">&#10003; Paid</span>
+                            <a href="{% url 'download_payslip' current_salary.id %}" class="btn-pdf">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download Payslip
+                            </a>
+                        </div>
+                    {% else %}
+                        <span class="badge badge-pending">Pending Payment</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── ATTENDANCE SUMMARY ── -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">Attendance &mdash; {{ current_month_label }}</span>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-card stat-present">
+                <div class="stat-value">{{ att_present }}</div>
+                <div class="stat-label">Present</div>
+            </div>
+            <div class="stat-card stat-half">
+                <div class="stat-value">{{ att_half }}</div>
+                <div class="stat-label">Half Day</div>
+            </div>
+            <div class="stat-card stat-absent">
+                <div class="stat-value">{{ att_absent }}</div>
+                <div class="stat-label">Absent</div>
+            </div>
+            <div class="stat-card stat-leave">
+                <div class="stat-value">{{ att_leave }}</div>
+                <div class="stat-label">On Leave</div>
+            </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Monthly Calendar
+                </div>
+            </div>
+            <div class="calendar-grid" id="cal-grid">
+                <!-- Day labels -->
+                <div class="cal-day-label">S</div>
+                <div class="cal-day-label">M</div>
+                <div class="cal-day-label">T</div>
+                <div class="cal-day-label">W</div>
+                <div class="cal-day-label">T</div>
+                <div class="cal-day-label">F</div>
+                <div class="cal-day-label">S</div>
+                <!-- Days filled by JS -->
+            </div>
+            <div class="cal-legend">
+                <div class="legend-item"><div class="legend-dot present"></div> Present</div>
+                <div class="legend-item"><div class="legend-dot absent"></div> Absent</div>
+                <div class="legend-item"><div class="legend-dot half"></div> Half Day</div>
+                <div class="legend-item"><div class="legend-dot leave"></div> Leave</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── LEAVE BALANCES ── -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">Leave Balance</span>
+        </div>
+        <div class="card">
+            <div class="leave-grid">
+                <div class="leave-item">
+                    <div class="leave-type" style="color:#065f46">EL</div>
+                    <div class="leave-remaining">{{ leave_el_remaining|default:"0" }}</div>
+                    <div class="leave-total">of {{ leave_el_total|default:"0" }} days</div>
+                    <div class="leave-bar">
+                        <div class="leave-bar-fill el" style="width:{{ leave_el_pct|default:'0' }}%"></div>
+                    </div>
+                </div>
+                <div class="leave-item">
+                    <div class="leave-type" style="color:#1e40af">CL</div>
+                    <div class="leave-remaining">{{ leave_cl_remaining|default:"0" }}</div>
+                    <div class="leave-total">of {{ leave_cl_total|default:"0" }} days</div>
+                    <div class="leave-bar">
+                        <div class="leave-bar-fill cl" style="width:{{ leave_cl_pct|default:'0' }}%"></div>
+                    </div>
+                </div>
+                <div class="leave-item">
+                    <div class="leave-type" style="color:#5b21b6">SL</div>
+                    <div class="leave-remaining">{{ leave_sl_remaining|default:"0" }}</div>
+                    <div class="leave-total">of {{ leave_sl_total|default:"0" }} days</div>
+                    <div class="leave-bar">
+                        <div class="leave-bar-fill sl" style="width:{{ leave_sl_pct|default:'0' }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── ADVANCE / OUTSTANDING ── -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">Advances &amp; Recoveries</span>
+        </div>
+        <div class="card">
+            <div class="advance-summary">
+                <div>
+                    <div class="advance-label">Outstanding Balance</div>
+                </div>
+                <div class="advance-amount {% if outstanding_advance == 0 %}zero{% endif %}">
+                    ₹{{ outstanding_advance|default:"0" }}
+                </div>
+            </div>
+            <div class="advance-list">
+                {% if advances %}
+                    {% for adv in advances %}
+                    <div class="advance-row">
+                        <div>
+                            <div style="font-weight:600;font-size:13px">₹{{ adv.amount|floatformat:0 }} advance</div>
+                            <div class="advance-date">{{ adv.issued_date|date:"d M Y" }}</div>
+                        </div>
+                        <div class="advance-val advance-given">−₹{{ adv.amount|floatformat:0 }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">No advance records found.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── PAYSLIPS HISTORY ── -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">Payslips</span>
+        </div>
+        <div class="card">
+            {% if salaries %}
+                {% for salary in salaries %}
+                <div class="payslip-row">
+                    <div class="payslip-month-block">
+                        <div class="payslip-month-abbr">{{ salary.month|date:"M" }}</div>
+                        <div class="payslip-month-year">{{ salary.month|date:"Y" }}</div>
+                    </div>
+                    <div class="payslip-info">
+                        <div class="payslip-label">{{ salary.month|date:"F Y" }}</div>
+                        <div class="payslip-net">Net ₹{{ salary.net_pay|floatformat:2 }} &middot; Gross ₹{{ salary.gross_pay|floatformat:0 }}</div>
+                    </div>
+                    <span class="badge {% if salary.is_paid %}badge-paid{% else %}badge-pending{% endif %}">
+                        {% if salary.is_paid %}Paid{% else %}Pending{% endif %}
+                    </span>
+                    {% if salary.is_paid %}
+                        <a href="{% url 'download_payslip' salary.id %}" class="btn-pdf">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            PDF
+                        </a>
+                    {% else %}
+                        <span class="btn-pdf-disabled">Not ready</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">No salary records yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+</div><!-- /main -->
+
+<script>
+// ── CALENDAR BUILDER ──
+// Attendance map from Django context (injected below)
+const attendanceMap = {
+    {% for entry in calendar_entries %}
+    "{{ entry.day }}": "{{ entry.status }}",
+    {% endfor %}
+};
+
+const today = new Date();
+const year  = {{ cal_year }};
+const month = {{ cal_month_0indexed }}; // 0-indexed
+
+const firstDay = new Date(year, month, 1).getDay(); // 0 = Sun
+const daysInMonth = new Date(year, month + 1, 0).getDate();
+const isCurrentMonth = (today.getFullYear() === year && today.getMonth() === month);
+
+const grid = document.getElementById('cal-grid');
+
+// Empty offset cells
+for (let i = 0; i < firstDay; i++) {
+    const blank = document.createElement('div');
+    blank.className = 'cal-day empty';
+    grid.appendChild(blank);
+}
+
+// Day cells
+for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    const key = String(d);
+    const status = attendanceMap[key];
+    const isFuture = isCurrentMonth && d > today.getDate();
+    const isToday  = isCurrentMonth && d === today.getDate();
+
+    let cls = 'cal-day';
+    if (isFuture) {
+        cls += ' future';
+    } else if (status === 'P') {
+        cls += ' present';
+    } else if (status === 'A') {
+        cls += ' absent';
+    } else if (status === 'H') {
+        cls += ' half';
+    } else if (status === 'L') {
+        cls += ' on-leave';
+    } else {
+        cls += ' future'; // no record yet
+    }
+    if (isToday) cls += ' today';
+
+    cell.className = cls;
+    cell.textContent = d;
+    grid.appendChild(cell);
+}
+</script>
+<script src="{% static 'js/worker_theme.js' %}"></script>
+</body>
+</html>

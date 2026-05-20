@@ -10,7 +10,6 @@ urlpatterns = [
 
     # --- Worker Features ---
     path('profile/', views.worker_profile, name='worker_profile'),
-    path('attendance/', views.worker_attendance, name='worker_attendance'),
 
     # --- NEW: Manager Dashboard Path ---
     path('manager/dashboard/', views.manager_dashboard, name='manager_dashboard'),

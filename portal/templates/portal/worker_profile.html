@@ -1,0 +1,357 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Profile | {{ employee.name }}</title>
+    
+    <script>
+        const savedTheme = localStorage.getItem('cwms-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── GLOBAL THEME VARS ── */
+        :root {
+            --bg:           #f4f5f7;
+            --surface:      #ffffff;
+            --surface2:     #f9fafb;
+            --border:       #e5e7eb;
+            --text-primary: #111827;
+            --text-muted:   #6b7280;
+            --text-hint:    #9ca3af;
+            --amber:        #f59e0b;
+            --amber-light:  #fef3c7;
+            --amber-dark:   #92400e;
+            --green:        #10b981;
+            --green-light:  #d1fae5;
+            --green-dark:   #065f46;
+            --blue:         #3b82f6;
+            --blue-light:   #dbeafe;
+            --blue-dark:    #1e40af;
+            --slate:        #0f172a;
+        }
+
+        [data-theme="dark"] {
+            --bg:           #0a0f1a;
+            --surface:      #0f172a;
+            --surface2:     #1e293b;
+            --border:       #273449;
+            --text-primary: #f8fafc;
+            --text-muted:   #94a3b8;
+            --text-hint:    #475569;
+            --slate:        #111c30;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background-color 0.25s, color 0.25s;
+        }
+
+        /* ── TOP NAV ── */
+        .topbar {
+            background: var(--slate);
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-brand { font-size: 15px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .topbar-brand .dot { width: 8px; height: 8px; background: var(--amber); border-radius: 50%; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        .topbar-name { font-size: 13px; font-weight: 500; color: #94a3b8; }
+        
+        .btn-topbar {
+            font-size: 12px; font-weight: 500; color: #94a3b8;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; padding: 6px 12px; text-decoration: none;
+            transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .btn-topbar:hover { background: rgba(255,255,255,0.12); color: #fff; }
+        .btn-topbar svg { width: 14px; height: 14px; }
+
+        /* ── TABS ── */
+        .nav-tabs {
+            background: var(--surface); border-bottom: 1px solid var(--border);
+            padding: 0 20px; display: flex;
+        }
+        .nav-tab {
+            padding: 14px 16px; font-size: 13px; font-weight: 500;
+            color: var(--text-muted); text-decoration: none;
+            border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px;
+        }
+        .nav-tab.active { color: var(--text-primary); border-bottom-color: var(--amber); font-weight: 600; }
+
+        /* ── LAYOUT CONTENT ── */
+        .main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+
+        /* HERO CARD */
+        .profile-hero {
+            background: var(--slate); border-radius: 12px; padding: 24px;
+            display: flex; align-items: center; gap: 20px; margin-bottom: 20px;
+            position: relative; overflow: hidden;
+        }
+        .profile-hero::before {
+            content: ''; position: absolute; top:0; right:0; width: 300px; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(245,158,11,0.04)); pointer-events: none;
+        }
+        .avatar-box {
+            width: 64px; height: 64px; border-radius: 50%; background: var(--amber);
+            color: #0f172a; display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 700; flex-shrink: 0;
+        }
+        .hero-details h2 { font-size: 20px; font-weight: 600; color: #fff; }
+        .hero-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+        .badge {
+            font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+            text-transform: capitalize;
+        }
+        .badge-role { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+        .badge-type { background: var(--blue-light); color: var(--blue-dark); }
+        .badge-status { background: var(--green-light); color: var(--green-dark); }
+
+        /* WARNING BANNER */
+        .warn-banner {
+            background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);
+            border-left: 4px solid var(--amber); border-radius: 8px; padding: 14px 16px;
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px;
+        }
+        .warn-text h4 { font-size: 13px; font-weight: 600; color: var(--amber-dark); text-transform: uppercase; letter-spacing: 0.02em; }
+        .warn-text p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .btn-action {
+            background: var(--slate); color: #fff; border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; text-decoration: none;
+            white-space: nowrap; cursor: pointer;
+        }
+
+        /* CARD COMPONENT MATRIX */
+        .grid-matrix { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .card-header {
+            padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2);
+            font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .card-header svg { width: 14px; height: 14px; opacity: 0.7; }
+        .card-body { padding: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 20px; }
+        .card-body.full-width-rows { grid-template-columns: 1fr; }
+
+        .field-block { display: flex; flex-direction: column; }
+        .field-label { font-size: 10px; font-weight: 600; color: var(--text-hint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .field-value { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+        .field-value.mono { font-family: 'DM Mono', monospace; font-size: 13px; }
+        .field-value.empty { color: var(--text-hint); font-style: italic; }
+
+        @media (max-width: 768px) {
+            .grid-matrix { grid-template-columns: 1fr; }
+            .card-body { grid-template-columns: 1fr; }
+            .topbar-name { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <div class="topbar-brand"><span class="dot"></span>{{ BRAND_SHORT_NAME }} Portal</div>
+    <div class="topbar-right">
+        <span class="topbar-name">{{ employee.name }}</span>
+        
+        <button id="theme-toggle" class="btn-topbar" title="Toggle System Theme">
+            <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+
+        <a href="{% url 'worker_logout' %}" class="btn-topbar">Logout</a>
+    </div>
+</nav>
+
+<div class="nav-tabs">
+    <a href="{% url 'worker_dashboard' %}" class="nav-tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+    </a>
+    <a href="{% url 'worker_profile' %}" class="nav-tab active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        My Profile
+    </a>
+</div>
+
+<div class="main">
+
+    <div class="profile-hero">
+        <div class="avatar-box">{{ employee.name|slice:":2"|upper }}</div>
+        <div class="hero-details">
+            <h2>{{ employee.name }}</h2>
+            <div class="hero-meta">
+                <span class="badge badge-role">Role: {{ employee.role.name }}</span>
+                <span class="badge badge-type">{{ employee.get_employment_type_display }}</span>
+                <span class="badge badge-status">{% if employee.is_active %}Active{% else %}Inactive{% endif %}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if not employee.aadhar_number or not employee.bank_account_no or not employee.pan_number %}
+    <div class="warn-banner">
+        <div class="warn-text">
+            <h4>Incomplete Profile Documentation</h4>
+            <p>Certain compliance elements are unassigned. Contact your system supervisor to update files.</p>
+        </div>
+        <button onclick="alert('Please submit physical copies of missing documentation to your site manager.')" class="btn-action">Resolve Now</button>
+    </div>
+    {% endif %}
+
+    <div class="grid-matrix">
+
+        <div class="section-card">
+            <div class="card-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Personal Information
+            </div>
+            <div class="card-body">
+                <div class="field-block">
+                    <span class="field-label">Full Name</span>
+                    <span class="field-value">{{ employee.name }}</span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Father's Name</span>
+                    <span class="field-value {% if not employee.father_name %}empty{% endif %}">
+                        {{ employee.father_name|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Phone Number</span>
+                    <span class="field-value mono">{{ employee.phone_number|default:"—" }}</span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Email Address</span>
+                    <span class="field-value {% if not employee.email %}empty{% endif %}">
+                        {{ employee.email|default:"Not provided" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="card-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                Employment Details
+            </div>
+            <div class="card-body">
+                <div class="field-block">
+                    <span class="field-label">Role / Designation</span>
+                    <span class="field-value">{{ employee.role.name }}</span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Employment Type</span>
+                    <span class="field-value">{{ employee.get_employment_type_display }}</span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Daily Wage Scale</span>
+                    <span class="field-value" style="color:var(--green); font-weight:600;">₹{{ employee.daily_wage }}</span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Joining Date</span>
+                    <span class="field-value mono">{{ employee.join_date|date:"d M Y" }}</span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Assigned Core Location</span>
+                    <span class="field-value {% if not employee.working_location %}empty{% endif %}">
+                        {{ employee.working_location|default:"Not assigned" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Status Check</span>
+                    <span class="field-value" style="color:var(--green);">Active</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="card-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Statutory & Compliance
+            </div>
+            <div class="card-body">
+                <div class="field-block">
+                    <span class="field-label">Aadhaar Number</span>
+                    <span class="field-value mono {% if not employee.aadhar_number %}empty{% endif %}">
+                        {{ employee.aadhar_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">PAN Card Number</span>
+                    <span class="field-value mono {% if not employee.pan_number %}empty{% endif %}">
+                        {{ employee.pan_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">UAN Number (PF)</span>
+                    <span class="field-value mono {% if not employee.uan_number %}empty{% endif %}">
+                        {{ employee.uan_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">ESIC Insurance Number</span>
+                    <span class="field-value mono {% if not employee.esic_number %}empty{% endif %}">
+                        {{ employee.esic_number|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">PF Applicable</span>
+                    <span class="field-value">{% if employee.pf_applicable %}Yes ({{ employee.pf_rate }}){% else %}No{% endif %}</span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">ESIC Applicable</span>
+                    <span class="field-value">{% if employee.esic_applicable %}Yes ({{ employee.esic_rate }}){% else %}No{% endif %}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="card-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Bank & Address Details
+            </div>
+            <div class="card-body full-width-rows">
+                <div class="field-block">
+                    <span class="field-label">Disbursement Bank Account</span>
+                    <span class="field-value mono {% if not employee.bank_account_no %}empty{% endif %}">
+                        {{ employee.bank_account_no|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Current Mailing Address</span>
+                    <span class="field-value {% if not employee.current_address %}empty{% endif %}">
+                        {{ employee.current_address|default:"Not provided" }}
+                    </span>
+                </div>
+                <div class="field-block">
+                    <span class="field-label">Permanent Ledger Address</span>
+                    <span class="field-value {% if not employee.permanent_address %}empty{% endif %}">
+                        {{ employee.permanent_address|default:"Not provided" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="{% static 'js/worker_theme.js' %}"></script>
+</body>
+</html>

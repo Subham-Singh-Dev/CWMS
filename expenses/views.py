@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib import messages
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import get_template
@@ -329,69 +329,76 @@ def export_expenses_csv(request, viewing_as_owner=False):
 
 @manager_required
 def daily_expense_pdf(request):
-    """Export one-day grouped expense summary as PDF.
-
-    Args:
-        request (HttpRequest): Incoming request.
-
-    Returns:
-        HttpResponse: PDF response containing daily expense summary.
-
-    Raises:
-        ValueError: When date is invalid.
-
-    Business Rule:
-        Grouped totals use category and payment_mode for audit clarity.
-    """
+    """Export one-day expense report as PDF: summary + enriched category breakdown."""
     selected_date = request.GET.get("date")
     report_date = (
         date.fromisoformat(selected_date)
         if selected_date
         else date.today()
     )
-
+ 
     expenses = Expense.objects.filter(date=report_date)
-
-    # Reason: Grouped output matches PDF summary layout expectations.
+ 
+    # ── Category grouping with per-mode counts ────────────────────────────
     grouped_raw = (
         expenses
-        .values('category', 'payment_mode')
+        .values('category')
         .annotate(
-            entry_count=Count('id'),
-            total_amount=Sum('amount')
+            entry_count  = Count('id'),
+            total_amount = Sum('amount'),
+            cash_count   = Count('id', filter=Q(payment_mode='cash')),
+            upi_count    = Count('id', filter=Q(payment_mode='upi')),
+            bank_count   = Count('id', filter=Q(payment_mode='bank')),
         )
-        .order_by('category', 'payment_mode')
+        .order_by('category')
     )
-
-    # Reason: Display labels are required for human-readable reports.
+ 
+    total_amount  = expenses.aggregate(total=Sum('amount'))['total'] or 0
+    total_entries = expenses.count()
+ 
     grouped_expenses = []
     for item in grouped_raw:
-        dummy = Expense(
-            category=item['category'],
-            payment_mode=item['payment_mode']
-        )
+        dummy = Expense(category=item['category'])
+        pct   = round((float(item['total_amount']) / float(total_amount) * 100), 1) if total_amount else 0
         grouped_expenses.append({
-            'category':     dummy.get_category_display(),
-            'payment_mode': dummy.get_payment_mode_display(),
-            'entry_count':  item['entry_count'],
+            'category':    dummy.get_category_display(),
+            'entry_count': item['entry_count'],
             'total_amount': item['total_amount'],
+            'cash_count':  item['cash_count'],
+            'upi_count':   item['upi_count'],
+            'bank_count':  item['bank_count'],
+            'pct':         pct,
         })
-
-    total_amount = expenses.aggregate(total=Sum('amount'))['total'] or 0
-    total_entries = expenses.count()
-
+ 
+    # ── Payment mode totals (for the summary bar) ─────────────────────────
+    payment_raw = (
+        expenses
+        .values('payment_mode')
+        .annotate(total=Sum('amount'))
+        .order_by('payment_mode')
+    )
+    payment_totals = []
+    for p in payment_raw:
+        dummy = Expense(payment_mode=p['payment_mode'])
+        payment_totals.append({
+            'label': dummy.get_payment_mode_display(),
+            'total': p['total'],
+        })
+ 
     template = get_template("expenses/daily_expense_pdf.html")
     html = template.render({
         'report_date':      report_date,
         'generated_at':     datetime.now().strftime('%d %b %Y, %I:%M %p'),
         'grouped_expenses': grouped_expenses,
+        'payment_totals':   payment_totals,
         'total_amount':     total_amount,
         'total_entries':    total_entries,
+        'categories_count': len(grouped_expenses),
     })
-
+ 
     result = io.BytesIO()
     pisa.CreatePDF(html, dest=result)
-
+ 
     response = HttpResponse(result.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = (
         f'attachment; filename="daily_expenses_{report_date}.pdf"'

@@ -226,6 +226,15 @@ Expenses cannot be edited or deleted after 7 days - enforced at the view layer. 
 </details>
 
 <details>
+<summary><strong>Worker Portal (Enhanced Dashboard)</strong></summary>
+
+- Unified worker dashboard with salary summary, attendance calendar, leave balance, advances, and payslips
+- Light/dark theme toggle with persistent preference
+- Visual status chips, progress bars, and empty-state messaging for quick scanning
+- Mobile-first, responsive layout for on-site usage
+</details>
+
+<details>
 <summary><strong>Billing Module</strong></summary>
 
 - Upload vendor bills (PDF)
@@ -469,7 +478,6 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 |---|---|---|
 | GET | `/portal/dashboard/` | Worker home |
 | GET | `/portal/profile/` | Worker profile |
-| GET | `/portal/attendance/` | View attendance |
 | GET | `/portal/download-payslip/<salary_id>/` | Download payslip |
 </details>
 

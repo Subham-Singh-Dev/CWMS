@@ -246,6 +246,59 @@
         }
 
         /* ============================================
+           ALERTS - Django Messages
+           ============================================ */
+        .alert {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 14px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            border-color: var(--success-500);
+            background: var(--success-50);
+            color: var(--success-600);
+        }
+
+        .alert-error,
+        .alert-danger {
+            border-color: var(--danger-500);
+            background: var(--danger-50);
+            color: var(--danger-600);
+        }
+
+        .alert-warning {
+            border-color: var(--warning-500);
+            background: var(--warning-50);
+            color: var(--warning-600);
+        }
+
+        .alert-info {
+            border-color: var(--primary-500);
+            background: var(--primary-50);
+            color: var(--primary-700);
+        }
+
+        .btn-close {
+            background: transparent;
+            border: 0;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        /* ============================================
            SUMMARY BAR - Key Metrics At-a-Glance
            ============================================ */
         .summary-bar {
@@ -779,6 +832,15 @@
             <a href="{% url 'worker_logout' %}" class="logout-btn">Logout</a>
         </div>
     </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}" role="alert">
+                <span>{{ message }}</span>
+                <button type="button" class="btn-close" aria-label="Close">&times;</button>
+            </div>
+        {% endfor %}
+    {% endif %}
 
     <!-- ============================================
          SUMMARY BAR - Quick Overview

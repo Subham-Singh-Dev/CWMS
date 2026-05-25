@@ -382,8 +382,21 @@ def manager_recent_activity_api(request):
 
 @manager_required
 def bulk_attendance(request):
-    """Bulk attendance entry for managers."""
+    """Bulk attendance entry for managers — scoped by manager's site."""
     today = timezone.now().date()
+
+    # Resolve the manager's assigned site; superusers see all employees.
+    try:
+        manager_site = request.user.manager_profile.site
+    except Exception:
+        if request.user.is_superuser:
+            manager_site = None  # Superuser / King sees all employees
+        else:
+            messages.error(
+                request,
+                "Your account has no site assigned. Contact admin to set up your Manager Profile."
+            )
+            return redirect('manager_dashboard')
     
     date_str = request.GET.get('date')
     if date_str:
@@ -404,6 +417,10 @@ def bulk_attendance(request):
         selected_date = today
 
     if request.method == "POST":
+        present = 0
+        absent = 0
+        half_day = 0
+        leave = 0
         post_date_str = request.POST.get('attendance_date')
         try:
             selected_date = datetime.strptime(post_date_str, '%Y-%m-%d').date()
@@ -481,17 +498,49 @@ def bulk_attendance(request):
             except Exception as exc:
                 messages.error(request, f"Error: {exc}")
 
-    workers = Employee.objects.filter(is_active=True).order_by('id')
+    # Scope the worker list to the manager's site to prevent cross-site edits.
+    if manager_site:
+        workers = Employee.objects.filter(
+            is_active=True,
+            site=manager_site,
+        ).order_by('id')
+    else:
+        workers = Employee.objects.filter(is_active=True).order_by('id')
     
     existing_attendance = Attendance.objects.filter(date=selected_date)
     attendance_map = {att.employee_id: att for att in existing_attendance}
 
+    summary_present = 0
+    summary_absent = 0
+    summary_half_day = 0
+    summary_leave = 0
+
+    if request.method == "POST":
+        summary_present = present
+        summary_absent = absent
+        summary_half_day = half_day
+        summary_leave = Attendance.objects.filter(
+            date=selected_date,
+            employee__in=workers,
+            status='L',
+        ).count()
+    else:
+        existing_for_summary = Attendance.objects.filter(
+            date=selected_date,
+            employee__in=workers,
+        )
+        summary_present = existing_for_summary.filter(status='P').count()
+        summary_absent = existing_for_summary.filter(status='A').count()
+        summary_half_day = existing_for_summary.filter(status='H').count()
+        summary_leave = existing_for_summary.filter(status='L').count()
+
     worker_list = []
     for worker in workers:
         att = attendance_map.get(worker.id)
+        # Default to Absent when no attendance exists for the selected date.
         worker_list.append({
             'employee': worker,
-            'status': att.status if att else 'P',
+            'status': att.status if att else 'A',
             'overtime': att.overtime_hours if att else 0,
         })
 
@@ -511,6 +560,11 @@ def bulk_attendance(request):
         'today': timezone.now().date(),
         'marked_days_this_month': marked_days_this_month,
         'skipped_days_this_month': skipped_days_this_month,
+        'summary_present': summary_present,
+        'summary_absent': summary_absent,
+        'summary_half_day': summary_half_day,
+        'summary_leave': summary_leave,
+        'total_workers': workers.count(),
     }
     
     return render(request, 'portal/bulk_attendance.html', context)

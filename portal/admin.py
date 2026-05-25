@@ -1,3 +1,8 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import ManagerProfile
+
+@admin.register(ManagerProfile)
+class ManagerProfileAdmin(admin.ModelAdmin):
+    list_display  = ('user', 'site')
+    list_editable = ('site',)   # edit site inline from the list page.

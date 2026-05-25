@@ -31,6 +31,13 @@ EMPLOYMENT_TYPE_CHOICES = [
     ('PERMANENT', 'Permanent'),
 ]
 
+SITE_CHOICES = [
+    ('raigarh', 'Raigarh'),
+    ('bhilai', 'Bhilai'),
+    # Add more as needed — no code change required later
+]
+
+
 
 # ============================================================
 # MODELS
@@ -136,6 +143,13 @@ class Employee(models.Model):
     esic_number = models.CharField(max_length=17, blank=True, null=True, unique=True)
     bank_account_no = models.CharField(
         max_length=20, blank=True, null=True, unique=True
+    )
+
+    site = models.CharField(
+        max_length=100,
+        choices=SITE_CHOICES,
+        default='raigarh',
+        help_text="Work location of this employee"
     )
 
     def clean(self):

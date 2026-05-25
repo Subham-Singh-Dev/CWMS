@@ -210,6 +210,57 @@
             line-height: 1.1;
         }
 
+        .summary-strip {
+            position: sticky;
+            top: 12px;
+            z-index: 20;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin: 0 0 16px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .summary-title {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .summary-metrics {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .summary-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .summary-chip.present { color: var(--success-600); border-color: var(--success-500); background: var(--success-50); }
+        .summary-chip.half { color: var(--warning-600); border-color: var(--warning-500); background: var(--warning-50); }
+        .summary-chip.absent { color: var(--danger-600); border-color: var(--danger-500); background: var(--danger-50); }
+        .summary-chip.leave { color: var(--primary-600); border-color: var(--primary-500); background: var(--primary-50); }
+        .summary-chip.total { color: var(--text-primary); }
+
         
         /* QUICK ACTIONS */
         .actions-bar {
@@ -509,6 +560,17 @@
             <div class="stat-card">
                 <div class="stat-label">Skipped Days This Month</div>
                 <div class="stat-value">{{ skipped_days_this_month }}</div>
+            </div>
+        </div>
+
+        <div class="summary-strip">
+            <div class="summary-title">Summary</div>
+            <div class="summary-metrics">
+                <span class="summary-chip present">Present: {{ summary_present }}</span>
+                <span class="summary-chip half">Half Day: {{ summary_half_day }}</span>
+                <span class="summary-chip absent">Absent: {{ summary_absent }}</span>
+                <span class="summary-chip leave">Leave: {{ summary_leave }}</span>
+                <span class="summary-chip total">Total: {{ total_workers }}</span>
             </div>
         </div>
 

@@ -2,22 +2,26 @@
 Management Command: step1_populate_data
 =======================================
 Creates:
-  - Groups: King, Manager, Worker
-  - 1 King (superuser) + 1 Manager user
-  - 100 employees (80 LOCAL, 20 PERMANENT) with real Indian names
-  - Advances for ~25 employees
-  - Leave records for ~15 employees (May 1-5, current month — passes clean())
-  - LeavePolicy for LOCAL and PERMANENT
+  - Groups     : King, Manager, Worker
+  - Sites      : Raigarh (70 emp), Bhilai (60 emp), Korba (30 emp)
+  - Users      : 1 King (superuser) + 3 Managers (one per site)
+  - Profiles   : ManagerProfile for each manager (site-scoped)
+  - Employees  : 160 total across 3 sites
+  - Advances   : ~35 employees
+  - Leaves     : ~20 employees (May 1-5)
+  - Policies   : LeavePolicy for LOCAL and PERMANENT
+
+Architecture note:
+  ManagerProfile links each manager User to their site.
+  bulk_attendance view uses manager_profile.site to scope employee list.
+  Cross-site attendance writes are blocked at the view layer.
 
 Run:
     docker-compose exec web python manage.py step1_populate_data
-
-Author note: All DB writes go through proper service functions or model
-             save() — no raw SQL. Groups created fresh since Docker DB is empty.
 """
 
 import random
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth.models import Group, User
@@ -28,9 +32,10 @@ from employees.models import Employee, Role
 from leaves.models import LeavePolicy
 from leaves.services import assign_leave
 from payroll.services import issue_advance
+from portal.models import ManagerProfile
 
 
-# ── Real-world Indian names ──────────────────────────────────────────────────
+# ── Real Indian names pool (160+) ────────────────────────────────────────────
 
 FIRST_NAMES = [
     "Ramesh", "Suresh", "Mahesh", "Dinesh", "Rajesh", "Naresh", "Ganesh",
@@ -49,6 +54,16 @@ FIRST_NAMES = [
     "Narayan", "Shravan", "Balram", "Sitaram", "Radhe", "Mohan", "Sohan",
     "Laxman", "Bharat", "Shatrughan", "Dashrath", "Kedar", "Shekhar",
     "Pankaj", "Saurabh", "Gaurav", "Dhruv", "Tanmay", "Pranav",
+    "Hemant", "Shyam", "Gopal", "Brij", "Trilokesh", "Chandresh",
+    "Ramavtar", "Kalyan", "Durgesh", "Arvind", "Praveen", "Naveen",
+    "Jitendra", "Surendra", "Dhirendra", "Virendra", "Narendra", "Yogendra",
+    "Rajendra", "Mahendra", "Devendra", "Upendra", "Bhupendra", "Gajendra",
+    "Sailendra", "Rajiv", "Sanjeev", "Harshit", "Yashpal",
+    "Baldev", "Jagdev", "Surjit", "Avtar", "Darshan", "Roshan",
+    "Bhagwan", "Ishwar", "Shiv", "Ram", "Hari", "Kripa", "Madan",
+    "Chandan", "Nandan", "Brijnandan", "Ramanandan", "Krishnanand",
+    "Tejpal", "Dalip", "Satpal", "Rajpal", "Harpal", "Amrit",
+    "Sukhwant", "Kulwant", "Jaswant", "Balwant", "Dilbag", "Harbag",
 ]
 
 LAST_NAMES = [
@@ -58,24 +73,69 @@ LAST_NAMES = [
     "Chauhan", "Rathore", "Rajput", "Solanki", "Parmar", "Bhatt",
     "Nair", "Pillai", "Menon", "Krishnan", "Iyer", "Rao", "Reddy",
     "Naidu", "Choudhary", "Dubey", "Tripathi", "Shukla", "Upadhyay",
+    "Kesarwani", "Soni", "Lal", "Das", "Sahu", "Dewangan", "Netam",
 ]
 
-# ── Role → (daily_wage_min, daily_wage_max, employment_type) ────────────────
+# ── Role config: (wage_min, wage_max, employment_type) ──────────────────────
 
 ROLE_CONFIG = {
-    "Mason":          (500,  650,  "LOCAL"),
-    "Laborer":        (350,  450,  "LOCAL"),
-    "Helper":         (300,  400,  "LOCAL"),
-    "Supervisor":     (700,  900,  "PERMANENT"),
-    "ForeMan":        (800,  1000, "PERMANENT"),
-    "Electrician":    (600,  800,  "LOCAL"),
-    "Fitter":         (500,  650,  "LOCAL"),
-    "Line Man":       (400,  550,  "LOCAL"),
-    "Worker":         (350,  480,  "LOCAL"),
-    "Semi Technician":(550,  700,  "PERMANENT"),
+    "Mason":           (500,  650,  "LOCAL"),
+    "Laborer":         (350,  450,  "LOCAL"),
+    "Helper":          (300,  400,  "LOCAL"),
+    "Supervisor":      (700,  900,  "PERMANENT"),
+    "ForeMan":         (800, 1000,  "PERMANENT"),
+    "Electrician":     (600,  800,  "LOCAL"),
+    "Fitter":          (500,  650,  "LOCAL"),
+    "Line Man":        (400,  550,  "LOCAL"),
+    "Worker":          (350,  480,  "LOCAL"),
+    "Semi Technician": (550,  700,  "PERMANENT"),
 }
 
-# ── Leave reasons pool ───────────────────────────────────────────────────────
+# ── Site configuration ───────────────────────────────────────────────────────
+
+SITE_CONFIG = [
+    {
+        "key":              "raigarh",
+        "label":            "Raigarh",
+        "emp_count":        70,
+        "manager_username": "manager_raigarh",
+        "manager_pass":     "raigarh@2026",
+        "manager_first":    "Vikram",
+        "manager_last":     "Sharma",
+    },
+    {
+        "key":              "bhilai",
+        "label":            "Bhilai",
+        "emp_count":        60,
+        "manager_username": "manager_bhilai",
+        "manager_pass":     "bhilai@2026",
+        "manager_first":    "Arun",
+        "manager_last":     "Verma",
+    },
+    {
+        "key":              "korba",
+        "label":            "Korba",
+        "emp_count":        30,
+        "manager_username": "manager_korba",
+        "manager_pass":     "korba@2026",
+        "manager_first":    "Sunil",
+        "manager_last":     "Tiwari",
+    },
+]
+
+# Role distribution percentages (applied to each site's headcount)
+ROLE_DISTRIBUTION = [
+    ("Mason",           0.18),
+    ("Laborer",         0.18),
+    ("Helper",          0.12),
+    ("Worker",          0.15),
+    ("Electrician",     0.08),
+    ("Fitter",          0.08),
+    ("Line Man",        0.05),
+    ("Supervisor",      0.07),
+    ("ForeMan",         0.05),
+    ("Semi Technician", 0.04),
+]
 
 LEAVE_REASONS = [
     "Personal work at home village",
@@ -90,20 +150,24 @@ LEAVE_REASONS = [
 
 
 class Command(BaseCommand):
-    help = "Populate Docker test DB: groups, users, 100 employees, advances, leaves"
+    help = "Populate test DB: 3 sites, 3 managers, 160 employees, advances, leaves"
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING(
-            "\n=== STEP 1: POPULATING TEST DATA ===\n"
+            "\n=== STEP 1: POPULATING TEST DATA (MULTI-SITE) ===\n"
         ))
 
         with transaction.atomic():
             self._create_groups()
-            king_user, manager_user = self._create_users()
+            self._create_roles()
+            king_user = self._create_king()
+            managers  = self._create_managers()
             self._create_leave_policies()
-            employees = self._create_employees(manager_user)
-            self._create_advances(employees)
-            self._create_leaves(employees, manager_user)
+            all_employees = self._create_employees()
+            self._create_advances(all_employees)
+            self._create_leaves(all_employees, managers)
+
+        self._print_credentials(king_user, managers)
 
         self.stdout.write(self.style.SUCCESS(
             "\n✅ Step 1 complete. Run step2_mark_attendance next.\n"
@@ -115,122 +179,169 @@ class Command(BaseCommand):
         self.stdout.write("Creating groups...")
         for name in ["King", "Manager", "Worker"]:
             group, created = Group.objects.get_or_create(name=name)
-            status = "created" if created else "already exists"
-            self.stdout.write(f"  Group '{name}': {status}")
+            self.stdout.write(
+                f"  Group '{name}': {'created' if created else 'already exists'}"
+            )
 
-    # ── USERS ────────────────────────────────────────────────────────────────
+    # ── ROLES ────────────────────────────────────────────────────────────────
 
-    def _create_users(self):
-        self.stdout.write("\nCreating King and Manager users...")
+    def _create_roles(self):
+        self.stdout.write("\nCreating roles...")
+        for role_name in ROLE_CONFIG:
+            role, created = Role.objects.get_or_create(
+                name=role_name,
+                defaults={"overtime_rate_per_hour": Decimal("50.00")},
+            )
+            self.stdout.write(
+                f"  Role '{role_name}': {'created' if created else 'already exists'}"
+            )
 
-        # King / superuser
+    # ── KING ─────────────────────────────────────────────────────────────────
+
+    def _create_king(self):
+        self.stdout.write("\nCreating King (owner) user...")
         if User.objects.filter(username="cwms_owner").exists():
-            king_user = User.objects.get(username="cwms_owner")
-            self.stdout.write("  King user 'cwms_owner': already exists")
-        else:
-            king_user = User.objects.create_superuser(
-                username="cwms_owner",
-                password="cwms@2026",
-                email="owner@sakuntalam.com",
-                first_name="Shubham",
-                last_name="Singh",
-            )
-            king_group = Group.objects.get(name="King")
-            king_user.groups.add(king_group)
-            self.stdout.write("  King user 'cwms_owner': created (pass: cwms@2026)")
+            user = User.objects.get(username="cwms_owner")
+            self.stdout.write("  King 'cwms_owner': already exists")
+            return user
 
-        # Manager
-        if User.objects.filter(username="manager1").exists():
-            manager_user = User.objects.get(username="manager1")
-            self.stdout.write("  Manager user 'manager1': already exists")
-        else:
-            manager_user = User.objects.create_user(
-                username="manager1",
-                password="manager@2026",
-                email="manager@sakuntalam.com",
-                first_name="Vikram",
-                last_name="Sharma",
-            )
-            manager_group = Group.objects.get(name="Manager")
-            manager_user.groups.add(manager_group)
-            self.stdout.write("  Manager user 'manager1': created (pass: manager@2026)")
+        user = User.objects.create_superuser(
+            username="cwms_owner",
+            password="cwms@2026",
+            email="owner@cwms.com",
+            first_name="Shubham",
+            last_name="Singh",
+        )
+        user.groups.add(Group.objects.get(name="King"))
+        self.stdout.write("  King 'cwms_owner': created")
+        return user
 
-        return king_user, manager_user
+    # ── MANAGERS ─────────────────────────────────────────────────────────────
+
+    def _create_managers(self):
+        """Create one manager per site and assign ManagerProfile."""
+        self.stdout.write("\nCreating managers (one per site)...")
+        manager_group = Group.objects.get(name="Manager")
+        managers = {}
+
+        for site in SITE_CONFIG:
+            uname = site["manager_username"]
+
+            if User.objects.filter(username=uname).exists():
+                user = User.objects.get(username=uname)
+                self.stdout.write(f"  Manager '{uname}': already exists")
+            else:
+                user = User.objects.create_user(
+                    username=uname,
+                    password=site["manager_pass"],
+                    first_name=site["manager_first"],
+                    last_name=site["manager_last"],
+                )
+                user.groups.add(manager_group)
+                self.stdout.write(
+                    f"  Manager '{uname}' ({site['label']}): created"
+                )
+
+            # Create or update ManagerProfile
+            profile, p_created = ManagerProfile.objects.get_or_create(
+                user=user,
+                defaults={"site": site["key"]},
+            )
+            if not p_created and profile.site != site["key"]:
+                profile.site = site["key"]
+                profile.save()
+
+            self.stdout.write(
+                f"    ↳ ManagerProfile site = '{site['key']}' "
+                f"({'created' if p_created else 'updated'})"
+            )
+            managers[site["key"]] = user
+
+        return managers
 
     # ── LEAVE POLICIES ───────────────────────────────────────────────────────
 
     def _create_leave_policies(self):
         self.stdout.write("\nCreating leave policies...")
-        policies = [
-            ("LOCAL",     15),
-            ("PERMANENT", 30),
-        ]
-        for emp_type, days in policies:
+        for emp_type, days in [("LOCAL", 15), ("PERMANENT", 30)]:
             policy, created = LeavePolicy.objects.get_or_create(
                 employment_type=emp_type,
                 defaults={"annual_leave_days": days},
             )
-            status = "created" if created else "already exists"
-            self.stdout.write(f"  {emp_type}: {days} days/year — {status}")
+            self.stdout.write(
+                f"  {emp_type}: {days} days/year — "
+                f"{'created' if created else 'already exists'}"
+            )
 
     # ── EMPLOYEES ────────────────────────────────────────────────────────────
 
-    def _create_employees(self, manager_user):
-        self.stdout.write("\nCreating 100 employees...")
+    def _create_employees(self):
+        """
+        Create employees distributed across sites.
+        Each employee is tagged with their site field.
+        """
+        self.stdout.write("\nCreating employees across 3 sites...")
 
-        # Build name pool — shuffle for randomness
-        names = []
-        for first in FIRST_NAMES[:100]:
-            last = random.choice(LAST_NAMES)
-            names.append(f"{first} {last}")
+        # Build unique name pool
+        names = list({
+            f"{fn} {random.choice(LAST_NAMES)}" for fn in FIRST_NAMES
+        })
         random.shuffle(names)
-
-        # Role distribution for 100 employees
-        role_distribution = [
-            ("Mason",           20),
-            ("Laborer",         20),
-            ("Helper",          15),
-            ("Worker",          15),
-            ("Electrician",     8),
-            ("Fitter",          7),
-            ("Line Man",        5),
-            ("Supervisor",      5),
-            ("ForeMan",         3),
-            ("Semi Technician", 2),
-        ]
+        name_iter = iter(names)
 
         worker_group = Group.objects.get(name="Worker")
-        employees_created = []
-        counter = 0
+        all_employees = []
+        username_counter = 1
 
-        for role_name, count in role_distribution:
-            try:
+        for site in SITE_CONFIG:
+            site_key   = site["key"]
+            site_label = site["label"]
+            emp_count  = site["emp_count"]
+
+            self.stdout.write(
+                f"\n  Site: {site_label} — creating {emp_count} employees"
+            )
+
+            # Build role slot list for this site
+            role_slots = []
+            remaining = emp_count
+            for idx, (role_name, pct) in enumerate(ROLE_DISTRIBUTION):
+                if idx == len(ROLE_DISTRIBUTION) - 1:
+                    count = remaining  # absorb rounding remainder
+                else:
+                    count = max(1, round(emp_count * pct))
+                    remaining -= count
+                role_slots.extend([role_name] * count)
+
+            random.shuffle(role_slots)
+
+            site_employees = []
+            for role_name in role_slots:
+                try:
+                    name = next(name_iter)
+                except StopIteration:
+                    name = f"Worker {username_counter}"
+
+                wage_min, wage_max, emp_type = ROLE_CONFIG[role_name]
                 role_obj = Role.objects.get(name=role_name)
-            except Role.DoesNotExist:
-                self.stdout.write(
-                    self.style.WARNING(f"  ⚠ Role '{role_name}' not found, skipping")
-                )
-                continue
 
-            wage_min, wage_max, emp_type = ROLE_CONFIG[role_name]
-
-            for i in range(count):
-                name = names[counter]
-                counter += 1
-                username = f"emp_{counter:03d}"
                 phone = f"9{random.randint(100000000, 999999999)}"
+                while Employee.objects.filter(phone_number=phone).exists():
+                    phone = f"9{random.randint(100000000, 999999999)}"
+
                 daily_wage = Decimal(str(random.randint(wage_min, wage_max)))
-                join_date = date(
+                join_date  = date(
                     random.randint(2022, 2025),
                     random.randint(1, 12),
                     random.randint(1, 28),
                 )
 
-                # PF/ESIC only for PERMANENT
                 pf_applicable   = (emp_type == "PERMANENT")
                 esic_applicable = (emp_type == "PERMANENT")
 
-                # Create auth user for this employee
+                username = f"emp_{username_counter:03d}"
+                username_counter += 1
+
                 user = User.objects.create_user(
                     username=username,
                     password="worker@2026",
@@ -250,52 +361,60 @@ class Command(BaseCommand):
                     esic_applicable=esic_applicable,
                     join_date=join_date,
                     is_active=True,
-                    working_location="Sakuntalam Site - Raigarh",
+                    site=site_key,
+                    working_location=f"CWMS Site - {site_label}",
                 )
-                employees_created.append(emp)
+                site_employees.append(emp)
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"    ✅ {len(site_employees)} employees created for {site_label}"
+                )
+            )
+            all_employees.extend(site_employees)
 
         self.stdout.write(
-            self.style.SUCCESS(f"  ✅ {len(employees_created)} employees created")
+            self.style.SUCCESS(
+                f"\n  ✅ Total employees created: {len(all_employees)}"
+            )
         )
-        return employees_created
+        return all_employees
 
     # ── ADVANCES ─────────────────────────────────────────────────────────────
 
     def _create_advances(self, employees):
-        self.stdout.write("\nIssuing advances to ~25 employees...")
-
-        # Pick 25 random employees for advances
-        advance_employees = random.sample(employees, min(25, len(employees)))
-
-        advance_amounts = [
+        """Issue advances to ~35 employees; 8 get two advances (FIFO test)."""
+        self.stdout.write("\nIssuing advances...")
+        AMOUNTS = [
             Decimal("2000"), Decimal("3000"), Decimal("5000"),
             Decimal("7000"), Decimal("10000"), Decimal("15000"),
         ]
 
+        targets = random.sample(employees, min(35, len(employees)))
         count = 0
-        for emp in advance_employees:
-            amount = random.choice(advance_amounts)
-            # Issue date: random day in April (previous month — valid for advances)
+
+        for emp in targets:
+            amount      = random.choice(AMOUNTS)
             issued_date = date(2026, 4, random.randint(1, 28))
             try:
                 issue_advance(emp, amount, issued_date)
                 count += 1
             except Exception as e:
                 self.stdout.write(
-                    self.style.WARNING(f"  ⚠ Advance failed for {emp.name}: {e}")
+                    self.style.WARNING(f"  ⚠ Advance failed ({emp.name}): {e}")
                 )
 
-        # Give 5 employees TWO advances (staggered — tests FIFO)
-        double_advance_employees = random.sample(advance_employees, min(5, len(advance_employees)))
-        for emp in double_advance_employees:
-            amount = random.choice([Decimal("2000"), Decimal("3000")])
+        # 8 employees get a second (older) advance — tests FIFO recovery
+        double_targets = random.sample(targets, min(8, len(targets)))
+        for emp in double_targets:
+            amount      = random.choice([Decimal("2000"), Decimal("3000")])
             issued_date = date(2026, 3, random.randint(1, 28))
             try:
                 issue_advance(emp, amount, issued_date)
                 count += 1
             except Exception as e:
                 self.stdout.write(
-                    self.style.WARNING(f"  ⚠ Second advance failed for {emp.name}: {e}")
+                    self.style.WARNING(f"  ⚠ 2nd advance failed ({emp.name}): {e}")
                 )
 
         self.stdout.write(
@@ -304,37 +423,30 @@ class Command(BaseCommand):
 
     # ── LEAVES ───────────────────────────────────────────────────────────────
 
-    def _create_leaves(self, employees, manager_user):
-        """
-        Assign leaves for May 1-5 (current month, not future — passes clean()).
-        ~15 employees get leave.
-        """
-        self.stdout.write("\nAssigning leaves for May 1-5...")
+    def _create_leaves(self, employees, managers):
+        """Assign leaves for May 1-5 for ~20 employees across all sites."""
+        self.stdout.write("\nAssigning leaves (May 1-5)...")
+        LEAVE_TYPES = ["EL", "CL", "SL"]
 
-        leave_employees = random.sample(employees, min(15, len(employees)))
-        leave_types = ["EL", "CL", "SL"]
+        targets = random.sample(employees, min(20, len(employees)))
+        count   = 0
 
-        count = 0
-        for emp in leave_employees:
-            leave_type = random.choice(leave_types)
-            # 1-3 day leave windows within May 1-5
-            start_day = random.randint(1, 3)
-            end_day = start_day + random.randint(0, 2)
-            end_day = min(end_day, 5)
+        for emp in targets:
+            manager_user = managers.get(emp.site, next(iter(managers.values())))
 
-            from_date  = date(2026, 5, start_day)
-            to_date    = date(2026, 5, end_day)
-            total_days = (to_date - from_date).days + 1
-            reason     = random.choice(LEAVE_REASONS)
+            leave_type = random.choice(LEAVE_TYPES)
+            start_day  = random.randint(1, 3)
+            end_day    = min(start_day + random.randint(0, 2), 5)
+            total_days = (end_day - start_day) + 1
 
             try:
                 assign_leave(
                     employee=emp,
                     leave_type=leave_type,
-                    from_date=from_date,
-                    to_date=to_date,
+                    from_date=date(2026, 5, start_day),
+                    to_date=date(2026, 5, end_day),
                     total_days=total_days,
-                    reason=reason,
+                    reason=random.choice(LEAVE_REASONS),
                     address_on_leave="Native village, Chhattisgarh",
                     application_date=date(2026, 4, 30),
                     approved_by=manager_user,
@@ -343,9 +455,49 @@ class Command(BaseCommand):
                 count += 1
             except Exception as e:
                 self.stdout.write(
-                    self.style.WARNING(f"  ⚠ Leave failed for {emp.name}: {e}")
+                    self.style.WARNING(f"  ⚠ Leave failed ({emp.name}): {e}")
                 )
 
         self.stdout.write(
-            self.style.SUCCESS(f"  ✅ {count} leave records assigned (May 1-5)")
+            self.style.SUCCESS(f"  ✅ {count} leave records assigned")
         )
+
+    # ── CREDENTIALS SUMMARY ──────────────────────────────────────────────────
+
+    def _print_credentials(self, king_user, managers):
+        self.stdout.write("\n" + "═" * 60)
+        self.stdout.write("  CREDENTIALS SUMMARY")
+        self.stdout.write("═" * 60)
+
+        self.stdout.write("\n  KING (Owner)")
+        self.stdout.write(f"    Username : cwms_owner")
+        self.stdout.write(f"    Password : cwms@2026")
+        self.stdout.write(f"    Login    : /king/secure/owner-x7k2/")
+
+        self.stdout.write("\n  MANAGERS")
+        for site in SITE_CONFIG:
+            self.stdout.write(
+                f"    [{site['label']:8}] "
+                f"Username: {site['manager_username']:<20} "
+                f"Password: {site['manager_pass']}"
+            )
+            self.stdout.write(
+                f"             Site key: {site['key']}  "
+                f"Employees: {site['emp_count']}"
+            )
+
+        self.stdout.write("\n  WORKERS")
+        self.stdout.write(f"    Username : emp_001 → emp_160")
+        self.stdout.write(f"    Password : worker@2026")
+        self.stdout.write(f"    Login    : /portal/login/ (phone + password)")
+
+        self.stdout.write("\n  EMPLOYEE DISTRIBUTION")
+        for site in SITE_CONFIG:
+            count = Employee.objects.filter(site=site["key"]).count()
+            self.stdout.write(
+                f"    {site['label']:10}: {count} employees"
+            )
+
+        total = Employee.objects.filter(is_active=True).count()
+        self.stdout.write(f"    {'TOTAL':10}: {total} employees")
+        self.stdout.write("═" * 60 + "\n")

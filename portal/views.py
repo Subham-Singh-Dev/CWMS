@@ -308,7 +308,7 @@ def manager_dashboard(request, viewing_as_owner=False):
         f"{request.session.session_key or 'anon'}"
     )
     cached_html = cache.get(cache_key)
-    if cached_html:
+    if cached_html and not messages.get_messages(request):
         return HttpResponse(cached_html)
     
     month_date = datetime.strptime(

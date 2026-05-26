@@ -274,6 +274,62 @@ Expenses cannot be edited or deleted after 7 days - enforced at the view layer. 
 
 ---
 
+## System Auditing & Data Integrity
+
+To ensure financial accuracy and transaction safety, this project includes a custom-built automated testing pipeline. The pipeline seeds the database with multi-site data, generates payroll, and audits the ledger for 160 employees to verify statutory deductions (PF/ESIC), FIFO advance recovery, and strict net-pay mathematics.
+
+## System Auditing & Data Integrity
+
+To ensure financial accuracy and transaction safety, this project includes a custom-built automated testing pipeline. The pipeline seeds the database with multi-site data, generates payroll, and audits the ledger for 160 employees to verify statutory deductions (PF/ESIC), FIFO advance recovery, and strict net-pay mathematics.
+
+<details>
+<summary><b>Click to view the automated Payroll Audit Output (160 Employees)</b></summary>
+
+```text
+=== STEP 4: PAYROLL VERIFICATION AUDIT (MULTI-SITE) ===
+Auditing 160 employees | 160 salary records found
+
+... (Paste a snippet of one site here, like Raigarh, to keep it readable) ...
+
+  RAIGARH TOTALS (70/70 verified)                  1003660.00   84960.00 26344.56  1646.56   890708.88
+  ✅ No anomalies in Raigarh
+
+... (Skip to the final totals) ...
+
+════════════════════════════════════════════════════════════════════════════════
+  GRAND TOTAL (ALL SITES)                                  2262355.50  233916.50 64680.12  4042.54  1959716.34
+════════════════════════════════════════════════════════════════════════════════
+
+  PAYROLL DISTRIBUTION BY SITE
+  ────────────────────────────────────────────────────────────
+  Raigarh   :  70 employees | Net payroll:    890708.88 | Share: 45.5%
+  Bhilai    :  60 employees | Net payroll:    699100.29 | Share: 35.7%
+  Korba     :  30 employees | Net payroll:    369907.17 | Share: 18.9%
+
+  PAYROLL DISTRIBUTION BY EMPLOYMENT TYPE
+  ────────────────────────────────────────────────────────────
+  LOCAL       : 135 employees | Gross:   1723354.50 | Net:   1521438.00 | PF:          0
+  PERMANENT   :  25 employees | Gross:    539001.00 | Net:    438278.34 | PF:   64680.12
+
+  ADVANCE RECOVERY CHECK
+  ────────────────────────────────────────────────────────────
+  Employees with advance deduction : 35
+  Employees with no advance        : 125
+  Total advance recovered (May)    : 233916.50
+
+════════════════════════════════════════════════════════════════════════════════
+  Total employees   : 160
+  Salaries verified : 160
+  Missing records   : 0
+
+  ✅ VERDICT: ALL 160 SALARY RECORDS MATHEMATICALLY CORRECT
+     3 sites verified. System is ready for production use.
+
+```
+</details>
+
+---
+
 ## Project Structure
 
 ```

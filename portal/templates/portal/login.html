@@ -3,410 +3,1086 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Login | {{ BRAND_SHORT_NAME }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <style>
+        /* ================================================================
+           CWMS PORTAL — INDUSTRIAL BLUEPRINT THEME
+           Deep Navy × Electric Cyan × Gunmetal Silver
+           Rajdhani (display) · Barlow (body) · JetBrains Mono (technical)
+           ================================================================ */
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --slate-950: #0a0f1a;
-            --slate-900: #0f172a;
-            --slate-800: #1e293b;
-            --slate-700: #334155;
-            --slate-600: #475569;
-            --slate-400: #94a3b8;
-            --slate-200: #e2e8f0;
-            --slate-100: #f1f5f9;
-            --amber-400: #fbbf24;
-            --amber-300: #fcd34d;
-            --amber-500: #f59e0b;
-            --white: #ffffff;
-            --red-400: #f87171;
-            --red-100: #fee2e2;
+            /* --- Backgrounds --- */
+            --bg-root:   #060e1c;
+            --bg-card:   #0b1628;
+            --bg-input:  #091422;
+            --bg-tab:    #0e1c32;
+
+            /* --- Navy scale --- */
+            --navy-700:  #112040;
+            --navy-600:  #162e52;
+            --navy-500:  #1c3d6e;
+            --navy-400:  #254e8a;
+
+            /* --- Steel scale --- */
+            --steel-600: #2c4060;
+            --steel-500: #3c5575;
+            --steel-400: #506888;
+            --steel-300: #6e8eaa;
+            --steel-200: #96b4cc;
+            --steel-100: #c0d4e4;
+
+            /* --- Cyan (Worker accent) --- */
+            --cyan-600:  #006888;
+            --cyan-500:  #0092b8;
+            --cyan-400:  #00b4d8;
+            --cyan-300:  #00d4ff;
+            --cyan-200:  #60e8ff;
+            --cyan-100:  #b0f4ff;
+
+            /* --- Silver (Manager accent) --- */
+            --sil-400:   #7aaac8;
+            --sil-300:   #a8ccdf;
+            --sil-200:   #cce0f0;
+            --sil-100:   #eaf4ff;
+
+            /* --- Accent (defaults to worker) --- */
+            --accent:       var(--cyan-300);
+            --accent-mid:   var(--cyan-400);
+            --accent-dim:   var(--cyan-600);
+            --accent-glow:  rgba(0, 212, 255, 0.12);
+            --accent-glow2: rgba(0, 212, 255, 0.25);
+            --accent-solid: var(--cyan-300);
+
+            /* --- Text --- */
+            --text-bright:  #dff0ff;
+            --text-body:    #8aaabb;
+            --text-dim:     #3a5570;
+            --text-mono:    #5a8099;
+
+            /* --- Error --- */
+            --err-bg:     rgba(255, 75, 75, 0.07);
+            --err-border: rgba(255, 75, 75, 0.22);
+            --err-color:  #ff6b6b;
+
+            /* --- Transitions --- */
+            --t-fast: 0.16s ease;
+            --t-med:  0.28s ease;
+            --t-slow: 0.5s ease;
         }
 
+        /* ---- Manager mode — accent morphs to silver ---- */
+        body.mode-manager {
+            --accent:       var(--sil-200);
+            --accent-mid:   var(--sil-300);
+            --accent-dim:   var(--steel-500);
+            --accent-glow:  rgba(168, 204, 223, 0.09);
+            --accent-glow2: rgba(168, 204, 223, 0.18);
+            --accent-solid: var(--sil-200);
+        }
+
+        /* ================================================================
+           BASE
+           ================================================================ */
+        html, body { height: 100%; }
+
         body {
-            font-family: 'DM Sans', sans-serif;
-            background-color: var(--slate-950);
+            font-family: 'Barlow', sans-serif;
+            background-color: var(--bg-root);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            position: relative;
             overflow: hidden;
+            position: relative;
         }
 
-        /* Subtle geometric background */
-        body::before {
-            content: '';
+        /* ================================================================
+           BACKGROUND LAYERS
+           ================================================================ */
+
+        /* Primary blueprint grid — 80px major */
+        .bg-layer {
             position: fixed;
             inset: 0;
-            background:
-                radial-gradient(ellipse 800px 600px at 20% 50%, rgba(251, 191, 36, 0.04) 0%, transparent 70%),
-                radial-gradient(ellipse 600px 400px at 80% 20%, rgba(30, 41, 59, 0.8) 0%, transparent 60%);
             pointer-events: none;
         }
 
-        /* Grid pattern overlay */
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
+        .bg-grid {
             background-image:
-                linear-gradient(rgba(251, 191, 36, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(251, 191, 36, 0.03) 1px, transparent 1px);
-            background-size: 48px 48px;
-            pointer-events: none;
+                linear-gradient(rgba(0, 180, 216, 0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 180, 216, 0.055) 1px, transparent 1px);
+            background-size: 80px 80px;
         }
 
-        .login-wrap {
-            width: 100%;
-            max-width: 400px;
-            position: relative;
-            z-index: 1;
-            animation: fadeUp 0.4s ease both;
-        }
-
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(16px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Brand header - outside card */
-        .brand {
-            text-align: center;
-            margin-bottom: 28px;
-        }
-
-        .brand-name {
-            font-size: 22px;
-            font-weight: 600;
-            color: var(--white);
-            letter-spacing: -0.3px;
-        }
-
-        .brand-name span {
-            color: var(--amber-400);
-        }
-
-        .brand-tag {
-            font-size: 12px;
-            color: var(--slate-400);
-            margin-top: 4px;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-        }
-
-        /* Main card */
-        .card {
-            background: var(--slate-900);
-            border: 1px solid var(--slate-800);
-            border-radius: 16px;
-            padding: 28px 28px 32px;
-            position: relative;
-        }
-
-        /* Amber top accent line */
-        .card::before {
+        /* Sub-grid — 16px minor */
+        .bg-grid::after {
             content: '';
             position: absolute;
-            top: 0; left: 24px; right: 24px;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--amber-400), transparent);
-            border-radius: 0 0 4px 4px;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 180, 216, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 180, 216, 0.02) 1px, transparent 1px);
+            background-size: 16px 16px;
         }
 
-        /* Role tabs */
-        .tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            background: var(--slate-800);
-            border-radius: 10px;
-            padding: 4px;
-            margin-bottom: 24px;
-            gap: 4px;
+        /* Radial dark vignette — draws eye to centre */
+        .bg-vignette {
+            background: radial-gradient(
+                ellipse 75% 75% at 50% 50%,
+                transparent 20%,
+                rgba(6, 14, 28, 0.75) 75%,
+                rgba(6, 14, 28, 0.95) 100%
+            );
         }
 
-        .tab {
-            padding: 10px 12px;
+        /* Centre ambient glow — pulses slowly */
+        .bg-glow {
+            background: radial-gradient(
+                circle 700px at 50% 55%,
+                rgba(0, 160, 200, 0.045) 0%,
+                transparent 70%
+            );
+            animation: glowBreath 9s ease-in-out infinite;
+        }
+
+        @keyframes glowBreath {
+            0%, 100% { opacity: 0.6; transform: scale(1);    }
+            50%       { opacity: 1.0; transform: scale(1.12); }
+        }
+
+        /* ---- Diagonal scan beam ---- */
+        .scan-beam {
+            position: fixed;
+            top: -30%;
+            left: -250px;
+            width: 2px;
+            height: 160%;
+            background: linear-gradient(
+                to bottom,
+                transparent        0%,
+                transparent       20%,
+                rgba(0,212,255,0.28) 50%,
+                transparent       80%,
+                transparent      100%
+            );
+            filter: blur(2.5px);
+            transform: rotate(-18deg);
+            transform-origin: top center;
+            pointer-events: none;
+            animation: scanPass 14s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Wide soft halo behind the beam */
+        .scan-beam::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -20px;
+            width: 42px;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent,
+                rgba(0, 212, 255, 0.04) 50%,
+                transparent
+            );
+            filter: blur(12px);
+        }
+
+        @keyframes scanPass {
+            0%   { left: -250px; opacity: 0; }
+            4%   { opacity: 1; }
+            48%  { opacity: 0.9; }
+            52%  { left: calc(100vw + 250px); opacity: 0; }
+            100% { left: calc(100vw + 250px); opacity: 0; }
+        }
+
+        /* ---- Coordinate crosshair markers ---- */
+        /* Placed at four corners as HUD brackets */
+        .hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .hud-bracket {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            opacity: 0.25;
+            transition: opacity var(--t-slow);
+        }
+
+        .hud-bracket.tl { top: 18px;    left: 18px;  border-top:    1.5px solid var(--cyan-400); border-left:  1.5px solid var(--cyan-400); }
+        .hud-bracket.tr { top: 18px;    right: 18px; border-top:    1.5px solid var(--cyan-400); border-right: 1.5px solid var(--cyan-400); }
+        .hud-bracket.bl { bottom: 18px; left: 18px;  border-bottom: 1.5px solid var(--cyan-400); border-left:  1.5px solid var(--cyan-400); }
+        .hud-bracket.br { bottom: 18px; right: 18px; border-bottom: 1.5px solid var(--cyan-400); border-right: 1.5px solid var(--cyan-400); }
+
+        /* ---- System status strip (fixed bottom-right) ---- */
+        .sys-status {
+            position: fixed;
+            bottom: 18px;
+            right: 22px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            pointer-events: none;
+            opacity: 0.65;
+        }
+
+        .sys-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--cyan-400);
+            animation: sysBlink 3s ease-in-out infinite;
+        }
+
+        @keyframes sysBlink {
+            0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--cyan-400); }
+            50%       { opacity: 0.2; box-shadow: none; }
+        }
+
+        /* ---- System info (fixed top-left) ---- */
+        .sys-info {
+            position: fixed;
+            top: 20px;
+            left: 22px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5px;
+            line-height: 1.85;
+            letter-spacing: 0.09em;
+            color: var(--text-dim);
+            pointer-events: none;
+            opacity: 0.55;
+        }
+
+        /* ================================================================
+           CARD WRAPPER — entrance animation
+           ================================================================ */
+        .login-wrap {
+            width: 100%;
+            max-width: 430px;
+            position: relative;
+            z-index: 20;
+            animation: wrapRise 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+        }
+
+        @keyframes wrapRise {
+            from { opacity: 0; transform: translateY(28px) scale(0.975); }
+            to   { opacity: 1; transform: translateY(0)    scale(1);     }
+        }
+
+        /* ================================================================
+           BRAND HEADER
+           ================================================================ */
+        .brand {
             text-align: center;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            border-radius: 7px;
-            color: var(--slate-400);
-            transition: all 0.2s ease;
+            margin-bottom: 22px;
+            animation: brandDrop 0.5s 0.08s ease both;
+        }
+
+        @keyframes brandDrop {
+            from { opacity: 0; transform: translateY(-12px); }
+            to   { opacity: 1; transform: translateY(0);     }
+        }
+
+        /* "SECURE ACCESS" eyebrow line */
+        .brand-eyebrow {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
-            user-select: none;
+            gap: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--cyan-400);
+            margin-bottom: 10px;
         }
 
-        .tab svg {
-            width: 15px;
-            height: 15px;
+        .brand-eyebrow-line {
+            flex: 1;
+            height: 1px;
+            max-width: 50px;
+        }
+
+        .brand-eyebrow-line.l { background: linear-gradient(90deg, transparent, var(--cyan-400)); }
+        .brand-eyebrow-line.r { background: linear-gradient(90deg, var(--cyan-400), transparent); }
+
+        /* Main brand name */
+        .brand-name {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 38px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-bright);
+            line-height: 1;
+        }
+
+        .brand-name .accent { color: var(--cyan-300); }
+
+        .brand-sub {
+            margin-top: 7px;
+            font-family: 'Barlow', sans-serif;
+            font-size: 10.5px;
+            font-weight: 300;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--steel-300);
+        }
+
+        /* ================================================================
+           MAIN CARD
+           ================================================================ */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--navy-600);
+            border-radius: 3px;
+            padding: 26px 28px 32px;
+            position: relative;
+            /* Industrial panel shadow */
+            box-shadow:
+                0 0 0 1px rgba(0, 180, 216, 0.06),
+                0 24px 80px rgba(0, 0, 0, 0.55),
+                inset 0 1px 0 rgba(0, 180, 216, 0.07),
+                0 0 60px rgba(0, 180, 216, 0.03);
+            transition: box-shadow var(--t-med), border-color var(--t-med);
+        }
+
+        body.mode-manager .card {
+            box-shadow:
+                0 0 0 1px rgba(160, 200, 230, 0.05),
+                0 24px 80px rgba(0, 0, 0, 0.55),
+                inset 0 1px 0 rgba(160, 200, 230, 0.05),
+                0 0 60px rgba(160, 200, 230, 0.02);
+        }
+
+        /* Top accent bar — glowing gradient line */
+        .card-accent-bar {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            border-radius: 3px 3px 0 0;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                var(--cyan-600) 15%,
+                var(--cyan-300) 40%,
+                var(--cyan-200) 50%,
+                var(--cyan-300) 60%,
+                var(--cyan-600) 85%,
+                transparent 100%
+            );
+            transition: background var(--t-med);
+        }
+
+        body.mode-manager .card-accent-bar {
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                var(--steel-500) 15%,
+                var(--sil-300) 40%,
+                var(--sil-100) 50%,
+                var(--sil-300) 60%,
+                var(--steel-500) 85%,
+                transparent 100%
+            );
+        }
+
+        /* Angled cut corner — top right */
+        .card-cut {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 26px 26px 0;
+            border-color: transparent var(--bg-root) transparent transparent;
+        }
+
+        /* Rivet corners */
+        .card-rivets span {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--navy-700);
+            border: 1px solid var(--steel-600);
+            opacity: 0.6;
+        }
+
+        .card-rivets .rv-tl { top: 10px;  left: 10px;  }
+        .card-rivets .rv-tr { top: 10px;  right: 28px; } /* clear of cut */
+        .card-rivets .rv-bl { bottom: 10px; left: 10px;  }
+        .card-rivets .rv-br { bottom: 10px; right: 10px; }
+
+        /* ================================================================
+           MODE STRIP — shows current access level
+           ================================================================ */
+        .mode-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .mode-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            padding: 3px 9px;
+            border-radius: 2px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(0, 212, 255, 0.18);
+            color: var(--cyan-300);
+            transition: background var(--t-med), border-color var(--t-med), color var(--t-med);
+        }
+
+        body.mode-manager .mode-tag {
+            background: rgba(168, 204, 223, 0.07);
+            border-color: rgba(168, 204, 223, 0.14);
+            color: var(--sil-200);
+        }
+
+        .mode-ref {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5px;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+        }
+
+        /* ================================================================
+           TAB SWITCHER
+           ================================================================ */
+        .tabs-wrap {
+            position: relative;
+            margin-bottom: 22px;
+        }
+
+        .tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid var(--navy-700);
+        }
+
+        /* The animated sliding indicator */
+        .tab-slide {
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 50%;
+            height: 2px;
+            background: var(--cyan-300);
+            box-shadow: 0 0 8px var(--cyan-300), 0 0 18px rgba(0, 212, 255, 0.35);
+            transition:
+                transform  0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background 0.28s ease,
+                box-shadow 0.28s ease;
+        }
+
+        body.mode-manager .tab-slide {
+            transform:   translateX(100%);
+            background:  var(--sil-200);
+            box-shadow:  0 0 8px var(--sil-200), 0 0 18px rgba(168, 204, 223, 0.25);
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 10px 14px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            transition: color var(--t-fast), background var(--t-fast);
+            user-select: none;
+            position: relative;
+        }
+
+        .tab:hover { color: var(--steel-200); }
+
+        /* Worker active = cyan */
+        .tab.worker-tab.active { color: var(--cyan-300); }
+
+        /* Manager active = silver */
+        .tab.manager-tab.active { color: var(--sil-200); }
+
+        .tab-icon { width: 15px; height: 15px; flex-shrink: 0; }
+
+        /* Tiny mode badge on active tab */
+        .tab-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.5px;
+            letter-spacing: 0.12em;
+            padding: 1px 5px;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity var(--t-med);
+        }
+
+        .tab.active .tab-badge { opacity: 1; }
+
+        .worker-tab.active .tab-badge {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.18);
+            color: var(--cyan-300);
+        }
+
+        .manager-tab.active .tab-badge {
+            background: rgba(168, 204, 223, 0.07);
+            border: 1px solid rgba(168, 204, 223, 0.14);
+            color: var(--sil-200);
+        }
+
+        /* ================================================================
+           SUBTITLE
+           ================================================================ */
+        .form-subtitle {
+            font-size: 12.5px;
+            font-weight: 300;
+            color: var(--text-body);
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            letter-spacing: 0.01em;
+        }
+
+        .sub-prefix {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent-mid);
+            opacity: 0.5;
+            transition: color var(--t-med);
             flex-shrink: 0;
         }
 
-        .tab.active {
-            background: var(--slate-700);
-            color: var(--white);
-        }
-
-        .tab.active.worker-tab { color: var(--amber-300); }
-        .tab.active.manager-tab { color: var(--slate-200); }
-
-        /* Form subtitle */
-        .form-title {
-            font-size: 14px;
-            color: var(--slate-400);
-            margin-bottom: 20px;
-        }
-
-        /* Alert */
+        /* ================================================================
+           ERROR ALERT
+           ================================================================ */
         .alert {
-            background: rgba(248, 113, 113, 0.1);
-            border: 1px solid rgba(248, 113, 113, 0.3);
-            color: var(--red-400);
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 13px;
+            background: var(--err-bg);
+            border: 1px solid var(--err-border);
+            border-left: 2.5px solid var(--err-color);
+            color: var(--err-color);
+            padding: 11px 14px;
+            border-radius: 3px;
+            font-size: 12.5px;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 9px;
+            animation: alertIn 0.28s ease both;
         }
 
-        /* Form groups */
+        @keyframes alertIn {
+            from { opacity: 0; transform: translateX(-6px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ================================================================
+           FORM FIELDS
+           ================================================================ */
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 18px;
+            animation: fieldIn 0.4s ease both;
+        }
+
+        .form-group:nth-child(1) { animation-delay: 0.18s; }
+        .form-group:nth-child(2) { animation-delay: 0.26s; }
+
+        @keyframes fieldIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .field-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .field-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
+            color: var(--text-dim);
+            opacity: 0.45;
+            letter-spacing: 0.05em;
         }
 
         label {
-            display: block;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--slate-400);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 7px;
+            letter-spacing: 0.2em;
+            transition: color var(--t-fast);
         }
 
-        .input-wrap {
-            position: relative;
-        }
+        .form-group:focus-within label { color: var(--accent-mid); }
+
+        .input-wrap { position: relative; }
 
         .input-icon {
             position: absolute;
             left: 13px;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--slate-600);
+            color: var(--steel-500);
             pointer-events: none;
+            transition: color var(--t-fast);
         }
 
-        .input-icon svg { width: 15px; height: 15px; }
+        .input-icon svg { width: 15px; height: 15px; display: block; }
+
+        .form-group:focus-within .input-icon { color: var(--accent-mid); }
 
         input[type="text"],
         input[type="password"] {
             width: 100%;
-            background: var(--slate-800);
-            border: 1px solid var(--slate-700);
-            border-radius: 8px;
-            padding: 11px 14px 11px 38px;
-            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-input);
+            border: 1px solid var(--navy-600);
+            border-radius: 3px;
+            padding: 12px 14px 12px 42px;
+            font-family: 'Barlow', sans-serif;
             font-size: 14px;
-            color: var(--white);
-            transition: border-color 0.2s, box-shadow 0.2s;
+            font-weight: 400;
+            color: var(--text-bright);
             outline: none;
+            -webkit-appearance: none;
+            transition:
+                border-color var(--t-fast),
+                background   var(--t-fast),
+                box-shadow   var(--t-fast);
         }
 
         input[type="text"]::placeholder,
         input[type="password"]::placeholder {
-            color: var(--slate-600);
+            color: var(--text-dim);
+            font-weight: 300;
         }
 
         input[type="text"]:focus,
         input[type="password"]:focus {
-            border-color: var(--amber-500);
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+            border-color: var(--accent-mid);
+            background: #0c1830;
+            box-shadow:
+                0 0 0 3px var(--accent-glow),
+                inset 0 0 24px rgba(0, 180, 216, 0.025);
         }
 
-        /* Mono font for ID/phone */
+        /* JetBrains Mono for phone / username input */
         #input-id {
-            font-family: 'DM Mono', monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.07em;
         }
 
-        /* Submit button */
+        /* ================================================================
+           SUBMIT BUTTON
+           ================================================================ */
+        .btn-wrap {
+            margin-top: 6px;
+            animation: fieldIn 0.4s 0.34s ease both;
+        }
+
         .btn {
             width: 100%;
-            background: var(--amber-400);
-            color: var(--slate-950);
-            border: none;
-            border-radius: 8px;
-            padding: 13px;
-            font-family: 'DM Sans', sans-serif;
+            position: relative;
+            overflow: hidden;
+            background: transparent;
+            border: 1px solid var(--accent-mid);
+            border-radius: 3px;
+            padding: 14px 18px;
+            font-family: 'Rajdhani', sans-serif;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--accent);
             cursor: pointer;
-            margin-top: 8px;
-            transition: background 0.2s, transform 0.1s;
-            letter-spacing: 0.01em;
-        }
-
-        .btn:hover { background: var(--amber-300); }
-        .btn:active { transform: scale(0.99); }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 11px;
-            color: var(--slate-600);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 12px;
+            transition:
+                color        var(--t-fast),
+                border-color var(--t-fast),
+                box-shadow   var(--t-fast),
+                transform    0.1s ease;
         }
 
-        .footer-dot {
+        /* Horizontal scan-fill fill on hover */
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, var(--accent-mid), var(--accent-dim));
+            transform: translateX(-102%);
+            transition: transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+
+        .btn:hover { color: var(--bg-root); border-color: var(--accent); box-shadow: 0 0 24px var(--accent-glow2); }
+        .btn:hover::before { transform: translateX(0); }
+        .btn:active { transform: scale(0.988); }
+
+        /* Text and arrow sit above the ::before fill */
+        .btn-inner {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-arrow {
+            font-size: 16px;
+            transition: transform 0.22s ease;
+        }
+
+        .btn:hover .btn-arrow { transform: translateX(4px); }
+
+        /* ================================================================
+           CARD FOOTER
+           ================================================================ */
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            margin-top: 22px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5px;
+            letter-spacing: 0.12em;
+            color: var(--text-dim);
+        }
+
+        .footer-sep {
             width: 3px;
             height: 3px;
-            background: var(--slate-700);
             border-radius: 50%;
+            background: var(--text-dim);
+            opacity: 0.35;
+        }
+
+        /* ================================================================
+           RESPONSIVE
+           ================================================================ */
+        @media (max-width: 480px) {
+            .login-wrap { max-width: 100%; }
+            .card { padding: 20px 16px 26px; }
+            .brand-name { font-size: 30px; }
+            .sys-info, .sys-status, .hud { display: none; }
+            .tab { font-size: 12px; gap: 6px; }
+            .tab-badge { display: none; }
+        }
+
+        @media (max-width: 360px) {
+            .card { padding: 16px 13px 22px; }
+            .brand-name { font-size: 26px; }
         }
     </style>
 </head>
-<body>
 
-<div class="login-wrap">
+<body class="mode-worker">
 
-    <div class="brand">
-        <div class="brand-name">{{ BRAND_SHORT_NAME }}<span> Portal</span></div>
-        <div class="brand-tag">Workforce Management System</div>
+    <!-- ── Background layers ─────────────────────── -->
+    <div class="bg-layer bg-grid"></div>
+    <div class="bg-layer bg-vignette"></div>
+    <div class="bg-layer bg-glow"></div>
+    <div class="scan-beam"></div>
+
+    <!-- ── HUD corners ───────────────────────────── -->
+    <div class="hud">
+        <div class="hud-bracket tl"></div>
+        <div class="hud-bracket tr"></div>
+        <div class="hud-bracket bl"></div>
+        <div class="hud-bracket br"></div>
     </div>
 
-    <div class="card">
-
-        <div class="tabs">
-            <div class="tab worker-tab active" onclick="switchRole('worker')" id="tab-worker">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                </svg>
-                Worker Login
-            </div>
-            <div class="tab manager-tab" onclick="switchRole('manager')" id="tab-manager">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                </svg>
-                Manager
-            </div>
-        </div>
-
-        <div class="form-title" id="subtitle-text">Welcome back Worker! Enter your phone number</div>
-
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-
-        <form method="POST" autocomplete="off">
-            {% csrf_token %}
-            <input type="hidden" name="login_type" id="login_type" value="worker">
-
-            <div class="form-group">
-                <label id="label-id">Phone Number</label>
-                <div class="input-wrap">
-                    <span class="input-icon" id="icon-id">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.55a16 16 0 0 0 5.55 5.55l.95-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/>
-                        </svg>
-                    </span>
-                    <input type="text" name="login_id" id="input-id" placeholder="10-digit mobile number" required autofocus inputmode="numeric">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Password</label>
-                <div class="input-wrap">
-                    <span class="input-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </span>
-                    <input type="password" name="password" id="input-password" placeholder="••••••••" required>
-                </div>
-            </div>
-
-            <button type="submit" class="btn" id="btn-text">Login as Worker</button>
-        </form>
-
-        <div class="footer">
-            <span>Authorized Personnel Only</span>
-            <span class="footer-dot"></span>
-            <span>Secure Connection</span>
-        </div>
-
+    <!-- ── System info overlays ──────────────────── -->
+    <div class="sys-info">
+        SYS :: CWMS<br>
+        AUTH_MODULE v2<br>
+        PORT 443 / TLS
     </div>
-</div>
 
-<script>
-    function switchRole(role) {
-        const tabWorker  = document.getElementById('tab-worker');
-        const tabManager = document.getElementById('tab-manager');
-        const labelId    = document.getElementById('label-id');
-        const inputId    = document.getElementById('input-id');
-        const btnText    = document.getElementById('btn-text');
-        const subtitle   = document.getElementById('subtitle-text');
-        const iconId     = document.getElementById('icon-id');
+    <div class="sys-status">
+        <div class="sys-dot"></div>
+        SYSTEM ACTIVE
+    </div>
 
-        const phoneIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.55a16 16 0 0 0 5.55 5.55l.95-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>`;
-        const userIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    <!-- ════════════════════════════════════════════
+         MAIN LOGIN BLOCK
+         ════════════════════════════════════════════ -->
+    <div class="login-wrap">
 
-        document.getElementById('login_type').value = role;
+        <!-- Brand -->
+        <div class="brand">
+            <div class="brand-eyebrow">
+                <span class="brand-eyebrow-line l"></span>
+                Secure Access
+                <span class="brand-eyebrow-line r"></span>
+            </div>
+            <div class="brand-name">{{ BRAND_SHORT_NAME }}<span class="accent"> ›</span></div>
+            <div class="brand-sub">Contractor Workforce Management</div>
+        </div>
 
-        if (role === 'worker') {
-            tabWorker.classList.add('active');
-            tabManager.classList.remove('active');
-            labelId.textContent = 'Phone Number';
-            inputId.placeholder = '10-digit mobile number';
-            inputId.setAttribute('inputmode', 'numeric');
-            inputId.style.fontFamily = "'DM Mono', monospace";
-            btnText.textContent = 'Login as Worker';
-            
-            // ✅ Dynamic Worker Greeting
-            subtitle.textContent = 'Welcome back! Enter your phone number';
-            iconId.innerHTML = phoneIcon;
-        } else {
-            tabManager.classList.add('active');
-            tabWorker.classList.remove('active');
-            labelId.textContent = 'Username';
-            inputId.placeholder = 'Manager / Admin username';
-            inputId.setAttribute('inputmode', 'text');
-            inputId.style.fontFamily = "'DM Sans', sans-serif";
-            btnText.textContent = 'Login to Console';
-            
-            // ✅ Dynamic Manager Greeting
-            subtitle.textContent = 'Welcome back, Manager! Enter your credentials';
-            iconId.innerHTML = userIcon;
+        <!-- Card -->
+        <div class="card">
+            <div class="card-accent-bar"></div>
+            <div class="card-cut"></div>
+            <div class="card-rivets">
+                <span class="rv-tl"></span>
+                <span class="rv-tr"></span>
+                <span class="rv-bl"></span>
+                <span class="rv-br"></span>
+            </div>
+
+            <!-- Mode strip -->
+            <div class="mode-strip">
+                <div class="mode-tag" id="mode-tag">WORKER MODE</div>
+                <div class="mode-ref">AUTH:PORTAL</div>
+            </div>
+
+            <!-- Tab switcher -->
+            <div class="tabs-wrap">
+                <div class="tabs">
+                    <div class="tab-slide" id="tab-slide"></div>
+
+                    <div class="tab worker-tab active"
+                         onclick="switchRole('worker')"
+                         id="tab-worker">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Worker
+                        <span class="tab-badge">FIELD</span>
+                    </div>
+
+                    <div class="tab manager-tab"
+                         onclick="switchRole('manager')"
+                         id="tab-manager">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                        </svg>
+                        Manager
+                        <span class="tab-badge">CTRL</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subtitle -->
+            <div class="form-subtitle">
+                <span class="sub-prefix" id="sub-prefix">//</span>
+                <span id="subtitle-text">Enter your phone number to authenticate</span>
+            </div>
+
+            <!-- Django error messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" width="15" height="15">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8"  x2="12"   y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Form -->
+            <form method="POST" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" name="login_type" id="login_type" value="worker">
+
+                <!-- Field 01: identifier -->
+                <div class="form-group">
+                    <div class="field-header">
+                        <span class="field-num">01</span>
+                        <label id="label-id">Phone Number</label>
+                    </div>
+                    <div class="input-wrap">
+                        <span class="input-icon" id="icon-id">
+                            <!-- Phone icon (default) -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round"
+                                 stroke-linejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2
+                                         19.79 19.79 0 0 1-8.63-3.07
+                                         A19.5 19.5 0 0 1 4.69 12
+                                         19.79 19.79 0 0 1 1.61 3.4
+                                         A2 2 0 0 1 3.58 1h3
+                                         a2 2 0 0 1 2 1.72
+                                         c.127.96.361 1.903.7 2.81
+                                         a2 2 0 0 1-.45 2.11
+                                         L7.91 8.55
+                                         a16 16 0 0 0 5.55 5.55
+                                         l.95-.91
+                                         a2 2 0 0 1 2.11-.45
+                                         c.907.339 1.85.573 2.81.7
+                                         A2 2 0 0 1 21 16.92z"/>
+                            </svg>
+                        </span>
+                        <input type="text"
+                               name="login_id"
+                               id="input-id"
+                               placeholder="10-digit mobile number"
+                               required
+                               autofocus
+                               inputmode="numeric">
+                    </div>
+                </div>
+
+                <!-- Field 02: password -->
+                <div class="form-group">
+                    <div class="field-header">
+                        <span class="field-num">02</span>
+                        <label>Password</label>
+                    </div>
+                    <div class="input-wrap">
+                        <span class="input-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round"
+                                 stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                        </span>
+                        <input type="password"
+                               name="password"
+                               id="input-password"
+                               placeholder="••••••••"
+                               required>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="btn-wrap">
+                    <button type="submit" class="btn" id="btn-submit">
+                        <span class="btn-inner">
+                            <span id="btn-text">Authenticate as Worker</span>
+                            <span class="btn-arrow">→</span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+
+            <div class="card-footer">
+                <span>Authorized Personnel Only</span>
+                <span class="footer-sep"></span>
+                <span>TLS Encrypted</span>
+                <span class="footer-sep"></span>
+                <span>Secure</span>
+            </div>
+        </div><!-- /card -->
+    </div><!-- /login-wrap -->
+
+    <!-- ================================================================
+         JAVASCRIPT — switchRole() preserved + mode morphing
+         ================================================================ -->
+    <script>
+        /* SVG icon strings -------------------------------------------- */
+        const PHONE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.55a16 16 0 0 0 5.55 5.55l.95-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>`;
+
+        const USER_ICON  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+
+        /* Main role-switch function ------------------------------------ */
+        function switchRole(role) {
+            const tabWorker    = document.getElementById('tab-worker');
+            const tabManager   = document.getElementById('tab-manager');
+            const labelId      = document.getElementById('label-id');
+            const inputId      = document.getElementById('input-id');
+            const btnText      = document.getElementById('btn-text');
+            const subtitle     = document.getElementById('subtitle-text');
+            const iconId       = document.getElementById('icon-id');
+            const modeTag      = document.getElementById('mode-tag');
+
+            /* Update the hidden login_type field */
+            document.getElementById('login_type').value = role;
+
+            if (role === 'worker') {
+                /* ---- Tabs ---- */
+                tabWorker.classList.add('active');
+                tabManager.classList.remove('active');
+
+                /* ---- Body class → CSS variables morph to cyan ---- */
+                document.body.classList.remove('mode-manager');
+                document.body.classList.add('mode-worker');
+
+                /* ---- Field wiring ---- */
+                labelId.textContent = 'Phone Number';
+                inputId.placeholder = '10-digit mobile number';
+                inputId.setAttribute('inputmode', 'numeric');
+                inputId.style.fontFamily = "'JetBrains Mono', monospace";
+                inputId.style.fontSize   = '13px';
+                iconId.innerHTML = PHONE_ICON;
+
+                /* ---- Strings ---- */
+                btnText.textContent  = 'Authenticate as Worker';
+                subtitle.textContent = 'Enter your phone number to authenticate';
+                modeTag.textContent  = 'WORKER MODE';
+
+            } else {
+                /* ---- Tabs ---- */
+                tabManager.classList.add('active');
+                tabWorker.classList.remove('active');
+
+                /* ---- Body class → CSS variables morph to silver ---- */
+                document.body.classList.remove('mode-worker');
+                document.body.classList.add('mode-manager');
+
+                /* ---- Field wiring ---- */
+                labelId.textContent = 'Username';
+                inputId.placeholder = 'Manager / Admin username';
+                inputId.setAttribute('inputmode', 'text');
+                inputId.style.fontFamily = "'Barlow', sans-serif";
+                inputId.style.fontSize   = '14px';
+                iconId.innerHTML = USER_ICON;
+
+                /* ---- Strings ---- */
+                btnText.textContent  = 'Access Control Console';
+                subtitle.textContent = 'Enter your manager credentials to proceed';
+                modeTag.textContent  = 'MANAGER MODE';
+            }
+
+            inputId.focus();
         }
+    </script>
 
-        inputId.focus();
-    }
-</script>
-<script src="{% static 'js/theme.js' %}"></script>
+    <script src="{% static 'js/theme.js' %}"></script>
 </body>
 </html>

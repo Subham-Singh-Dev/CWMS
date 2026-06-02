@@ -34,6 +34,9 @@ EMPLOYMENT_TYPE_CHOICES = [
 SITE_CHOICES = [
     ('raigarh', 'Raigarh'),
     ('bhilai', 'Bhilai'),
+    ('korba', 'Korba'),
+    ('jharkhand', 'Jharkhand'),
+    ('durg', 'Durg'),
     # Add more as needed — no code change required later
 ]
 

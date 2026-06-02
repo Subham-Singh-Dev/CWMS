@@ -31,6 +31,14 @@ class Bill(models.Model):
         (BILL_TYPE_CLIENT, "Credit Customer"),
         (BILL_TYPE_DEBTOR, "Debtor"),
     ]
+    
+    PAYMENT_MODE_CHOICES = [
+    	("cash", "Cash"),
+   	    ("upi", "UPI"),
+    	("netbanking", "Net Banking"),
+    	("cheque", "Cheque"),
+    	("bank_transfer", "Bank Transfer"),
+    ]
 
     bill_type = models.CharField(
         max_length=20,
@@ -70,6 +78,14 @@ class Bill(models.Model):
         null=True,
         blank=True,
         help_text="Date when bill was paid"
+    )
+
+    payment_mode = models.CharField(
+    	max_length=20,
+    	choices=PAYMENT_MODE_CHOICES,
+    	null=True,
+    	blank=True,
+    	help_text="Payment method used"
     )
 
     @property

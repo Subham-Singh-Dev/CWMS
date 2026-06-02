@@ -20,11 +20,19 @@ class Expense(models.Model):
     reporting consistency.
     """
     CATEGORY_CHOICES = [
-        ("food", "Food"),
-        ("fuel", "Fuel"),
-        ("travel", "Travel"),
-        ("material", "Material"),
-        ("misc", "Misc"),
+    	("food", "Food"),
+    	("fuel", "Fuel"),
+    	("travel", "Travel"),
+    	("material", "Material"),
+   	    ("misc", "Misc"),
+    	("room_rent", "Room Rent"),
+    	("gate_pass_medical", "Gate Pass & Medical"),
+    	("vehicle_rent", "Vehicle Rent"),
+    	("hotel_stay", "Hotel Stay"),
+    	("stationary", "Stationary"),
+    	("vehicle_repair", "Vehicle Repair"),
+    	("vehicle_transport", "Vehicle Transport"),
+    	("worker_transport", "Worker Transport"),
     ]
 
     PAYMENT_MODE_CHOICES = [
@@ -34,7 +42,7 @@ class Expense(models.Model):
     ]
 
     date = models.DateField()
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
     description = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_mode = models.CharField(max_length=10, choices=PAYMENT_MODE_CHOICES)

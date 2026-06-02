@@ -203,8 +203,22 @@ class MonthlySalary(models.Model):
     # Payment tracking fields
     is_paid = models.BooleanField(default=False)
     
-    # ⬇️ FIX 1: ADDED MISSING FIELD
+    
     paid_on = models.DateField(null=True, blank=True, help_text="Date when payment was made")
+
+    payment_mode = models.CharField(
+        max_length=20,
+        choices=[
+            ("cash", "Cash"),
+            ("upi", "UPI"),
+            ("netbanking", "Net Banking"),
+            ("cheque", "Cheque"),
+            ("bank_transfer", "Bank Transfer"),
+        ],
+        null=True,
+        blank=True,
+        help_text="Payment method used to disburse this salary"
+    )
     
     generated_at = models.DateTimeField(auto_now_add=True)
 

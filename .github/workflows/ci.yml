@@ -27,7 +27,15 @@ jobs:
       - name: Django system checks
         run: |
           python manage.py check
+        env:
+          SECRET_KEY: 'dummy-key-just-for-github-tests-123!!'
+          DEBUG: 'True'
+          DATABASE_URL: 'sqlite:///db.sqlite3'
 
       - name: Run test suite
         run: |
           python manage.py test
+        env:
+          SECRET_KEY: 'dummy-key-just-for-github-tests-123!!'
+          DEBUG: 'True'
+          DATABASE_URL: 'sqlite:///db.sqlite3'

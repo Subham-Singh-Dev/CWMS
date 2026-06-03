@@ -38,17 +38,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 # WARNING: Hardcoded secret key is acceptable only for local/dev usage.
 # PRODUCTION: Load SECRET_KEY exclusively from environment/secret manager.
-SECRET_KEY = os.environ.get('SECRET_KEY')
-if not SECRET_KEY:
-    if os.environ.get('DEBUG', 'True') == 'True':
-        SECRET_KEY = 'dev-only-secret-not-for-production'
-    else:
-        raise ValueError("SECRET_KEY environment variable is not set")
+# ============================================================
+# SECURITY & DEBUG CONFIGURATION
+# ============================================================
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# WARNING: DEBUG=True leaks stack traces/settings in error pages.
-# PRODUCTION: Set DEBUG=False and configure ALLOWED_HOSTS explicitly.
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# Load values cleanly using python-decouple's config tool
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
@@ -57,7 +53,7 @@ CSRF_TRUSTED_ORIGINS = config(
     default='http://localhost:8000'
 ).split(',')
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # Application definition
 
@@ -145,11 +141,12 @@ DATABASES = {
     )
 }
 
-# Redis Cache Configuration
-REDIS_URL = os.environ.get('REDIS_URL')
+# ============================================================
+# REDIS CACHE CONFIGURATION
+# ============================================================
+REDIS_URL = config('REDIS_URL', default=None)
+
 if not REDIS_URL:
-    # No Redis configured — use DummyCache to avoid errors in environments
-    # where Redis is intentionally absent (e.g., demo or simple deploys).
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
@@ -162,14 +159,12 @@ else:
             "LOCATION": REDIS_URL,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                # Production safety: avoid cache errors causing 500s
-                # django-redis honors IGNORE_EXCEPTIONS to allow graceful fallback
                 "IGNORE_EXCEPTIONS": True,
                 "SOCKET_CONNECT_TIMEOUT": 5,
                 "SOCKET_TIMEOUT": 5,
             },
             "KEY_PREFIX": "cwms",
-            "TIMEOUT": 300,  # 5 minutes default TTL
+            "TIMEOUT": 300,
         }
     }
 
@@ -230,16 +225,15 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Media files uploaded by users will be lost on redeploy
 # TODO Week 4: Migrate to Cloudinary or AWS S3 for persistent media storage
 
-# Global branding
-BRAND_COMPANY_NAME = os.getenv("BRAND_COMPANY_NAME", "Sakuntalam India Services")
-BRAND_SHORT_NAME = os.getenv("BRAND_SHORT_NAME", "CWMS")
-BRAND_PRODUCT_NAME = os.getenv(
-    "BRAND_PRODUCT_NAME",
-    "Construction Workforce Management",
-)
-BRAND_ACCOUNT_NAME = os.getenv("BRAND_ACCOUNT_NAME", BRAND_COMPANY_NAME.upper())
-BRAND_COMPANY_ADDRESS = os.getenv("BRAND_COMPANY_ADDRESS", "")
-BRAND_COMPANY_GSTIN = os.getenv("BRAND_COMPANY_GSTIN", "")
+# ============================================================
+# DYNAMIC BRANDING CONFIGURATION
+# ============================================================
+BRAND_COMPANY_NAME = config('BRAND_COMPANY_NAME', default='Sakuntalam India Services')
+BRAND_SHORT_NAME = config('BRAND_SHORT_NAME', default='CWMS')
+BRAND_PRODUCT_NAME = config('BRAND_PRODUCT_NAME', default='Construction Workforce Management')
+BRAND_ACCOUNT_NAME = config('BRAND_ACCOUNT_NAME', default=BRAND_COMPANY_NAME.upper())
+BRAND_COMPANY_ADDRESS = config('BRAND_COMPANY_ADDRESS', default='')
+BRAND_COMPANY_GSTIN = config('BRAND_COMPANY_GSTIN', default='')
 
 # ── Company / Brand Details (used in PDF exports) ──
 COMPANY_NAME = 'Sakuntalam India Services'
@@ -277,5 +271,12 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_AGE = 86400  # 24 hours
+    SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_PRELOAD = True

@@ -15,6 +15,9 @@ from .serializers import MonthlySalarySerializer, AdvanceSerializer
 from django.core.cache import cache
 from config.cache_utils import delete_pattern, delete_patterns
 
+# Import for OpenAPI documentation mapping
+from drf_spectacular.utils import extend_schema
+
 
 class RecentActivityAPIView(APIView):
     """
@@ -24,6 +27,10 @@ class RecentActivityAPIView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Retrieve recent manager activities",
+        responses={200: dict}  # Explicitly informs documentation engine of dictionary return structure
+    )
     def get(self, request):
         is_manager = (
             request.user.is_superuser or
@@ -63,6 +70,7 @@ class AttendanceListAPIView(APIView):
     POST /api/attendance/                  → mark single attendance
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = AttendanceSerializer  # Fixes documentation tracking for input/output payloads
 
     def get(self, request):
         is_manager = (
@@ -142,7 +150,9 @@ class EmployeeListAPIView(APIView):
     GET /api/employees/ → list all active employees
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = EmployeeSerializer  # Fixes documentation auto-detection tracking
 
+    @extend_schema(operation_id="list_active_employees")  # Decouples operation name from details endpoint to fix collision
     def get(self, request):
         is_manager = (
             request.user.is_superuser or
@@ -171,12 +181,14 @@ class EmployeeListAPIView(APIView):
         cache.set(cache_key, payload, timeout=300)
         return Response(payload)
 
+
 class PayrollListAPIView(APIView):
     """
     GET /api/payroll/?month=2026-04
     Returns salary list for a given month.
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = MonthlySalarySerializer  # Fixes documentation auto-detection tracking
 
     def get(self, request):
         is_manager = (
@@ -220,6 +232,7 @@ class AdvanceListAPIView(APIView):
     POST /api/advances/               → issue new advance
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = AdvanceSerializer  # Fixes documentation input validation metrics
 
     def get(self, request):
         is_manager = (
@@ -280,6 +293,7 @@ class AdvanceListAPIView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+
 class EmployeeDetailView(APIView):
     """
     GET    /api/employees/<pk>/  — retrieve one employee
@@ -289,17 +303,19 @@ class EmployeeDetailView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeSerializer
 
+    @extend_schema(operation_id="retrieve_single_employee")  # Isolates operation name string explicitly
     def get(self, request, pk):
         employee = get_object_or_404(Employee, pk=pk)
         serializer = EmployeeSerializer(employee)
         return Response(serializer.data)
 
+    @extend_schema(operation_id="update_single_employee")
     def put(self, request, pk):
         employee = get_object_or_404(Employee, pk=pk)
         serializer = EmployeeSerializer(
             employee,
             data=request.data,
-            partial=True        # PATCH-style: only update sent fields
+            partial=True
         )
         if serializer.is_valid():
             serializer.save()
@@ -312,6 +328,7 @@ class EmployeeDetailView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(operation_id="delete_single_employee")
     def delete(self, request, pk):
         employee = get_object_or_404(Employee, pk=pk)
         employee.delete()

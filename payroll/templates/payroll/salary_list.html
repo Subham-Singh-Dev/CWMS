@@ -1051,10 +1051,19 @@
                                 <!-- Action -->
                                 <td class="sticky-right">
                                     {% if not row.salary.is_paid %}
-                                        <form method="post" action="{% url 'mark_salary_paid' %}" class="action-form">
+                                        <form method="post" action="{% url 'mark_salary_paid' %}" class="action-form" style="display: flex; gap: 8px; align-items: center;">
                                             {% csrf_token %}
                                             <input type="hidden" name="salary_id" value="{{ row.salary.id }}">
                                             <input type="hidden" name="month" value="{{ selected_month }}">
+                                            
+                                            <select name="payment_mode" required style="padding: 6px; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-body); color: var(--text-primary); font-size: 13px;">
+                                                <option value="" disabled selected>Mode</option>
+                                                <option value="CASH">Cash</option>
+                                                <option value="UPI">UPI</option>
+                                                <option value="BANK_TRANSFER">Bank</option>
+                                                <option value="CHEQUE">Cheque</option>
+                                            </select>
+
                                             <button type="submit" class="action-btn">
                                                 ✓ Mark as Paid
                                             </button>

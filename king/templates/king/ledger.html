@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ledger | {{ company_name }}</title>
+    <title>Ledger | {{ BRAND_COMPANY_NAME }}</title>
     <script>
         (function() {
             const theme = localStorage.getItem('king_theme') || 'light';
@@ -207,9 +207,9 @@
 
     {# ── Header block — company on top, party below ───────────────────── #}
     <div class="header-block">
-        <div class="line-company">{{ company_name }}</div>
-        {% if company_address %}<div class="line-addr">{{ company_address }}</div>{% endif %}
-        {% if company_gstin %}<div class="line-gstin">GSTIN : {{ company_gstin }}</div>{% endif %}
+        <div class="line-company">{{ BRAND_COMPANY_NAME }}</div>
+        {% if BRAND_COMPANY_ADDRESS %}<div class="line-addr">{{ BRAND_COMPANY_ADDRESS }}</div>{% endif %}
+        {% if BRAND_COMPANY_GSTIN %}<div class="line-gstin">GSTIN : {{ BRAND_COMPANY_GSTIN }}</div>{% endif %}
         <div class="line-ledger">L E D G E R</div>
         <div class="line-period">( From {{ from_date|date:"d/m/Y" }} to {{ to_date|date:"d/m/Y" }} )</div>
         {% if selected_account %}

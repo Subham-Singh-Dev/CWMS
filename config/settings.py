@@ -87,7 +87,8 @@ INSTALLED_APPS = [
 
     'drf_spectacular',
 
-    'django_extensions',
+    # Only load dev tools in DEBUG mode
+    *(['django_extensions'] if DEBUG else []),
 
     'leaves',
 
@@ -235,10 +236,7 @@ BRAND_ACCOUNT_NAME = config('BRAND_ACCOUNT_NAME', default=BRAND_COMPANY_NAME.upp
 BRAND_COMPANY_ADDRESS = config('BRAND_COMPANY_ADDRESS', default='')
 BRAND_COMPANY_GSTIN = config('BRAND_COMPANY_GSTIN', default='')
 
-# ── Company / Brand Details (used in PDF exports) ──
-COMPANY_NAME = 'Sakuntalam India Services'
-COMPANY_ADDRESS = 'kirodimal nagar raigarh chattisgarh'
-COMPANY_GSTIN = '22ABCDE1234F1Z5'
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -278,5 +276,4 @@ if not DEBUG:
     SESSION_EXPIRE_AT_BROWSER_CLOSE = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_SSL_REDIRECT = True
     SECURE_HSTS_PRELOAD = True

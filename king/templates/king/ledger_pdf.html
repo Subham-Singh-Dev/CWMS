@@ -180,14 +180,14 @@ body {
 <!-- ══ HEADER ══ -->
 <div class="header-wrapper">
 
-    <span class="co-name">{{ company_name }}</span>
+    <span class="co-name">{{ BRAND_COMPANY_NAME }}</span>
 
-    {% if company_address %}
-    <span class="co-address">{{ company_address }}</span>
+    {% if BRAND_COMPANY_ADDRESS %}
+    <span class="co-address">{{ BRAND_COMPANY_ADDRESS }}</span>
     {% endif %}
 
-    {% if company_gstin %}
-    <span class="co-gstin">GSTIN : {{ company_gstin }}</span>
+    {% if BRAND_COMPANY_GSTIN %}
+    <span class="co-gstin">GSTIN : {{ BRAND_COMPANY_GSTIN }}</span>
     {% endif %}
 
     <span class="ledger-word">L E D G E R</span>

@@ -1,7 +1,7 @@
 """
 Management Command: step2_mark_attendance
 ==========================================
-Marks attendance for ALL 160 employees for May 1-30, 2026.
+Marks attendance for ALL 160 employees for June 1-30, 2026.
 
 Multi-site architecture:
   - Employees are tagged with site (raigarh / bhilai / korba)
@@ -32,7 +32,7 @@ from attendance.models import Attendance
 from employees.models import Employee
 
 
-MAY_DATES = [date(2026, 5, d) for d in range(1, 31)]
+JUNE_DATES = [date(2026, 6, d) for d in range(1, 31)]
 
 SITE_LABELS = {
     "raigarh": "Raigarh",
@@ -42,11 +42,11 @@ SITE_LABELS = {
 
 
 class Command(BaseCommand):
-    help = "Mark attendance for 160 employees (3 sites) for May 1-30 via bulk_create"
+    help = "Mark attendance for 160 employees (3 sites) for June 1-30 via bulk_create"
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING(
-            "\n=== STEP 2: MARKING ATTENDANCE (MAY 1-30, MULTI-SITE) ===\n"
+            "\n=== STEP 2: MARKING ATTENDANCE (JUNE 1-30, MULTI-SITE) ===\n"
         ))
 
         all_employees = list(
@@ -64,8 +64,8 @@ class Command(BaseCommand):
         # Collect all existing 'L' records so we don't overwrite them
         existing_leave_keys = set(
             Attendance.objects.filter(
-                date__gte=date(2026, 5, 1),
-                date__lte=date(2026, 5, 30),
+                date__gte=date(2026, 6, 1),
+                date__lte=date(2026, 6, 30),
                 status="L",
             ).values_list("employee_id", "date")
         )
@@ -128,12 +128,12 @@ class Command(BaseCommand):
 
         # ── Final count ──────────────────────────────────────────────────────
         final_count = Attendance.objects.filter(
-            date__gte=date(2026, 5, 1),
-            date__lte=date(2026, 5, 30),
+            date__gte=date(2026, 6, 1),
+            date__lte=date(2026, 6, 30),
         ).count()
 
         self.stdout.write(self.style.SUCCESS(
-            f"\n✅ Step 2 complete. Total attendance records in DB for May: {final_count}"
+            f"\n✅ Step 2 complete. Total attendance records in DB for June: {final_count}"
         ))
 
         self._print_summary()
@@ -143,13 +143,13 @@ class Command(BaseCommand):
 
     def _build_attendance(self, employee, config, existing_leave_keys):
         """
-        Build Attendance objects for one employee across all 30 May days.
+        Build Attendance objects for one employee across all 30 June days.
         Skips dates already marked 'L'. Adds realistic overtime for P days.
         """
         records = []
 
         non_leave_days = [
-            d for d in MAY_DATES
+            d for d in JUNE_DATES
             if (employee.id, d) not in existing_leave_keys
         ]
 
@@ -187,7 +187,7 @@ class Command(BaseCommand):
     # ── SUMMARY ──────────────────────────────────────────────────────────────
 
     def _print_summary(self):
-        self.stdout.write("\n── Attendance Summary (May 2026) ──")
+        self.stdout.write("\n── Attendance Summary (June 2026) ──")
         for status_code, label in [
             ("P", "Present"),
             ("A", "Absent"),
@@ -195,15 +195,15 @@ class Command(BaseCommand):
             ("L", "Leave"),
         ]:
             count = Attendance.objects.filter(
-                date__gte=date(2026, 5, 1),
-                date__lte=date(2026, 5, 30),
+                date__gte=date(2026, 6, 1),
+                date__lte=date(2026, 6, 30),
                 status=status_code,
             ).count()
             self.stdout.write(f"  {label:10}: {count:5} records")
 
         total = Attendance.objects.filter(
-            date__gte=date(2026, 5, 1),
-            date__lte=date(2026, 5, 30),
+            date__gte=date(2026, 6, 1),
+            date__lte=date(2026, 6, 30),
         ).count()
         self.stdout.write(f"  {'TOTAL':10}: {total:5} records")
 
@@ -229,15 +229,15 @@ class Command(BaseCommand):
             # Count attendance records for this site's employees
             site_att_count = Attendance.objects.filter(
                 employee_id__in=site_emp_ids,
-                date__gte=date(2026, 5, 1),
-                date__lte=date(2026, 5, 30),
+                date__gte=date(2026, 6, 1),
+                date__lte=date(2026, 6, 30),
             ).count()
 
             expected_max = len(site_emp_ids) * 30  # 30 days, max 1 record per day
             leave_count  = Attendance.objects.filter(
                 employee_id__in=site_emp_ids,
-                date__gte=date(2026, 5, 1),
-                date__lte=date(2026, 5, 30),
+                date__gte=date(2026, 6, 1),
+                date__lte=date(2026, 6, 30),
                 status="L",
             ).count()
 
@@ -271,5 +271,5 @@ class Command(BaseCommand):
             ))
 
         self.stdout.write(
-            self.style.SUCCESS("✅ Step 2 complete. Run step3_generate_payroll next.\n")
+            self.style.SUCCESS("✅ Step 2 complete. Ready for Payroll Generation.\n")
         )

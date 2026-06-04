@@ -77,6 +77,7 @@
             font-size: 26px;
             font-weight: 900;
             background: linear-gradient(135deg, var(--primary-500), var(--purple-600));
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             line-height: 1;
@@ -812,9 +813,8 @@
                     <td>
                         <div class="action-group">
                             {% if not bill.is_paid %}
-                                <!-- FIX 1: Pass total_with_gst instead of amount -->
                                 <button type="button" class="tiny-btn btn-toggle" 
-                                        onclick="openPaymentModal('{{ bill.id }}', 'BILL-{{ bill.id|stringformat:"04d" }}', '{{ bill.total_with_gst|floatformat:2 }}', '{{ bill.balance|floatformat:2 }}')">
+                                    onclick="openPaymentModal('{{ bill.id }}', `BILL-{{ bill.id|stringformat:'04d' }}`, '{{ bill.total_with_gst|floatformat:2 }}', '{{ bill.balance|floatformat:2 }}')">
                                     {% if selected_type == 'client' %}Record Receipt{% else %}Record Payment{% endif %}
                                 </button>
                             {% endif %}
@@ -824,7 +824,7 @@
                             {% endif %}
 
                             <form method="post" action="{% url 'billing:delete_bill' bill.id %}"
-                                onsubmit="return confirm('Delete BILL-{{ bill.id|stringformat:"04d" }}?');">
+                                onsubmit="return confirm(`Delete BILL-{{ bill.id|stringformat:'04d' }}?`);">
                                 {% csrf_token %}
                                 <input type="hidden" name="type"  value="{{ selected_type }}">
                                 <input type="hidden" name="month" value="{{ selected_month }}">
@@ -832,7 +832,6 @@
                             </form>
                         </div>
                         
-                        <!-- FIX 2: Dynamic "Received" vs "Paid" text -->
                         {% if bill.paid_amount > 0 and not bill.is_paid %}
                         <div style="font-size:10px; margin-top:5px; color:var(--text-secondary); font-weight: 600;">
                             {% if selected_type == 'client' %}Received{% else %}Paid{% endif %}: ₹{{ bill.paid_amount|floatformat:2 }} | Left: ₹{{ bill.balance|floatformat:2 }}
@@ -879,11 +878,21 @@
                 <div class="form-field" style="margin-bottom: 15px;">
                     <label class="form-label">Payment Amount (₹)</label>
                     <div style="display:flex; gap:8px;">
-                        <input class="form-input" type="number" id="paymentInput" name="payment_amount" step="0.01" min="0.01" required>
+                        <input class="form-input" type="number" id="paymentInput" name="amount" step="0.01" min="0.01" required>
                         <button type="button" class="btn-back" onclick="setFullPayment()" style="white-space:nowrap;">Full Amount</button>
                     </div>
                 </div>
 
+                <div class="form-field" style="margin-bottom: 20px;">
+                    <label class="form-label" for="payment_mode">Payment Mode</label>
+                    <select class="form-input" name="payment_mode" id="payment_mode" required>
+                        <option value="" disabled selected>— Select payment mode —</option>
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="BANK_TRANSFER">Bank Transfer / NEFT</option>
+                        <option value="CHEQUE">Cheque</option>
+                    </select>
+                </div>
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
                     <button type="button" class="btn-back" onclick="closePaymentModal()">Cancel</button>
                     <button type="submit" class="btn-upload" style="background:linear-gradient(135deg, var(--success-500), #34d399);">Confirm Payment</button>

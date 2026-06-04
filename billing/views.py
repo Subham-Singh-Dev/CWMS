@@ -236,34 +236,29 @@ def record_payment(request, bill_id):
         Payment updates are atomic to avoid partial writes under concurrency.
     """
     bill = get_object_or_404(Bill, id=bill_id)
-    selected_type = request.POST.get("type", bill.bill_type)
-    selected_month = request.POST.get("month", timezone.now().strftime("%Y-%m"))
     
-    payment_str = request.POST.get("payment_amount", "0").strip()
+    # Fetch parameters for redirect
+    selected_type = request.POST.get('type', 'client')
+    selected_month = request.POST.get('month', '')
     
     try:
-        # Reason: Decimal avoids float drift in financial values.
-        payment_amount = Decimal(payment_str).quantize(Decimal('0.01'))
-        
-        if payment_amount <= 0:
-            messages.error(request, "Payment amount must be greater than zero.")
-        elif (bill.paid_amount + payment_amount) > bill.total_with_gst:
-            messages.error(
-                request,
-                f"Payment of ₹{payment_amount} exceeds the remaining balance "
-                f"of ₹{bill.balance}!",
-            )
-        else:
-            bill.paid_amount += payment_amount
-            # The model's save() method will auto-calculate if is_paid=True based on this new amount
-            bill.save()
-            messages.success(
-                request,
-                f"Payment of ₹{payment_amount} recorded successfully for "
-                f"BILL-{bill.id:04d}.",
-            )
+        payment_amount = Decimal(request.POST.get('amount', 0))
+        payment_mode = request.POST.get('payment_mode', '')
+
+        bill.paid_amount = (bill.paid_amount or Decimal('0')) + payment_amount
+        bill.payment_mode = payment_mode
+
+        if bill.paid_amount >= bill.total_amount:
+            bill.status = 'paid'
+
+        bill.save()
+        messages.success(
+            request,
+            f"Payment of ₹{payment_amount} recorded successfully for "
+            f"BILL-{bill.id:04d}."
+        )
             
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, decimal.InvalidOperation):
         messages.error(request, "Invalid payment amount entered.")
 
     return redirect(f"{reverse('billing:billing_dashboard')}?type={selected_type}&month={selected_month}")

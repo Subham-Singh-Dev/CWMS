@@ -417,13 +417,24 @@
 <div class="wrap">
 
     <!-- Crown Seal (outside card, floats above) -->
-    <div class="seal">
-        <div class="crown-ring">
-            <div class="crown-disc">👑</div>
-        </div>
+    <div class="seal" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+        
+        {% if BRAND_KING_LOGO_URL %}
+            <div class="crown-ring" style="width: auto; height: auto; padding: 15px; margin-bottom: 20px; z-index: 10;">
+                <div class="crown-disc" style="background: transparent; border: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center;">
+                    
+                    <img src="{{ BRAND_KING_LOGO_URL }}" alt="Owner Seal" 
+                        style="width: 400px; height: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.4)); mix-blend-mode: screen; margin: -40px 0 0 0;">
+                </div>
+            </div>
+        {% else %}
+            <div class="crown-ring">
+                <div class="crown-disc">👑</div>
+            </div>
+        {% endif %}
 
-        <div class="seal-title">Owner Console</div>
-        <div class="seal-subtitle">{{ BRAND_SHORT_NAME }} &nbsp;·&nbsp; Restricted Access</div>
+        <div class="seal-title" style="z-index: 11; position: relative;">Owner Console</div>
+        <div class="seal-subtitle" style="z-index: 11; position: relative;">{{ BRAND_SHORT_NAME }} &nbsp;·&nbsp; Restricted Access</div>
 
         <div class="divider">
             <div class="divider-line"></div>

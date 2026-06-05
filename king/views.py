@@ -46,6 +46,7 @@ from payroll.models import MonthlySalary, Advance
 from portal.decorators import king_required
 
 from .models import LedgerEntry, Revenue, WorkOrder, LedgerAccount
+from portal.models import BrandSettings
 from analytics.services.audit_service import create_audit_log
 from analytics.services.audit_service import recent_activity_items_for_king
 
@@ -1592,18 +1593,11 @@ def ledger_pdf(request):
     # Use account master address as party address fallback.
     party_address = (selected_account.address or '').strip() if selected_account else ''
 
-    company_name = (
-        getattr(settings, 'COMPANY_NAME', None)
-        or getattr(settings, 'BRAND_COMPANY_NAME', '')
-    )
-    company_address = (
-        getattr(settings, 'COMPANY_ADDRESS', None)
-        or getattr(settings, 'BRAND_COMPANY_ADDRESS', '')
-    )
-    company_gstin = (
-        getattr(settings, 'COMPANY_GSTIN', None)
-        or getattr(settings, 'BRAND_COMPANY_GSTIN', '')
-    )
+    brand = BrandSettings.objects.first()
+
+    company_name = brand.company_name if brand else 'CWMS System'
+    company_address = brand.company_address if brand else ''
+    company_gstin = brand.company_gstin if brand else ''
  
     template = get_template('king/ledger_pdf.html')
     html = template.render({

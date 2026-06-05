@@ -14,6 +14,7 @@ Author note: Uses PRG (Post-Redirect-Get) to avoid duplicate uploads on refresh.
 # ============================================================
 from datetime import datetime
 from decimal import Decimal
+import decimal
 
 from django.contrib import messages
 from django.db import transaction

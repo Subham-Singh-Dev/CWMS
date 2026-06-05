@@ -226,15 +226,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Media files uploaded by users will be lost on redeploy
 # TODO Week 4: Migrate to Cloudinary or AWS S3 for persistent media storage
 
-# ============================================================
-# DYNAMIC BRANDING CONFIGURATION
-# ============================================================
-BRAND_COMPANY_NAME = config('BRAND_COMPANY_NAME', default='Sakuntalam India Pvt Ltd')
-BRAND_SHORT_NAME = config('BRAND_SHORT_NAME', default='SWMS')
-BRAND_PRODUCT_NAME = config('BRAND_PRODUCT_NAME', default='Construction Workforce Management')
-BRAND_ACCOUNT_NAME = config('BRAND_ACCOUNT_NAME', default=BRAND_COMPANY_NAME.upper())
-BRAND_COMPANY_ADDRESS = config('BRAND_COMPANY_ADDRESS', default='')
-BRAND_COMPANY_GSTIN = config('BRAND_COMPANY_GSTIN', default='')
+
 
 
 

@@ -21,3 +21,26 @@ class ManagerProfile(models.Model):
 
     class Meta:
         verbose_name = "Manager Profile"
+
+
+class BrandSettings(models.Model):
+    company_name = models.CharField(max_length=255, default='CWMS System')
+    short_name = models.CharField(max_length=50, default='CWMS')
+    product_name = models.CharField(max_length=255, default='Construction Workforce Management')
+    company_address = models.TextField(blank=True, default='')
+    company_gstin = models.CharField(max_length=50, blank=True, default='')
+    
+    # 👇 The Two New Logo Fields 👇
+    portal_logo = models.ImageField(upload_to='branding/', null=True, blank=True, help_text="Used for the Manager/Worker login and PDFs (Blue Theme)")
+    king_logo = models.ImageField(upload_to='branding/', null=True, blank=True, help_text="Used for the restricted Owner Console (Gold Theme)")
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return "Global Brand Settings"
+    
+    class Meta:
+        verbose_name = "Brand Setting"
+        verbose_name_plural = "Brand Settings"

@@ -634,13 +634,15 @@
             letter-spacing: 0.05em;
         }
 
+        /* FIXED: Added opacity: 1 to override designer's dim text */
         label {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            font-weight: 500;
-            color: var(--text-dim);
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff;
+            opacity: 1;
             text-transform: uppercase;
-            letter-spacing: 0.2em;
+            letter-spacing: 1.5px;
             transition: color var(--t-fast);
         }
 
@@ -811,13 +813,11 @@
 
 <body class="mode-worker">
 
-    <!-- ── Background layers ─────────────────────── -->
     <div class="bg-layer bg-grid"></div>
     <div class="bg-layer bg-vignette"></div>
     <div class="bg-layer bg-glow"></div>
     <div class="scan-beam"></div>
 
-    <!-- ── HUD corners ───────────────────────────── -->
     <div class="hud">
         <div class="hud-bracket tl"></div>
         <div class="hud-bracket tr"></div>
@@ -825,7 +825,6 @@
         <div class="hud-bracket br"></div>
     </div>
 
-    <!-- ── System info overlays ──────────────────── -->
     <div class="sys-info">
         SYS :: CWMS<br>
         AUTH_MODULE v2<br>
@@ -837,23 +836,35 @@
         SYSTEM ACTIVE
     </div>
 
-    <!-- ════════════════════════════════════════════
-         MAIN LOGIN BLOCK
-         ════════════════════════════════════════════ -->
-    <div class="login-wrap">
+    <!-- OPTICAL ALIGNMENT WRAPPER: left: -18px moves the whole column left -->
+    <div class="login-wrap" style="position: relative; left: -110px;">
 
-        <!-- Brand -->
-        <div class="brand">
-            <div class="brand-eyebrow">
+        <div class="brand" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
+            
+            <div class="brand-eyebrow" style="font-weight: 800; font-size: 20px; letter-spacing: 2px; color: rgba(255,255,255,0.9); margin: 0; padding: 0; line-height: 1;">
                 <span class="brand-eyebrow-line l"></span>
-                Secure Access
+                SECURE ACCESS
                 <span class="brand-eyebrow-line r"></span>
             </div>
-            <div class="brand-name">{{ BRAND_SHORT_NAME }}<span class="accent"> ›</span></div>
-            <div class="brand-sub">Contractor Workforce Management</div>
+            
+            {% if BRAND_PORTAL_LOGO_URL %}
+            <div style="width: 100%; display: flex; justify-content: center; align-items: center; z-index: 10; margin: 0; padding: 0;">
+                <!-- OPTICAL LOGO FIX: max-width: none and left: -10px accounts for empty space in the PNG -->
+                <img src="{{ BRAND_PORTAL_LOGO_URL }}" 
+                     alt="{{ BRAND_SHORT_NAME }} Logo" 
+                     style="width: 499px; max-width: none; height: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0, 195, 255, 0.4)); mix-blend-mode: screen; margin-top: -70px; margin-bottom: -65px; display: block; position: relative; left: -10px;">
+            </div>
+            {% endif %}
+
+            <!-- OPTICAL TEXT FIX: left: -8px accounts for the weight of the › arrow -->
+            <div class="brand-name" style="z-index: 11; margin: 0; padding: 0; line-height: 1.2; position: relative; left: -8px;">
+                {{ BRAND_SHORT_NAME }}<span class="accent"> ›</span>
+            </div>
+            <div class="brand-sub" style="margin-top: 5px; padding: 0;">
+                {{ BRAND_PRODUCT_NAME }}
+            </div> 
         </div>
 
-        <!-- Card -->
         <div class="card">
             <div class="card-accent-bar"></div>
             <div class="card-cut"></div>
@@ -864,13 +875,11 @@
                 <span class="rv-br"></span>
             </div>
 
-            <!-- Mode strip -->
             <div class="mode-strip">
                 <div class="mode-tag" id="mode-tag">WORKER MODE</div>
                 <div class="mode-ref">AUTH:PORTAL</div>
             </div>
 
-            <!-- Tab switcher -->
             <div class="tabs-wrap">
                 <div class="tabs">
                     <div class="tab-slide" id="tab-slide"></div>
@@ -903,13 +912,11 @@
                 </div>
             </div>
 
-            <!-- Subtitle -->
             <div class="form-subtitle">
-                <span class="sub-prefix" id="sub-prefix">//</span>
+                <span class="sub-prefix" id="sub-prefix">➜</span>
                 <span id="subtitle-text">Enter your phone number to authenticate</span>
             </div>
 
-            <!-- Django error messages -->
             {% if messages %}
                 {% for message in messages %}
                     <div class="alert">
@@ -924,20 +931,17 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Form -->
             <form method="POST" autocomplete="off">
                 {% csrf_token %}
                 <input type="hidden" name="login_type" id="login_type" value="worker">
 
-                <!-- Field 01: identifier -->
                 <div class="form-group">
                     <div class="field-header">
                         <span class="field-num">01</span>
-                        <label id="label-id">Phone Number</label>
+                        <label id="label-id">PHONE NUMBER</label>
                     </div>
                     <div class="input-wrap">
                         <span class="input-icon" id="icon-id">
-                            <!-- Phone icon (default) -->
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  stroke-width="2" stroke-linecap="round"
                                  stroke-linejoin="round">
@@ -967,11 +971,10 @@
                     </div>
                 </div>
 
-                <!-- Field 02: password -->
                 <div class="form-group">
                     <div class="field-header">
                         <span class="field-num">02</span>
-                        <label>Password</label>
+                        <label>PASSWORD</label>
                     </div>
                     <div class="input-wrap">
                         <span class="input-icon">
@@ -990,7 +993,6 @@
                     </div>
                 </div>
 
-                <!-- Submit -->
                 <div class="btn-wrap">
                     <button type="submit" class="btn" id="btn-submit">
                         <span class="btn-inner">
@@ -1008,12 +1010,9 @@
                 <span class="footer-sep"></span>
                 <span>Secure</span>
             </div>
-        </div><!-- /card -->
-    </div><!-- /login-wrap -->
+        </div>
+    </div>
 
-    <!-- ================================================================
-         JAVASCRIPT — switchRole() preserved + mode morphing
-         ================================================================ -->
     <script>
         /* SVG icon strings -------------------------------------------- */
         const PHONE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.55a16 16 0 0 0 5.55 5.55l.95-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>`;
@@ -1043,8 +1042,8 @@
                 document.body.classList.remove('mode-manager');
                 document.body.classList.add('mode-worker');
 
-                /* ---- Field wiring ---- */
-                labelId.textContent = 'Phone Number';
+                /* ---- Field wiring (FIXED ALL CAPS) ---- */
+                labelId.textContent = 'PHONE NUMBER';
                 inputId.placeholder = '10-digit mobile number';
                 inputId.setAttribute('inputmode', 'numeric');
                 inputId.style.fontFamily = "'JetBrains Mono', monospace";
@@ -1065,8 +1064,8 @@
                 document.body.classList.remove('mode-worker');
                 document.body.classList.add('mode-manager');
 
-                /* ---- Field wiring ---- */
-                labelId.textContent = 'Username';
+                /* ---- Field wiring (FIXED ALL CAPS) ---- */
+                labelId.textContent = 'USERNAME';
                 inputId.placeholder = 'Manager / Admin username';
                 inputId.setAttribute('inputmode', 'text');
                 inputId.style.fontFamily = "'Barlow', sans-serif";

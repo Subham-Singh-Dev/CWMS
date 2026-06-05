@@ -52,6 +52,7 @@ from portal.decorators import manager_required
 
 from .models import Advance, MonthlySalary
 from .services import issue_advance
+from portal.models import BrandSettings
 
 
 # ============================================================
@@ -95,9 +96,16 @@ def download_payslip(request, salary_id):
             raise PermissionDenied("⏳ Payslip not available until salary is paid.")
     else:
         raise PermissionDenied("Unauthorized access.")
+    
+    brand = BrandSettings.objects.first()
 
     template_path = 'payroll/payslip_pdf.html'
-    context = {'salary': salary}
+    context = {
+        'salary': salary,
+        'BRAND_COMPANY_NAME': brand.company_name if brand else 'CWMS System',
+        'BRAND_COMPANY_ADDRESS': brand.company_address if brand else '',
+        'BRAND_LOGO_URL': brand.logo.url if (brand and brand.logo) else None,
+    }
     response = HttpResponse(content_type='application/pdf')
     filename = (
         f"Payslip_{salary.employee.name}_"

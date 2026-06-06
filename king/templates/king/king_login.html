@@ -113,7 +113,7 @@
         .crown-ring::before {
             content: '';
             position: absolute;
-            inset: -6px;
+            inset: -8px;
             border-radius: 50%;
             border: 1.5px solid transparent;
             border-top-color: var(--gold);
@@ -125,7 +125,7 @@
         .crown-ring::after {
             content: '';
             position: absolute;
-            inset: -12px;
+            inset: -16px;
             border-radius: 50%;
             border: 1px dashed rgba(201,168,76,0.2);
             animation: spinRing 18s linear infinite reverse;
@@ -252,11 +252,14 @@
             pointer-events: none;
         }
 
-        /* ─── ALERT ─── */
+       /* ─── GOLD STATUS ALERT ─── */
         .alert {
-            background: var(--red-bg);
-            border: 1px solid rgba(224,112,112,0.25);
-            color: var(--red-soft);
+            /* Using gold-dust for a very subtle, premium background */
+            background: var(--gold-dust);
+            /* Thin, elegant gold border */
+            border: 1px solid rgba(201,168,76,0.3);
+            /* Using gold-bright for high readability */
+            color: var(--gold-bright);
             padding: 11px 16px;
             border-radius: 10px;
             font-size: 13px;
@@ -265,9 +268,16 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            /* Added a tiny gold pulse effect for "Welcome" messages */
+            box-shadow: 0 0 10px rgba(201,168,76,0.05);
         }
 
-        .alert svg { flex-shrink: 0; width: 14px; height: 14px; }
+        .alert svg { 
+            flex-shrink: 0; 
+            width: 14px; 
+            height: 14px; 
+            color: var(--gold); /* Keeps the icon sharp and gold */
+        }
 
         /* ─── FORM ─── */
         .form-group { margin-bottom: 18px; }
@@ -420,13 +430,13 @@
     <div class="seal" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
         
         {% if BRAND_KING_LOGO_URL %}
-            <div class="crown-ring" style="width: auto; height: auto; padding: 15px; margin-bottom: 20px; z-index: 10;">
-                <div class="crown-disc" style="background: transparent; border: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center;">
-                    
-                    <img src="{{ BRAND_KING_LOGO_URL }}" alt="Owner Seal" 
-                        style="width: 400px; height: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.4)); mix-blend-mode: screen; margin: -40px 0 0 0;">
-                </div>
+        <div class="crown-ring" style="width: 180px; height: 140px; margin-bottom: 20px; z-index: 10; display: flex; align-items: center; justify-content: center;">
+            <div class="crown-disc" style="width: 100%; height: 100%; background: transparent; border: none; box-shadow: none; display: flex; align-items: center; justify-content: center;">
+                
+                <img src="{{ BRAND_KING_LOGO_URL }}" alt="Owner Seal" 
+                    style="width: 160px; height: 160px; object-fit: contain; filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5)); mix-blend-mode: screen;">
             </div>
+        </div>
         {% else %}
             <div class="crown-ring">
                 <div class="crown-disc">👑</div>

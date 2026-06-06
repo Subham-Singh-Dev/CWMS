@@ -10,75 +10,51 @@
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
-        /* ================================================================
-           CWMS PORTAL — INDUSTRIAL BLUEPRINT THEME
-           Deep Navy × Electric Cyan × Gunmetal Silver
-           Rajdhani (display) · Barlow (body) · JetBrains Mono (technical)
-           ================================================================ */
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            /* --- Backgrounds --- */
             --bg-root:   #060e1c;
             --bg-card:   #0b1628;
             --bg-input:  #091422;
             --bg-tab:    #0e1c32;
-
-            /* --- Navy scale --- */
             --navy-700:  #112040;
             --navy-600:  #162e52;
             --navy-500:  #1c3d6e;
             --navy-400:  #254e8a;
-
-            /* --- Steel scale --- */
             --steel-600: #2c4060;
             --steel-500: #3c5575;
             --steel-400: #506888;
             --steel-300: #6e8eaa;
             --steel-200: #96b4cc;
             --steel-100: #c0d4e4;
-
-            /* --- Cyan (Worker accent) --- */
             --cyan-600:  #006888;
             --cyan-500:  #0092b8;
             --cyan-400:  #00b4d8;
             --cyan-300:  #00d4ff;
             --cyan-200:  #60e8ff;
             --cyan-100:  #b0f4ff;
-
-            /* --- Silver (Manager accent) --- */
             --sil-400:   #7aaac8;
             --sil-300:   #a8ccdf;
             --sil-200:   #cce0f0;
             --sil-100:   #eaf4ff;
-
-            /* --- Accent (defaults to worker) --- */
             --accent:       var(--cyan-300);
             --accent-mid:   var(--cyan-400);
             --accent-dim:   var(--cyan-600);
             --accent-glow:  rgba(0, 212, 255, 0.12);
             --accent-glow2: rgba(0, 212, 255, 0.25);
             --accent-solid: var(--cyan-300);
-
-            /* --- Text --- */
             --text-bright:  #dff0ff;
             --text-body:    #8aaabb;
             --text-dim:     #3a5570;
             --text-mono:    #5a8099;
-
-            /* --- Error --- */
             --err-bg:     rgba(255, 75, 75, 0.07);
             --err-border: rgba(255, 75, 75, 0.22);
             --err-color:  #ff6b6b;
-
-            /* --- Transitions --- */
             --t-fast: 0.16s ease;
             --t-med:  0.28s ease;
             --t-slow: 0.5s ease;
         }
 
-        /* ---- Manager mode — accent morphs to silver ---- */
         body.mode-manager {
             --accent:       var(--sil-200);
             --accent-mid:   var(--sil-300);
@@ -88,9 +64,6 @@
             --accent-solid: var(--sil-200);
         }
 
-        /* ================================================================
-           BASE
-           ================================================================ */
         html, body { height: 100%; }
 
         body {
@@ -105,16 +78,7 @@
             position: relative;
         }
 
-        /* ================================================================
-           BACKGROUND LAYERS
-           ================================================================ */
-
-        /* Primary blueprint grid — 80px major */
-        .bg-layer {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-        }
+        .bg-layer { position: fixed; inset: 0; pointer-events: none; }
 
         .bg-grid {
             background-image:
@@ -123,7 +87,6 @@
             background-size: 80px 80px;
         }
 
-        /* Sub-grid — 16px minor */
         .bg-grid::after {
             content: '';
             position: absolute;
@@ -134,7 +97,6 @@
             background-size: 16px 16px;
         }
 
-        /* Radial dark vignette — draws eye to centre */
         .bg-vignette {
             background: radial-gradient(
                 ellipse 75% 75% at 50% 50%,
@@ -144,7 +106,6 @@
             );
         }
 
-        /* Centre ambient glow — pulses slowly */
         .bg-glow {
             background: radial-gradient(
                 circle 700px at 50% 55%,
@@ -159,7 +120,6 @@
             50%       { opacity: 1.0; transform: scale(1.12); }
         }
 
-        /* ---- Diagonal scan beam ---- */
         .scan-beam {
             position: fixed;
             top: -30%;
@@ -181,20 +141,12 @@
             animation: scanPass 14s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
-        /* Wide soft halo behind the beam */
         .scan-beam::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: -20px;
-            width: 42px;
-            height: 100%;
-            background: linear-gradient(
-                to bottom,
-                transparent,
-                rgba(0, 212, 255, 0.04) 50%,
-                transparent
-            );
+            top: 0; left: -20px;
+            width: 42px; height: 100%;
+            background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.04) 50%, transparent);
             filter: blur(12px);
         }
 
@@ -206,18 +158,11 @@
             100% { left: calc(100vw + 250px); opacity: 0; }
         }
 
-        /* ---- Coordinate crosshair markers ---- */
-        /* Placed at four corners as HUD brackets */
-        .hud {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-        }
+        .hud { position: fixed; inset: 0; pointer-events: none; }
 
         .hud-bracket {
             position: absolute;
-            width: 44px;
-            height: 44px;
+            width: 44px; height: 44px;
             opacity: 0.25;
             transition: opacity var(--t-slow);
         }
@@ -227,26 +172,19 @@
         .hud-bracket.bl { bottom: 18px; left: 18px;  border-bottom: 1.5px solid var(--cyan-400); border-left:  1.5px solid var(--cyan-400); }
         .hud-bracket.br { bottom: 18px; right: 18px; border-bottom: 1.5px solid var(--cyan-400); border-right: 1.5px solid var(--cyan-400); }
 
-        /* ---- System status strip (fixed bottom-right) ---- */
         .sys-status {
             position: fixed;
-            bottom: 18px;
-            right: 22px;
-            display: flex;
-            align-items: center;
-            gap: 7px;
+            bottom: 18px; right: 22px;
+            display: flex; align-items: center; gap: 7px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.14em;
+            font-size: 9px; letter-spacing: 0.14em;
             text-transform: uppercase;
             color: var(--text-dim);
-            pointer-events: none;
-            opacity: 0.65;
+            pointer-events: none; opacity: 0.65;
         }
 
         .sys-dot {
-            width: 5px;
-            height: 5px;
+            width: 5px; height: 5px;
             border-radius: 50%;
             background: var(--cyan-400);
             animation: sysBlink 3s ease-in-out infinite;
@@ -257,28 +195,25 @@
             50%       { opacity: 0.2; box-shadow: none; }
         }
 
-        /* ---- System info (fixed top-left) ---- */
         .sys-info {
             position: fixed;
-            top: 20px;
-            left: 22px;
+            top: 20px; left: 22px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 8.5px;
-            line-height: 1.85;
+            font-size: 8.5px; line-height: 1.85;
             letter-spacing: 0.09em;
             color: var(--text-dim);
-            pointer-events: none;
-            opacity: 0.55;
+            pointer-events: none; opacity: 0.55;
         }
 
-        /* ================================================================
-           CARD WRAPPER — entrance animation
-           ================================================================ */
+        /* ── WRAPPER ──
+           margin-top: 8vh nudges the whole block below dead-center so the card
+           sits close to the taskbar with just a thin breathing gap.          */
         .login-wrap {
             width: 100%;
             max-width: 430px;
             position: relative;
             z-index: 20;
+            margin-top: 8vh;
             animation: wrapRise 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
         }
 
@@ -287,12 +222,20 @@
             to   { opacity: 1; transform: translateY(0)    scale(1);     }
         }
 
-        /* ================================================================
-           BRAND HEADER
-           ================================================================ */
+        /* ── BRAND ──
+           KEY FIX: removed flex-grow:1 (was expanding the container and pushing
+           brand to top of viewport). margin-bottom reduced from 50px → 16px to
+           close the visual gap between branding tower and the card.
+           justify-content: flex-end is kept — it still nudges content downward
+           within the brand block itself.
+        */
         .brand {
-            text-align: center;
-            margin-bottom: 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            width: 100%;
+            margin-bottom: 16px;    /* ← WAS 50px — the root cause of the gap */
             animation: brandDrop 0.5s 0.08s ease both;
         }
 
@@ -301,30 +244,6 @@
             to   { opacity: 1; transform: translateY(0);     }
         }
 
-        /* "SECURE ACCESS" eyebrow line */
-        .brand-eyebrow {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.28em;
-            text-transform: uppercase;
-            color: var(--cyan-400);
-            margin-bottom: 10px;
-        }
-
-        .brand-eyebrow-line {
-            flex: 1;
-            height: 1px;
-            max-width: 50px;
-        }
-
-        .brand-eyebrow-line.l { background: linear-gradient(90deg, transparent, var(--cyan-400)); }
-        .brand-eyebrow-line.r { background: linear-gradient(90deg, var(--cyan-400), transparent); }
-
-        /* Main brand name */
         .brand-name {
             font-family: 'Rajdhani', sans-serif;
             font-size: 38px;
@@ -332,13 +251,15 @@
             letter-spacing: 0.16em;
             text-transform: uppercase;
             color: var(--text-bright);
-            line-height: 1;
+            line-height: 1.2;
+            position: relative;
+            left: -8px;
         }
 
         .brand-name .accent { color: var(--cyan-300); }
 
         .brand-sub {
-            margin-top: 7px;
+            margin-top: 5px;
             font-family: 'Barlow', sans-serif;
             font-size: 10.5px;
             font-weight: 300;
@@ -347,16 +268,13 @@
             color: var(--steel-300);
         }
 
-        /* ================================================================
-           MAIN CARD
-           ================================================================ */
+        /* ── CARD ── */
         .card {
             background: var(--bg-card);
             border: 1px solid var(--navy-600);
             border-radius: 3px;
             padding: 26px 28px 32px;
             position: relative;
-            /* Industrial panel shadow */
             box-shadow:
                 0 0 0 1px rgba(0, 180, 216, 0.06),
                 0 24px 80px rgba(0, 0, 0, 0.55),
@@ -373,7 +291,6 @@
                 0 0 60px rgba(160, 200, 230, 0.02);
         }
 
-        /* Top accent bar — glowing gradient line */
         .card-accent-bar {
             position: absolute;
             top: 0; left: 0; right: 0;
@@ -381,13 +298,8 @@
             border-radius: 3px 3px 0 0;
             background: linear-gradient(
                 90deg,
-                transparent 0%,
-                var(--cyan-600) 15%,
-                var(--cyan-300) 40%,
-                var(--cyan-200) 50%,
-                var(--cyan-300) 60%,
-                var(--cyan-600) 85%,
-                transparent 100%
+                transparent 0%, var(--cyan-600) 15%, var(--cyan-300) 40%,
+                var(--cyan-200) 50%, var(--cyan-300) 60%, var(--cyan-600) 85%, transparent 100%
             );
             transition: background var(--t-med);
         }
@@ -395,61 +307,43 @@
         body.mode-manager .card-accent-bar {
             background: linear-gradient(
                 90deg,
-                transparent 0%,
-                var(--steel-500) 15%,
-                var(--sil-300) 40%,
-                var(--sil-100) 50%,
-                var(--sil-300) 60%,
-                var(--steel-500) 85%,
-                transparent 100%
+                transparent 0%, var(--steel-500) 15%, var(--sil-300) 40%,
+                var(--sil-100) 50%, var(--sil-300) 60%, var(--steel-500) 85%, transparent 100%
             );
         }
 
-        /* Angled cut corner — top right */
         .card-cut {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 0;
-            height: 0;
-            border-style: solid;
+            position: absolute; top: 0; right: 0;
+            width: 0; height: 0; border-style: solid;
             border-width: 0 26px 26px 0;
             border-color: transparent var(--bg-root) transparent transparent;
         }
 
-        /* Rivet corners */
         .card-rivets span {
             position: absolute;
-            width: 5px;
-            height: 5px;
+            width: 5px; height: 5px;
             border-radius: 50%;
             background: var(--navy-700);
             border: 1px solid var(--steel-600);
             opacity: 0.6;
         }
 
-        .card-rivets .rv-tl { top: 10px;  left: 10px;  }
-        .card-rivets .rv-tr { top: 10px;  right: 28px; } /* clear of cut */
+        .card-rivets .rv-tl { top: 10px;    left: 10px;  }
+        .card-rivets .rv-tr { top: 10px;    right: 28px; }
         .card-rivets .rv-bl { bottom: 10px; left: 10px;  }
         .card-rivets .rv-br { bottom: 10px; right: 10px; }
 
-        /* ================================================================
-           MODE STRIP — shows current access level
-           ================================================================ */
         .mode-strip {
-            display: flex;
-            align-items: center;
+            display: flex; align-items: center;
             justify-content: space-between;
             margin-bottom: 22px;
         }
 
         .mode-tag {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 8.5px;
-            letter-spacing: 0.22em;
+            font-size: 8.5px; letter-spacing: 0.22em;
             text-transform: uppercase;
-            padding: 3px 9px;
-            border-radius: 2px;
+            padding: 3px 9px; border-radius: 2px;
             background: var(--accent-glow);
             border: 1px solid rgba(0, 212, 255, 0.18);
             color: var(--cyan-300);
@@ -462,139 +356,76 @@
             color: var(--sil-200);
         }
 
-        .mode-ref {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 8.5px;
-            letter-spacing: 0.1em;
-            color: var(--text-dim);
-        }
+        .mode-ref { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 0.1em; color: var(--text-dim); }
 
-        /* ================================================================
-           TAB SWITCHER
-           ================================================================ */
-        .tabs-wrap {
-            position: relative;
-            margin-bottom: 22px;
-        }
+        .tabs-wrap { position: relative; margin-bottom: 22px; }
 
-        .tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            border-bottom: 1px solid var(--navy-700);
-        }
+        .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--navy-700); }
 
-        /* The animated sliding indicator */
         .tab-slide {
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 50%;
-            height: 2px;
+            position: absolute; bottom: -1px; left: 0;
+            width: 50%; height: 2px;
             background: var(--cyan-300);
             box-shadow: 0 0 8px var(--cyan-300), 0 0 18px rgba(0, 212, 255, 0.35);
-            transition:
-                transform  0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-                background 0.28s ease,
-                box-shadow 0.28s ease;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.28s ease, box-shadow 0.28s ease;
         }
 
         body.mode-manager .tab-slide {
-            transform:   translateX(100%);
-            background:  var(--sil-200);
-            box-shadow:  0 0 8px var(--sil-200), 0 0 18px rgba(168, 204, 223, 0.25);
+            transform: translateX(100%);
+            background: var(--sil-200);
+            box-shadow: 0 0 8px var(--sil-200), 0 0 18px rgba(168, 204, 223, 0.25);
         }
 
         .tab {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 11px 10px 14px;
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; padding: 11px 10px 14px;
             cursor: pointer;
             font-family: 'Rajdhani', sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
+            font-size: 13px; font-weight: 600;
+            letter-spacing: 0.18em; text-transform: uppercase;
             color: var(--text-dim);
             transition: color var(--t-fast), background var(--t-fast);
-            user-select: none;
-            position: relative;
+            user-select: none; position: relative;
         }
 
         .tab:hover { color: var(--steel-200); }
-
-        /* Worker active = cyan */
-        .tab.worker-tab.active { color: var(--cyan-300); }
-
-        /* Manager active = silver */
+        .tab.worker-tab.active  { color: var(--cyan-300); }
         .tab.manager-tab.active { color: var(--sil-200); }
-
         .tab-icon { width: 15px; height: 15px; flex-shrink: 0; }
 
-        /* Tiny mode badge on active tab */
         .tab-badge {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 7.5px;
-            letter-spacing: 0.12em;
-            padding: 1px 5px;
-            border-radius: 2px;
-            opacity: 0;
-            transition: opacity var(--t-med);
+            font-size: 7.5px; letter-spacing: 0.12em;
+            padding: 1px 5px; border-radius: 2px;
+            opacity: 0; transition: opacity var(--t-med);
         }
 
         .tab.active .tab-badge { opacity: 1; }
 
-        .worker-tab.active .tab-badge {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.18);
-            color: var(--cyan-300);
-        }
+        .worker-tab.active .tab-badge  { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.18); color: var(--cyan-300); }
+        .manager-tab.active .tab-badge { background: rgba(168,204,223,0.07); border: 1px solid rgba(168,204,223,0.14); color: var(--sil-200); }
 
-        .manager-tab.active .tab-badge {
-            background: rgba(168, 204, 223, 0.07);
-            border: 1px solid rgba(168, 204, 223, 0.14);
-            color: var(--sil-200);
-        }
-
-        /* ================================================================
-           SUBTITLE
-           ================================================================ */
         .form-subtitle {
-            font-size: 12.5px;
-            font-weight: 300;
-            color: var(--text-body);
-            margin-bottom: 22px;
-            display: flex;
-            align-items: center;
-            gap: 9px;
+            font-size: 12.5px; font-weight: 300;
+            color: var(--text-body); margin-bottom: 22px;
+            display: flex; align-items: center; gap: 9px;
             letter-spacing: 0.01em;
         }
 
         .sub-prefix {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: var(--accent-mid);
-            opacity: 0.5;
-            transition: color var(--t-med);
-            flex-shrink: 0;
+            font-size: 11px; color: var(--accent-mid);
+            opacity: 0.5; transition: color var(--t-med); flex-shrink: 0;
         }
 
-        /* ================================================================
-           ERROR ALERT
-           ================================================================ */
         .alert {
             background: var(--err-bg);
             border: 1px solid var(--err-border);
             border-left: 2.5px solid var(--err-color);
             color: var(--err-color);
-            padding: 11px 14px;
-            border-radius: 3px;
-            font-size: 12.5px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 9px;
+            padding: 11px 14px; border-radius: 3px;
+            font-size: 12.5px; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 9px;
             animation: alertIn 0.28s ease both;
         }
 
@@ -603,9 +434,6 @@
             to   { opacity: 1; transform: translateX(0); }
         }
 
-        /* ================================================================
-           FORM FIELDS
-           ================================================================ */
         .form-group {
             margin-bottom: 18px;
             animation: fieldIn 0.4s ease both;
@@ -619,30 +447,18 @@
             to   { opacity: 1; transform: translateX(0); }
         }
 
-        .field-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
+        .field-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 
         .field-num {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 8px;
-            color: var(--text-dim);
-            opacity: 0.45;
-            letter-spacing: 0.05em;
+            font-size: 8px; color: var(--text-dim); opacity: 0.45; letter-spacing: 0.05em;
         }
 
-        /* FIXED: Added opacity: 1 to override designer's dim text */
         label {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            font-weight: 700;
-            color: #ffffff;
-            opacity: 1;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
+            font-size: 11px; font-weight: 700;
+            color: #ffffff; opacity: 1;
+            text-transform: uppercase; letter-spacing: 1.5px;
             transition: color var(--t-fast);
         }
 
@@ -651,12 +467,9 @@
         .input-wrap { position: relative; }
 
         .input-icon {
-            position: absolute;
-            left: 13px;
-            top: 50%;
+            position: absolute; left: 13px; top: 50%;
             transform: translateY(-50%);
-            color: var(--steel-500);
-            pointer-events: none;
+            color: var(--steel-500); pointer-events: none;
             transition: color var(--t-fast);
         }
 
@@ -672,78 +485,42 @@
             border-radius: 3px;
             padding: 12px 14px 12px 42px;
             font-family: 'Barlow', sans-serif;
-            font-size: 14px;
-            font-weight: 400;
+            font-size: 14px; font-weight: 400;
             color: var(--text-bright);
-            outline: none;
-            -webkit-appearance: none;
-            transition:
-                border-color var(--t-fast),
-                background   var(--t-fast),
-                box-shadow   var(--t-fast);
+            outline: none; appearance: none; -webkit-appearance: none;
+            transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
         }
 
         input[type="text"]::placeholder,
-        input[type="password"]::placeholder {
-            color: var(--text-dim);
-            font-weight: 300;
-        }
+        input[type="password"]::placeholder { color: var(--text-dim); font-weight: 300; }
 
         input[type="text"]:focus,
         input[type="password"]:focus {
             border-color: var(--accent-mid);
             background: #0c1830;
-            box-shadow:
-                0 0 0 3px var(--accent-glow),
-                inset 0 0 24px rgba(0, 180, 216, 0.025);
+            box-shadow: 0 0 0 3px var(--accent-glow), inset 0 0 24px rgba(0, 180, 216, 0.025);
         }
 
-        /* JetBrains Mono for phone / username input */
-        #input-id {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            letter-spacing: 0.07em;
-        }
+        #input-id { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.07em; }
 
-        /* ================================================================
-           SUBMIT BUTTON
-           ================================================================ */
-        .btn-wrap {
-            margin-top: 6px;
-            animation: fieldIn 0.4s 0.34s ease both;
-        }
+        .btn-wrap { margin-top: 6px; animation: fieldIn 0.4s 0.34s ease both; }
 
         .btn {
-            width: 100%;
-            position: relative;
-            overflow: hidden;
+            width: 100%; position: relative; overflow: hidden;
             background: transparent;
             border: 1px solid var(--accent-mid);
-            border-radius: 3px;
-            padding: 14px 18px;
+            border-radius: 3px; padding: 14px 18px;
             font-family: 'Rajdhani', sans-serif;
-            font-size: 14px;
-            font-weight: 700;
-            letter-spacing: 0.28em;
-            text-transform: uppercase;
-            color: var(--accent);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            transition:
-                color        var(--t-fast),
-                border-color var(--t-fast),
-                box-shadow   var(--t-fast),
-                transform    0.1s ease;
+            font-size: 14px; font-weight: 700;
+            letter-spacing: 0.28em; text-transform: uppercase;
+            color: var(--accent); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            transition: color var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), transform 0.1s ease;
         }
 
-        /* Horizontal scan-fill fill on hover */
         .btn::before {
             content: '';
-            position: absolute;
-            inset: 0;
+            position: absolute; inset: 0;
             background: linear-gradient(90deg, var(--accent-mid), var(--accent-dim));
             transform: translateX(-102%);
             transition: transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -753,48 +530,20 @@
         .btn:hover::before { transform: translateX(0); }
         .btn:active { transform: scale(0.988); }
 
-        /* Text and arrow sit above the ::before fill */
-        .btn-inner {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .btn-arrow {
-            font-size: 16px;
-            transition: transform 0.22s ease;
-        }
-
+        .btn-inner { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; }
+        .btn-arrow { font-size: 16px; transition: transform 0.22s ease; }
         .btn:hover .btn-arrow { transform: translateX(4px); }
 
-        /* ================================================================
-           CARD FOOTER
-           ================================================================ */
         .card-footer {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
+            display: flex; align-items: center; justify-content: center; gap: 9px;
             margin-top: 22px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 8.5px;
-            letter-spacing: 0.12em;
+            font-size: 8.5px; letter-spacing: 0.12em;
             color: var(--text-dim);
         }
 
-        .footer-sep {
-            width: 3px;
-            height: 3px;
-            border-radius: 50%;
-            background: var(--text-dim);
-            opacity: 0.35;
-        }
+        .footer-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--text-dim); opacity: 0.35; }
 
-        /* ================================================================
-           RESPONSIVE
-           ================================================================ */
         @media (max-width: 480px) {
             .login-wrap { max-width: 100%; }
             .card { padding: 20px 16px 26px; }
@@ -826,7 +575,7 @@
     </div>
 
     <div class="sys-info">
-        SYS :: CWMS<br>
+        SYS :: SWMS<br>
         AUTH_MODULE v2<br>
         PORT 443 / TLS
     </div>
@@ -836,33 +585,23 @@
         SYSTEM ACTIVE
     </div>
 
-    <!-- OPTICAL ALIGNMENT WRAPPER: left: -18px moves the whole column left -->
-    <div class="login-wrap" style="position: relative; left: -110px;">
+    <div class="login-wrap">
 
-        <div class="brand" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
-            
-            <div class="brand-eyebrow" style="font-weight: 800; font-size: 20px; letter-spacing: 2px; color: rgba(255,255,255,0.9); margin: 0; padding: 0; line-height: 1;">
-                <span class="brand-eyebrow-line l"></span>
-                SECURE ACCESS
-                <span class="brand-eyebrow-line r"></span>
-            </div>
-            
+        <div class="brand">
+
             {% if BRAND_PORTAL_LOGO_URL %}
-            <div style="width: 100%; display: flex; justify-content: center; align-items: center; z-index: 10; margin: 0; padding: 0;">
-                <!-- OPTICAL LOGO FIX: max-width: none and left: -10px accounts for empty space in the PNG -->
-                <img src="{{ BRAND_PORTAL_LOGO_URL }}" 
-                     alt="{{ BRAND_SHORT_NAME }} Logo" 
-                     style="width: 499px; max-width: none; height: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0, 195, 255, 0.4)); mix-blend-mode: screen; margin-top: -70px; margin-bottom: -65px; display: block; position: relative; left: -10px;">
+            <div style="width:100%;height:70px;display:flex;justify-content:center;align-items:center;z-index:10;margin-top:5px;margin-bottom:25px;">
+                <img src="{{ BRAND_PORTAL_LOGO_URL }}"
+                     alt="{{ BRAND_SHORT_NAME }} Logo"
+                     style="width:396px;max-width:none;height:auto;object-fit:contain;filter:drop-shadow(0 0 15px rgba(0,195,255,0.4));mix-blend-mode:screen;display:block;position:relative;left:-10px;margin-top:-35px;margin-bottom:-35px;">
             </div>
             {% endif %}
 
-            <!-- OPTICAL TEXT FIX: left: -8px accounts for the weight of the › arrow -->
-            <div class="brand-name" style="z-index: 11; margin: 0; padding: 0; line-height: 1.2; position: relative; left: -8px;">
+            <div class="brand-name">
                 {{ BRAND_SHORT_NAME }}<span class="accent"> ›</span>
             </div>
-            <div class="brand-sub" style="margin-top: 5px; padding: 0;">
-                {{ BRAND_PRODUCT_NAME }}
-            </div> 
+
+            <div class="brand-sub">{{ BRAND_PRODUCT_NAME }}</div>
         </div>
 
         <div class="card">
@@ -884,12 +623,8 @@
                 <div class="tabs">
                     <div class="tab-slide" id="tab-slide"></div>
 
-                    <div class="tab worker-tab active"
-                         onclick="switchRole('worker')"
-                         id="tab-worker">
-                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2"
-                             stroke-linecap="round" stroke-linejoin="round">
+                    <div class="tab worker-tab active" onclick="switchRole('worker')" id="tab-worker">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                             <circle cx="12" cy="7" r="4"/>
                         </svg>
@@ -897,12 +632,8 @@
                         <span class="tab-badge">FIELD</span>
                     </div>
 
-                    <div class="tab manager-tab"
-                         onclick="switchRole('manager')"
-                         id="tab-manager">
-                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2"
-                             stroke-linecap="round" stroke-linejoin="round">
+                    <div class="tab manager-tab" onclick="switchRole('manager')" id="tab-manager">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
                             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
                         </svg>
@@ -920,10 +651,9 @@
             {% if messages %}
                 {% for message in messages %}
                     <div class="alert">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             stroke-width="2" width="15" height="15">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                             <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8"  x2="12"   y2="12"/>
+                            <line x1="12" y1="8"  x2="12"    y2="12"/>
                             <line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
                         {{ message }}
@@ -942,32 +672,13 @@
                     </div>
                     <div class="input-wrap">
                         <span class="input-icon" id="icon-id">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="2" stroke-linecap="round"
-                                 stroke-linejoin="round">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2
-                                         19.79 19.79 0 0 1-8.63-3.07
-                                         A19.5 19.5 0 0 1 4.69 12
-                                         19.79 19.79 0 0 1 1.61 3.4
-                                         A2 2 0 0 1 3.58 1h3
-                                         a2 2 0 0 1 2 1.72
-                                         c.127.96.361 1.903.7 2.81
-                                         a2 2 0 0 1-.45 2.11
-                                         L7.91 8.55
-                                         a16 16 0 0 0 5.55 5.55
-                                         l.95-.91
-                                         a2 2 0 0 1 2.11-.45
-                                         c.907.339 1.85.573 2.81.7
-                                         A2 2 0 0 1 21 16.92z"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.55a16 16 0 0 0 5.55 5.55l.95-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/>
                             </svg>
                         </span>
-                        <input type="text"
-                               name="login_id"
-                               id="input-id"
+                        <input type="text" name="login_id" id="input-id"
                                placeholder="10-digit mobile number"
-                               required
-                               autofocus
-                               inputmode="numeric">
+                               required autofocus inputmode="numeric">
                     </div>
                 </div>
 
@@ -978,18 +689,13 @@
                     </div>
                     <div class="input-wrap">
                         <span class="input-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="2" stroke-linecap="round"
-                                 stroke-linejoin="round">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                             </svg>
                         </span>
-                        <input type="password"
-                               name="password"
-                               id="input-password"
-                               placeholder="••••••••"
-                               required>
+                        <input type="password" name="password" id="input-password"
+                               placeholder="••••••••" required>
                     </div>
                 </div>
 
@@ -1014,65 +720,46 @@
     </div>
 
     <script>
-        /* SVG icon strings -------------------------------------------- */
         const PHONE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.55a16 16 0 0 0 5.55 5.55l.95-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>`;
-
         const USER_ICON  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
 
-        /* Main role-switch function ------------------------------------ */
         function switchRole(role) {
-            const tabWorker    = document.getElementById('tab-worker');
-            const tabManager   = document.getElementById('tab-manager');
-            const labelId      = document.getElementById('label-id');
-            const inputId      = document.getElementById('input-id');
-            const btnText      = document.getElementById('btn-text');
-            const subtitle     = document.getElementById('subtitle-text');
-            const iconId       = document.getElementById('icon-id');
-            const modeTag      = document.getElementById('mode-tag');
+            const tabWorker  = document.getElementById('tab-worker');
+            const tabManager = document.getElementById('tab-manager');
+            const labelId    = document.getElementById('label-id');
+            const inputId    = document.getElementById('input-id');
+            const btnText    = document.getElementById('btn-text');
+            const subtitle   = document.getElementById('subtitle-text');
+            const iconId     = document.getElementById('icon-id');
+            const modeTag    = document.getElementById('mode-tag');
 
-            /* Update the hidden login_type field */
             document.getElementById('login_type').value = role;
 
             if (role === 'worker') {
-                /* ---- Tabs ---- */
                 tabWorker.classList.add('active');
                 tabManager.classList.remove('active');
-
-                /* ---- Body class → CSS variables morph to cyan ---- */
                 document.body.classList.remove('mode-manager');
                 document.body.classList.add('mode-worker');
-
-                /* ---- Field wiring (FIXED ALL CAPS) ---- */
                 labelId.textContent = 'PHONE NUMBER';
                 inputId.placeholder = '10-digit mobile number';
                 inputId.setAttribute('inputmode', 'numeric');
                 inputId.style.fontFamily = "'JetBrains Mono', monospace";
                 inputId.style.fontSize   = '13px';
                 iconId.innerHTML = PHONE_ICON;
-
-                /* ---- Strings ---- */
                 btnText.textContent  = 'Authenticate as Worker';
                 subtitle.textContent = 'Enter your phone number to authenticate';
                 modeTag.textContent  = 'WORKER MODE';
-
             } else {
-                /* ---- Tabs ---- */
                 tabManager.classList.add('active');
                 tabWorker.classList.remove('active');
-
-                /* ---- Body class → CSS variables morph to silver ---- */
                 document.body.classList.remove('mode-worker');
                 document.body.classList.add('mode-manager');
-
-                /* ---- Field wiring (FIXED ALL CAPS) ---- */
                 labelId.textContent = 'USERNAME';
                 inputId.placeholder = 'Manager / Admin username';
                 inputId.setAttribute('inputmode', 'text');
                 inputId.style.fontFamily = "'Barlow', sans-serif";
                 inputId.style.fontSize   = '14px';
                 iconId.innerHTML = USER_ICON;
-
-                /* ---- Strings ---- */
                 btnText.textContent  = 'Access Control Console';
                 subtitle.textContent = 'Enter your manager credentials to proceed';
                 modeTag.textContent  = 'MANAGER MODE';

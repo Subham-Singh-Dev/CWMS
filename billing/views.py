@@ -35,6 +35,7 @@ from .models import Bill
 
 from billing.models import Bill, BillingAccount
 from datetime import datetime as dt
+from portal.models import BrandSettings
 
 
 @manager_required
@@ -257,14 +258,12 @@ def record_payment(request, bill_id):
     selected_month = request.POST.get('month', '')
     
     try:
+        # Use decimal.Decimal if Decimal isn't directly imported
         payment_amount = Decimal(request.POST.get('amount', 0))
         payment_mode = request.POST.get('payment_mode', '')
 
         bill.paid_amount = (bill.paid_amount or Decimal('0')) + payment_amount
         bill.payment_mode = payment_mode
-
-        if bill.paid_amount >= bill.total_amount:
-            bill.status = 'paid'
 
         bill.save()
         messages.success(
@@ -378,6 +377,7 @@ def account_list(request):
     
     return render(request, 'billing/account_list.html', {
         'accounts': accounts,
+        'today': timezone.now().date(),
     })
 
 
@@ -457,6 +457,10 @@ def account_statement_pdf(request, account_id):
     total_gst = rec_gst + pay_gst
     total_with_gst = total_base + total_gst
     net_difference = outstanding_receivable - outstanding_payable
+    brand = BrandSettings.objects.first()
+    company_name = brand.company_name       if brand else 'CWMS System'
+    company_address = brand.company_address if brand else ''
+    company_gstin = brand.company_gstin     if brand else '' 
 
     context = {
         'account': account,
@@ -481,6 +485,11 @@ def account_statement_pdf(request, account_id):
         'outstanding_payable': outstanding_payable,
         'net_difference': net_difference,
         'is_receivable_dominant': outstanding_receivable >= outstanding_payable,
+
+        # Company Info for Header
+        'BRAND_COMPANY_NAME': company_name,
+        'BRAND_COMPANY_ADDRESS': company_address,
+        'BRAND_COMPANY_GSTIN': company_gstin,
     }
     
     template = get_template('billing/account_statement_pdf.html')

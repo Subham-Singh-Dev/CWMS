@@ -89,17 +89,24 @@ td { padding:5px; border-bottom:0.5px solid #ddd; vertical-align:top; }
             </td>
             <td>{{ bill.description }}</td>
             <td class="right">₹{{ bill.amount|floatformat:2 }}</td>
+            
+            <!-- FIX 1: Precise GST amount using total minus base amount -->
             <td class="right">
-                <!-- Inline computation replicating your dashboard view's 18% math matrix standard -->
-                ₹{% widthratio bill.amount 100 18 %}.00
+                {% with gst_val=bill.total_with_gst|subtract:bill.amount %}
+                    ₹{{ gst_val|floatformat:2 }}
+                {% endwith %}
             </td>
+            
+            <!-- FIX 2: Precise Total with GST using your existing property -->
             <td class="right" style="font-weight:bold;">
-                ₹{% widthratio bill.amount 100 118 %}.00
+                ₹{{ bill.total_with_gst|floatformat:2 }}
             </td>
+            
             <td class="center">
                 {% if bill.is_paid %}<span class="badge-paid">Paid</span>{% else %}<span class="badge-unpaid">Unpaid</span>{% endif %}
             </td>
         </tr>
+
         {% empty %}
         <tr><td colspan="8" style="text-align:center;padding:20px;color:#777;">No bills for this period.</td></tr>
         {% endfor %}

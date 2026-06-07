@@ -4,862 +4,1586 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>King Dashboard | {{ BRAND_SHORT_NAME }}</title>
+    <title>Director Dashboard | {{ BRAND_SHORT_NAME }}</title>
     <script>
-        // Set theme immediately before page renders to prevent flash
         (function() {
-            const theme = localStorage.getItem('king_theme') || 'light';
+            const theme = localStorage.getItem('king_theme') || 'dark';
             document.documentElement.setAttribute('data-kingTheme', theme);
         })();
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'king/css/theme.css' %}">
-    <link rel="stylesheet" href="{% static 'king/css/ui-utils.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
+        /* ═══════════════════════════════════════════════════════════
+        SOLAR DARK EXECUTIVE — Design System  (FULL FIXED STYLE)
+        Drop this entire block inside your <style> tag replacing
+        everything that was there before.
+        ═══════════════════════════════════════════════════════════ */
+
+        /* ── DARK (default) variables ── */
+        :root {
+        --solar-bg-deep:    #0B0F19;
+        --solar-bg-mid:     #111827;
+        --solar-bg-raised:  #151A28;
+        --solar-card:       rgba(30, 35, 51, 0.85);
+        --solar-card-hover: rgba(38, 44, 64, 0.92);
+        --solar-border:     rgba(255, 255, 255, 0.06);
+        --solar-border-lit: rgba(255, 255, 255, 0.1);
+        --solar-accent:     #FF6B00;
+        --solar-accent-mid: #FF8A00;
+        --solar-accent-lit: #FFA800;
+        --solar-gradient:   linear-gradient(135deg, #FF6B00, #FFA800);
+        --solar-success:    #22C55E;
+        --solar-warning:    #F59E0B;
+        --solar-danger:     #EF4444;
+        --solar-text:       #FFFFFF;
+        --solar-text-soft:  #E5E7EB;
+        --solar-text-muted: #9CA3AF;
+        --solar-glow:       0 12px 40px rgba(255, 107, 0, 0.15);
+        --solar-glow-sm:    0 4px 20px rgba(255, 107, 0, 0.08);
+        --solar-radius:     16px;
+        --solar-radius-lg:  20px;
+        --solar-radius-xl:  24px;
+        --solar-ease:       cubic-bezier(0.16, 1, 0.3, 1);
+        --solar-gap:        20px;
+        --solar-section:    40px;
+        /* theme-aware surface tints — used in place of hardcoded rgba */
+        --surface-tint-lo:  rgba(255, 255, 255, 0.03);
+        --surface-tint-mid: rgba(255, 255, 255, 0.06);
+        --surface-tint-hi:  rgba(255, 255, 255, 0.04);
+        --surface-dark-lo:  rgba(0, 0, 0, 0.15);
+        --surface-dark-mid: rgba(0, 0, 0, 0.20);
+        --divider:          rgba(255, 255, 255, 0.03);
+        }
+
+        /* ── LIGHT overrides — every variable that needs to change ── */
+        html[data-kingTheme="light"] {
+        --solar-bg-deep:    #F1F5F9;
+        --solar-bg-mid:     #E2E8F0;
+        --solar-bg-raised:  #F8FAFC;
+        --solar-card:       rgba(255, 255, 255, 0.92);
+        --solar-card-hover: rgba(255, 255, 255, 0.99);
+        --solar-border:     rgba(0, 0, 0, 0.08);
+        --solar-border-lit: rgba(0, 0, 0, 0.14);
+        --solar-text:       #111827;
+        --solar-text-soft:  #1F2937;
+        --solar-text-muted: #6B7280;
+        --solar-glow:       0 12px 40px rgba(255, 107, 0, 0.10);
+        --solar-glow-sm:    0 4px 20px rgba(255, 107, 0, 0.06);
+        /* surface tints flipped for light */
+        --surface-tint-lo:  rgba(0, 0, 0, 0.02);
+        --surface-tint-mid: rgba(0, 0, 0, 0.05);
+        --surface-tint-hi:  rgba(0, 0, 0, 0.03);
+        --surface-dark-lo:  rgba(0, 0, 0, 0.04);
+        --surface-dark-mid: rgba(0, 0, 0, 0.06);
+        --divider:          rgba(0, 0, 0, 0.06);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(18px); }
+        to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes solarPulse {
+        0%, 100% { opacity: 0.4; transform: scale(1); }
+        50%       { opacity: 0.7; transform: scale(1.04); }
+        }
+        @keyframes ringRotate {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+        }
+
+        /* ── Body ── */
         body {
-            font-family:'Inter',sans-serif;
-            background:var(--body-bg); color:var(--text-primary);
-            line-height:1.6; padding:24px 20px;
-            -webkit-font-smoothing:antialiased;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        
-        /* Dark theme explicit overrides for body */
-        html[data-kingTheme="dark"] body {
-            background-color: #0a0b10;
-            color: #eef0f8;
-        }
-        .container { max-width:1600px; margin:0 auto; }
-
-        /* ── ZONE LABEL ── */
-        .zone-label {
-            font-size:11px; font-weight:700; letter-spacing:.9px;
-            text-transform:uppercase; color:var(--text-muted);
-            margin:28px 0 14px 2px;
-            display:flex; align-items:center; gap:10px;
-        }
-        .zone-label::after { content:''; flex:1; height:1px; background:var(--border-strong); }
-
-        /* ── HEADER ── */
-        .header {
-            position:relative; border-radius:20px;
-            padding:28px 36px; margin-bottom:24px;
-            background:var(--n700); border:1px solid var(--border-strong); overflow:hidden;
-        }
-        .header-bg {
-            position:absolute; inset:0; pointer-events:none;
-            background:
-                radial-gradient(ellipse 60% 80% at 80% 50%, rgba(245,158,11,.1) 0%, transparent 70%),
-                radial-gradient(ellipse 40% 60% at 10% 30%, rgba(251,191,36,.05) 0%, transparent 60%);
-        }
-        .header-stripe {
-            position:absolute; top:0; left:0; right:0; height:3px;
-            background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600));
-        }
-        .header-content {
-            position:relative; z-index:1;
-            display:grid;
-            grid-template-columns:minmax(0, 1fr) auto;
-            align-items:center;
-            column-gap:20px;
-            row-gap:14px;
-        }
-        .header-left { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
-        .header-company {
-            font-size:11px; font-weight:700; letter-spacing:1.5px;
-            text-transform:uppercase; color:var(--gold-500); opacity:.85;
-        }
-        .header-greeting {
-            font-size:13px; font-weight:600; color:var(--text-muted);
-        }
-        .header-title {
-            font-size:32px; font-weight:900; letter-spacing:-1px;
-            color:var(--text-primary); display:flex; align-items:center; gap:14px;
-        }
-        .crown-badge {
-            display:inline-flex; align-items:center; justify-content:center;
-            width:48px; height:48px; border-radius:13px; font-size:24px; flex-shrink:0;
-            background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
-            box-shadow:0 0 22px rgba(245,158,11,.3);
-        }
-        .header-subtitle { font-size:13px; color:var(--text-secondary); margin-top:2px; }
-        .header-right {
-            display:flex;
-            align-items:center;
-            justify-content:flex-end;
-            gap:10px;
-            flex-wrap:nowrap;
-        }
-        .header-right > * { flex-shrink:0; }
-        .hdr-pill {
-            display:flex; align-items:center; gap:8px;
-            padding:9px 14px; border-radius:11px;
-            background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
-            font-size:13px; font-weight:600; color:var(--text-primary);
-        }
-        .user-avatar {
-            width:34px; height:34px; border-radius:50%;
-            background:linear-gradient(135deg,var(--gold-600),var(--gold-400));
-            display:flex; align-items:center; justify-content:center;
-            font-weight:800; font-size:14px; color:#000;
-        }
-        .user-role-tag { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gold-400); }
-        .king-theme-toggle, .king-refresh-btn, .logout-btn {
-            height:40px; padding:0 14px;
-            background:rgba(255,255,255,.05); border:1px solid var(--border-strong);
-            border-radius:11px; cursor:pointer; font-size:13px; font-weight:600;
-            color:var(--text-primary); transition:all .2s;
-            display:flex; align-items:center; gap:6px; text-decoration:none;
-        }
-        .king-theme-toggle:hover, .king-refresh-btn:hover, .logout-btn:hover {
-            background:rgba(245,158,11,.15); border-color:var(--gold-600);
+        font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+        background: var(--solar-bg-deep);
+        color: var(--solar-text-soft);
+        line-height: 1.5;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
         }
 
-        /* ── KPI CARDS ── */
-        .kpi-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:0; }
-        .kpi-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:0; }
-        .kpi-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:0; }
-
-        .kpi-card {
-            background:var(--card-bg); border:1px solid var(--border);
-            border-radius:16px; padding:22px;
-            transition:all .25s ease; position:relative; overflow:hidden;
+        /* Dark body overlay */
+        body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+            radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 107, 0, 0.07) 0%, transparent 55%),
+            radial-gradient(ellipse 40% 30% at 90% 80%, rgba(255, 138, 0, 0.04) 0%, transparent 50%),
+            linear-gradient(180deg, var(--solar-bg-deep) 0%, var(--solar-bg-mid) 50%, var(--solar-bg-deep) 100%);
         }
-        .kpi-card:hover { transform:translateY(-3px); border-color:var(--border-strong); }
-        .kpi-card::after { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
 
-        /* accent colours per card type */
-        .kc-revenue::after   { background:linear-gradient(90deg,var(--green-500),var(--green-400)); }
-        .kc-liability::after { background:linear-gradient(90deg,var(--red-500),var(--red-400)); }
-        .kc-daily::after     { background:linear-gradient(90deg,var(--cyan-400),#a5f3fc); }
-        .kc-accum::after     { background:linear-gradient(90deg,var(--gold-600),var(--gold-400)); }
-        .kc-workers::after   { background:linear-gradient(90deg,var(--blue-500),var(--blue-400)); }
-        .kc-attendance::after{ background:linear-gradient(90deg,var(--purple-400),#c084fc); }
-        .kc-profit::after    { background:linear-gradient(90deg,var(--orange-400),#fdba74); }
-        .kc-expenses::after  { background:linear-gradient(90deg,var(--red-400),var(--orange-400)); }
-
-        .kpi-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
-        .kpi-icon {
-            width:42px; height:42px; border-radius:11px; font-size:20px;
-            display:flex; align-items:center; justify-content:center;
-            background:rgba(255,255,255,.05);
+        /* Light body overlay — kill the dark radial, use soft light gradient */
+        html[data-kingTheme="light"] body::before {
+        background:
+            radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 107, 0, 0.04) 0%, transparent 55%),
+            linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 50%, #F1F5F9 100%);
         }
-        .kpi-trend {
-            padding:4px 10px; border-radius:7px; font-size:11px; font-weight:700;
-            display:flex; align-items:center; gap:4px;
-        }
-        .t-up  { background:rgba(52,211,153,.12); color:var(--green-400); }
-        .t-down{ background:rgba(248,113,113,.12); color:var(--red-400); }
-        .t-neu { background:rgba(255,255,255,.06);  color:var(--text-secondary); }
-        .t-gold{ background:rgba(245,158,11,.12);   color:var(--gold-400); }
 
+        /* ── Glass surface ── */
+        .glass {
+        background: var(--solar-card);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid var(--solar-border);
+        border-radius: var(--solar-radius);
+        }
+        .glass:hover {
+        background: var(--solar-card-hover);
+        border-color: var(--solar-border-lit);
+        }
+
+        /* ── Card interaction ── */
+        .exec-card {
+        transition: all 0.4s var(--solar-ease);
+        animation: fadeUp 0.7s var(--solar-ease) both;
+        }
+        .exec-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--solar-glow);
+        }
+
+        /* Stagger delays */
+        .stagger-1 { animation-delay: 0.05s; }
+        .stagger-2 { animation-delay: 0.1s; }
+        .stagger-3 { animation-delay: 0.15s; }
+        .stagger-4 { animation-delay: 0.2s; }
+        .stagger-5 { animation-delay: 0.25s; }
+        .stagger-6 { animation-delay: 0.3s; }
+        .stagger-7 { animation-delay: 0.35s; }
+        .stagger-8 { animation-delay: 0.4s; }
+        .stagger-9 { animation-delay: 0.45s; }
+
+        .director-shell {
+        position: relative;
+        z-index: 1;
+        max-width: 1560px;
+        margin: 0 auto;
+        padding: 28px 28px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: var(--solar-section);
+        }
+
+        /* ═══ HEADER ═══ */
+        .director-header {
+        position: relative;
+        padding: 28px 32px;
+        border-radius: var(--solar-radius-xl);
+        overflow: hidden;
+        animation: fadeUp 0.6s var(--solar-ease) both;
+        }
+        .director-header::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: var(--solar-gradient);
+        opacity: 0.6;
+        }
+        .director-header-glow {
+        position: absolute;
+        top: -60px; right: -40px;
+        width: 280px; height: 280px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 107, 0, 0.12) 0%, transparent 70%);
+        pointer-events: none;
+        }
+        .director-header-inner {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 24px;
+        }
+        .director-brand {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--solar-accent-lit);
+        opacity: 0.85;
+        }
+        .director-title-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+        }
+        .director-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--solar-text);
+        line-height: 1.15;
+        }
+        .exec-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px 6px 8px;
+        border-radius: 999px;
+        background: rgba(255, 107, 0, 0.08);
+        border: 1px solid rgba(255, 138, 0, 0.2);
+        }
+        .exec-badge-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        color: var(--solar-accent-lit);
+        opacity: 0.75;
+        }
+        .exec-badge-icon svg { width: 16px; height: 16px; }
+        .exec-badge-ring {
+        position: relative;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        }
+        .exec-badge-ring::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1.5px solid transparent;
+        border-top-color: var(--solar-accent);
+        border-right-color: rgba(255, 168, 0, 0.4);
+        animation: ringRotate 8s linear infinite;
+        }
+        .exec-badge-ring svg {
+        width: 10px;
+        height: 10px;
+        color: var(--solar-accent-lit);
+        opacity: 0.9;
+        }
+        .director-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 8px;
+        }
+        .director-greeting {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--solar-text-soft);
+        }
+        .director-subtitle {
+        font-size: 13px;
+        color: var(--solar-text-soft);
+        font-weight: 500;
+        }
+        .director-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        }
+        .hdr-chip {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-radius: 12px;
+        background: var(--surface-tint-hi);
+        border: 1px solid var(--solar-border);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--solar-text-soft);
+        }
+        .hdr-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--solar-gradient);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 13px;
+        color: #111;
+        }
+        .hdr-username { font-size: 13px; font-weight: 600; color: var(--solar-text); line-height: 1.3; }
+        .hdr-role {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--solar-accent-lit);
+        }
+        .hdr-btn {
+        height: 40px;
+        min-width: 40px;
+        padding: 0 14px;
+        border-radius: 12px;
+        background: var(--surface-tint-hi);
+        border: 1px solid var(--solar-border);
+        color: var(--solar-text-soft);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-decoration: none;
+        transition: all 0.3s var(--solar-ease);
+        font-family: inherit;
+        }
+        .hdr-btn:hover {
+        background: rgba(255, 107, 0, 0.1);
+        border-color: rgba(255, 138, 0, 0.3);
+        color: var(--solar-text);
+        box-shadow: var(--solar-glow-sm);
+        }
+
+        /* ═══ Section headers ═══ */
+        .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        animation: fadeUp 0.6s var(--solar-ease) both;
+        }
+        .section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--solar-text);
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        }
+        .section-title-bar {
+        width: 3px;
+        height: 18px;
+        border-radius: 99px;
+        background: var(--solar-gradient);
+        flex-shrink: 0;
+        }
+        .section-desc {
+        font-size: 12px;
+        color: var(--solar-text-muted);
+        font-weight: 500;
+        }
+
+        /* ═══ EXECUTIVE OVERVIEW ═══ */
+        .exec-hero { animation: fadeUp 0.65s var(--solar-ease) both; }
+        .exec-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--solar-gap);
+        }
+        .exec-kpi {
+        padding: 28px 26px;
+        position: relative;
+        overflow: hidden;
+        }
+        .exec-kpi::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        opacity: 0.7;
+        }
+        .exec-kpi--revenue::after  { background: var(--solar-gradient); }
+        .exec-kpi--payroll::after  { background: linear-gradient(90deg, #22C55E, #4ADE80); }
+        .exec-kpi--liability::after { background: linear-gradient(90deg, #EF4444, #F87171); }
+        .exec-kpi--profit::after   { background: linear-gradient(90deg, var(--solar-accent), var(--solar-accent-lit)); }
+
+        .exec-kpi-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 18px;
+        }
+        .exec-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        background: var(--surface-tint-hi);
+        border: 1px solid var(--solar-border);
+        }
+
+        /* ── Chips ── */
+        .exec-chip {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        }
+        .chip-up      { background: rgba(34, 197, 94, 0.12);  color: var(--solar-success); }
+        .chip-down    { background: rgba(239, 68, 68, 0.12);  color: var(--solar-danger); }
+        .chip-warn    { background: rgba(245, 158, 11, 0.12); color: var(--solar-warning); }
+        .chip-accent  { background: rgba(255, 107, 0, 0.12);  color: var(--solar-accent-lit); }
+        .chip-neutral {
+        background: var(--surface-tint-mid);
+        color: var(--solar-text-muted);
+        border: 1px solid var(--solar-border);
+        }
+
+        /* Light chip overrides */
+        html[data-kingTheme="light"] .chip-accent {
+        background: rgba(194, 65, 12, 0.10);
+        color: #C2410C;
+        }
+        html[data-kingTheme="light"] .chip-neutral {
+        background: rgba(0, 0, 0, 0.06);
+        color: #4B5563;
+        border-color: rgba(0, 0, 0, 0.10);
+        }
+
+        /* ── KPI typography ── */
         .kpi-label {
-            font-size:11px; font-weight:700; letter-spacing:.6px;
-            text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--solar-text-muted);
+        margin-bottom: 8px;
         }
         .kpi-value {
-            font-size:26px; font-weight:900; letter-spacing:-1px;
-            color:var(--text-primary); margin-bottom:4px; font-variant-numeric:tabular-nums;
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--solar-text);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
         }
-        .kpi-desc { font-size:12px; color:var(--text-muted); }
+        .kpi-value--hero { font-size: 2.5rem; }
+        .kpi-value--md   { font-size: 1.5rem; }
+        .analytics-stack { margin-bottom: var(--solar-gap); }
 
-        .kpi-card.kc-paid {
-            border-color: rgba(16, 185, 129, 0.2);
-        }
-
-        .kpi-card.kc-paid::after {
-            background: linear-gradient(180deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
-        }
-
-        /* Optional: ensures the green text actually shows up if not already defined */
-        .green-text {
-            color: #10b981; 
-        }
-
-        /* gold gradient text for revenue */
+        /* gold-text — gradient in dark, solid orange in light */
         .kpi-value.gold-text {
-            background:linear-gradient(135deg,var(--gold-400),var(--gold-300));
-            -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+        background: var(--solar-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
         }
-        .kpi-value.red-text   { color:var(--red-400); }
-        .kpi-value.cyan-text  { color:var(--cyan-400); }
-        .kpi-value.green-text { color:var(--green-400); }
+        html[data-kingTheme="light"] .gold-text,
+        html[data-kingTheme="light"] .kpi-value.gold-text {
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        background-clip: unset !important;
+        -webkit-text-fill-color: #C2410C !important;
+        color: #C2410C !important;
+        }
 
-        /* ── HEALTH BAR ── */
-        .health-bar {
-            background:var(--card-bg); border:1px solid var(--border);
-            border-radius:14px; padding:18px 28px;
-            display:flex; align-items:center; gap:20px; flex-wrap:wrap;
-        }
-        .health-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); white-space:nowrap; }
-        .health-track { flex:1; min-width:160px; height:7px; background:var(--n500); border-radius:99px; overflow:hidden; }
-        .health-fill  { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--red-500),var(--gold-400),var(--green-500)); transition:width .6s ease; }
-        .health-segments { display:flex; gap:20px; flex-wrap:wrap; }
-        .health-seg  { display:flex; flex-direction:column; gap:2px; min-width:72px; }
-        .hs-label    { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
-        .hs-value    { font-size:15px; font-weight:700; }
-        .hs-value.positive { color:var(--green-400); }
-        .hs-value.negative { color:var(--red-400); }
-        .hs-value.gold     { color:var(--gold-400); }
+        .kpi-value.red-text   { color: var(--solar-danger); }
+        .kpi-value.green-text { color: var(--solar-success); }
+        .kpi-value.cyan-text  { color: #38BDF8; }
+        /* cyan is too light on white — darken in light mode */
+        html[data-kingTheme="light"] .kpi-value.cyan-text { color: #0369A1; }
 
-        /* ── CHARTS ── */
-        .charts-grid   { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
-        .charts-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-        .chart-card {
-            background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:24px;
+        .kpi-suffix {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--solar-text-muted);
         }
-        .chart-head {
-            display:flex; justify-content:space-between; align-items:center;
-            margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border);
+        .kpi-desc {
+        font-size: 12px;
+        color: var(--solar-text-soft);
+        margin-top: 8px;
+        line-height: 1.45;
         }
-        .chart-title { font-size:15px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
-        .chart-tabs  { display:flex; gap:6px; background:var(--n600); padding:4px; border-radius:8px; }
+
+        /* ── Health strip ── */
+        .health-strip {
+        margin-top: var(--solar-gap);
+        padding: 22px 26px;
+        border-radius: var(--solar-radius);
+        animation: fadeUp 0.7s var(--solar-ease) 0.15s both;
+        }
+        .health-strip-top {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        }
+        .health-strip-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--solar-text-muted);
+        white-space: nowrap;
+        }
+        .health-track {
+        flex: 1;
+        min-width: 180px;
+        height: 6px;
+        background: var(--surface-tint-mid);
+        border-radius: 999px;
+        overflow: hidden;
+        }
+        .health-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--solar-danger), var(--solar-warning), var(--solar-success));
+        transition: width 0.8s var(--solar-ease);
+        }
+        .health-metrics {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+        padding-top: 18px;
+        border-top: 1px solid var(--solar-border);
+        }
+        .health-metric { display: flex; flex-direction: column; gap: 4px; }
+        .hm-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--solar-text-muted);
+        }
+        .hm-value {
+        font-size: 15px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: var(--solar-text-soft);
+        }
+        .hm-value.positive { color: var(--solar-success); }
+        .hm-value.negative { color: var(--solar-danger); }
+        .hm-value.accent   { color: var(--solar-accent-lit); }
+        .hm-value.muted    { color: var(--solar-text-muted); }
+
+        /* accent is #FFA800 — readable in dark, needs darkening in light */
+        html[data-kingTheme="light"] .hm-value.accent { color: #C2410C; }
+
+        /* ═══ OPERATIONS INTELLIGENCE ═══ */
+        .ops-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--solar-gap);
+        }
+        .ops-card {
+        padding: 28px 26px;
+        min-height: 200px;
+        }
+        .ops-card--large .kpi-value { font-size: 2.25rem; }
+        .metric-progress {
+        margin-top: 16px;
+        height: 6px;
+        background: var(--surface-tint-mid);
+        border-radius: 999px;
+        overflow: hidden;
+        }
+        .metric-progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--solar-success), #4ADE80);
+        transition: width 1.2s var(--solar-ease);
+        }
+        .metric-progress-label {
+        font-size: 11px;
+        color: var(--solar-text-muted);
+        margin-top: 8px;
+        }
+
+        /* ═══ WORKFORCE COMMAND CENTER ═══ */
+        .workforce-panel {
+        padding: 28px;
+        animation: fadeUp 0.7s var(--solar-ease) both;
+        }
+        .workforce-primary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--solar-gap);
+        margin-bottom: var(--solar-gap);
+        }
+        .wf-card {
+        padding: 24px;
+        border-radius: var(--solar-radius);
+        background: var(--surface-tint-lo);
+        border: 1px solid var(--solar-border);
+        transition: all 0.4s var(--solar-ease);
+        }
+        .wf-card:hover {
+        background: rgba(255, 107, 0, 0.04);
+        border-color: rgba(255, 138, 0, 0.15);
+        transform: translateY(-2px);
+        }
+        .workforce-secondary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--solar-gap);
+        padding-top: var(--solar-gap);
+        border-top: 1px solid var(--solar-border);
+        }
+        .wf-secondary-card {
+        padding: 20px 22px;
+        border-radius: 12px;
+        background: var(--surface-dark-lo);
+        border: 1px solid var(--solar-border);
+        transition: all 0.3s var(--solar-ease);
+        }
+        .wf-secondary-card:hover { border-color: var(--solar-border-lit); }
+
+        /* ═══ FINANCIAL ANALYTICS ═══ */
+        .analytics-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: var(--solar-gap);
+        }
+        .analytics-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--solar-gap);
+        }
+        .chart-panel {
+        padding: 26px;
+        animation: fadeUp 0.75s var(--solar-ease) both;
+        }
+        .chart-panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 22px;
+        }
+        .chart-panel-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--solar-text);
+        letter-spacing: -0.01em;
+        }
+        .chart-panel-sub {
+        font-size: 12px;
+        color: var(--solar-text-muted);
+        margin-top: 4px;
+        line-height: 1.4;
+        }
+        .chart-tabs {
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px;
+        border-radius: 10px;
+        background: var(--surface-dark-mid);
+        border: 1px solid var(--solar-border);
+        }
         .chart-tab {
-            padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600;
-            color:var(--text-secondary); cursor:pointer; transition:all .2s; border:none; background:transparent;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--solar-text-muted);
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        font-family: inherit;
+        transition: all 0.25s var(--solar-ease);
         }
-        .chart-tab.active { background:var(--n400); color:var(--gold-400); }
-        .chart-wrap { position:relative; height:380px; }
-        .chart-wrap canvas { display:block; width:100% !important; height:100% !important; }
+        .chart-tab.active {
+        background: rgba(255, 107, 0, 0.15);
+        color: var(--solar-accent-lit);
+        }
+        html[data-kingTheme="light"] .chart-tab.active { color: #C2410C; }
 
-        /* ── PAYROLL VERIFICATION ── */
-        .verify-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+        .chart-canvas-wrap { position: relative; height: 420px; }
+        .chart-canvas-wrap--md { height: 380px; }
+        .chart-canvas-wrap canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        }
+
+        /* ═══ PAYROLL VERIFICATION ═══ */
+        .verify-panel { padding: 28px; animation: fadeUp 0.75s var(--solar-ease) both; }
+        .verify-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        }
         .verify-col-title {
-            font-size:13px; font-weight:700; color:var(--text-primary);
-            margin-bottom:14px; padding-bottom:10px;
-            display:flex; align-items:center; gap:8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--solar-text);
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--solar-border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
         }
+        .verify-col-title--gold  { border-bottom-color: var(--solar-accent); }
+        .verify-col-title--green { border-bottom-color: var(--solar-success); }
+        .verify-rows { display: flex; flex-direction: column; gap: 8px; }
         .verify-row {
-            display:flex; justify-content:space-between; align-items:center;
-            padding:10px 14px; background:var(--card-bg-2); border-radius:9px; margin-bottom:8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        background: var(--surface-dark-mid);
+        border: 1px solid var(--solar-border);
         }
-        .verify-row-label { font-size:12px; color:var(--text-muted); }
-        .verify-row-value { font-size:15px; font-weight:700; }
+        .verify-row-label { font-size: 12px; color: var(--solar-text-muted); font-weight: 500; }
+        .verify-row-value {
+        font-size: 15px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        }
+        /* FIX: was var(--solar-accent-lit) = #FFA800 yellow in dark, override both modes */
+        .verify-row-value--gold  { color: #FF8A00; }
+        html[data-kingTheme="light"] .verify-row-value--gold { color: #C2410C; }
+        .verify-row-value--green { color: var(--solar-success); }
+        .verify-row-value--blue  { color: #60A5FA; }
+        html[data-kingTheme="light"] .verify-row-value--blue { color: #2563EB; }
+
         .verify-result {
-            margin-top:20px; padding:16px; border-radius:12px;
-            border-left:4px solid; grid-column:1/-1;
-            display:flex; flex-direction:column; gap:6px;
+        margin-top: 8px;
+        padding: 18px 20px;
+        border-radius: 12px;
+        border: 1px solid var(--solar-border);
+        border-left-width: 3px;
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
         }
-        .verify-result.match    { border-color:var(--green-500); background:rgba(52,211,153,.06); }
-        .verify-result.variance { border-color:var(--gold-500);  background:rgba(245,158,11,.06); }
-        .verify-result.mismatch { border-color:var(--red-500);   background:rgba(239,68,68,.06); }
-        .verify-result.waiting  { border-color:var(--blue-500);  background:rgba(96,165,250,.06); }
+        .verify-result-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .verify-result-detail { font-size: 12px; color: var(--solar-text-muted); line-height: 1.45; }
+        .verify-result.match    { border-left-color: var(--solar-success); background: rgba(34, 197, 94, 0.06); }
+        .verify-result.match .verify-result-title { color: var(--solar-success); }
+        .verify-result.mismatch { border-left-color: var(--solar-danger);  background: rgba(239, 68, 68, 0.06); }
+        .verify-result.mismatch .verify-result-title { color: var(--solar-danger); }
+        .verify-result.waiting  { border-left-color: #60A5FA; background: rgba(96, 165, 250, 0.06); }
+        .verify-result.waiting .verify-result-title { color: #60A5FA; }
+        html[data-kingTheme="light"] .verify-result.waiting .verify-result-title { color: #2563EB; }
 
-        /* ── ALERTS ── */
-        .alerts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-        .alert-card {
-            background:var(--card-bg); border-radius:14px; padding:20px;
-            display:flex; flex-direction:column; gap:12px; border-left:4px solid;
+        /* ═══ RISK & ALERTS CENTER ═══ */
+        .risk-center { padding: 28px; animation: fadeUp 0.8s var(--solar-ease) both; }
+        .risk-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--solar-gap);
         }
-        .alert-card.danger  { border-color:var(--red-500);  border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
-        .alert-card.warning { border-color:var(--gold-500); border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
-        .alert-card.info    { border-color:var(--blue-500); border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
-        .alert-card.ok      { border-color:var(--green-500);border-top:1px solid var(--border); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
-        .alert-head { display:flex; align-items:center; gap:10px; }
-        .alert-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
-        .alert-card.danger  .alert-icon { background:rgba(239,68,68,.15); }
-        .alert-card.warning .alert-icon { background:rgba(245,158,11,.15); }
-        .alert-card.info    .alert-icon { background:rgba(59,130,246,.15); }
-        .alert-card.ok      .alert-icon { background:rgba(52,211,153,.15); }
-        .alert-title { font-size:13px; font-weight:700; color:var(--text-primary); }
-        .alert-sub   { font-size:11px; color:var(--text-muted); }
-        .alert-amount { font-size:24px; font-weight:900; letter-spacing:-.5px; }
-        .alert-card.danger  .alert-amount { color:var(--red-400); }
-        .alert-card.warning .alert-amount { color:var(--gold-400); }
-        .alert-card.info    .alert-amount { color:var(--blue-400); }
-        .alert-card.ok      .alert-amount { color:var(--green-400); }
-        .alert-link {
-            display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
-            text-decoration:none; padding:7px 14px; border-radius:8px; transition:all .2s; width:fit-content;
+        .risk-item {
+        padding: 22px;
+        border-radius: var(--solar-radius);
+        border: 1px solid var(--solar-border);
+        background: var(--surface-dark-mid);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        transition: all 0.4s var(--solar-ease);
+        position: relative;
+        overflow: hidden;
         }
-        .alert-card.danger  .alert-link { background:rgba(239,68,68,.12); color:var(--red-400); }
-        .alert-card.warning .alert-link { background:rgba(245,158,11,.12); color:var(--gold-400); }
-        .alert-card.info    .alert-link { background:rgba(59,130,246,.12); color:var(--blue-400); }
-        .alert-card.ok      .alert-link { background:rgba(52,211,153,.12); color:var(--green-400); }
-        .alert-link:hover { opacity:.8; }
+        html[data-kingTheme="light"] .risk-item { background: rgba(255, 255, 255, 0.75); }
 
-        /* ── QUICK ACTIONS ── */
-        .actions-grid {
-            display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px;
+        .risk-item::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 2px;
         }
-        .action-card {
-            background:var(--card-bg); border:1px solid var(--border); border-radius:13px;
-            padding:18px; text-decoration:none; transition:all .2s ease;
-            display:flex; flex-direction:column; gap:10px;
-        }
-        .action-card:hover { border-color:var(--gold-600); background:rgba(245,158,11,.05); transform:translateY(-2px); }
-        .action-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; background:rgba(255,255,255,.05); }
-        .action-title { font-size:13px; font-weight:700; color:var(--text-primary); }
-        .action-desc  { font-size:11px; color:var(--text-muted); }
+        .risk-item:hover { transform: translateY(-4px); box-shadow: var(--solar-glow); }
+        .risk-item.danger::before  { background: linear-gradient(90deg, var(--solar-danger),  transparent); }
+        .risk-item.warning::before { background: linear-gradient(90deg, var(--solar-warning), transparent); }
+        .risk-item.ok::before      { background: linear-gradient(90deg, var(--solar-success), transparent); }
+        .risk-item.danger  { border-color: rgba(239, 68, 68, 0.2); }
+        .risk-item.warning { border-color: rgba(245, 158, 11, 0.2); }
+        .risk-item.ok      { border-color: rgba(34, 197, 94, 0.2); }
 
-        /* ── ACTIVITY ── */
-        .activity-card { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:24px; }
-        .activity-list { display:flex; flex-direction:column; gap:10px; }
-        .activity-item {
-            display:flex; gap:14px; padding:13px; background:var(--card-bg-2);
-            border-radius:10px; border:1px solid var(--border); transition:all .2s;
+        .risk-head { display: flex; align-items: flex-start; gap: 12px; }
+        .risk-icon {
+        width: 40px; height: 40px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; flex-shrink: 0;
         }
-        .activity-item:hover { border-color:var(--border-strong); }
-        .activity-dot { width:36px; height:36px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:15px; }
-        .activity-dot.success { background:rgba(52,211,153,.12); }
-        .activity-dot.warning { background:rgba(245,158,11,.12); }
-        .activity-dot.info    { background:rgba(96,165,250,.12); }
-        .activity-text { font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:3px; }
-        .activity-time { font-size:11px; color:var(--text-muted); }
+        .risk-item.danger  .risk-icon { background: rgba(239, 68, 68, 0.12); }
+        .risk-item.warning .risk-icon { background: rgba(245, 158, 11, 0.12); }
+        .risk-item.ok      .risk-icon { background: rgba(34, 197, 94, 0.12); }
 
-        /* ── DIVIDER ── */
-        .kpi-row-gap { margin-bottom:16px; }
+        .risk-title { font-size: 14px; font-weight: 700; color: var(--solar-text); line-height: 1.3; }
+        .risk-sub   { font-size: 12px; color: var(--solar-text-muted); margin-top: 2px; }
+        .risk-amount {
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        }
+        .risk-item.danger  .risk-amount { color: var(--solar-danger); }
+        .risk-item.warning .risk-amount { color: var(--solar-warning); }
+        .risk-item.ok      .risk-amount { color: var(--solar-success); }
 
-        /* ── RESPONSIVE ── */
-        @media(max-width:1200px) {
-            .kpi-grid-4 { grid-template-columns:1fr 1fr; }
-            .charts-grid { grid-template-columns:1fr; }
-            .charts-grid-2 { grid-template-columns:1fr; }
-            .alerts-grid { grid-template-columns:1fr 1fr; }
+        /* warning amber is readable in both modes — but darken slightly for light */
+        html[data-kingTheme="light"] .risk-item.warning .risk-amount { color: #B45309; }
+
+        .risk-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
         }
-        @media(max-width:900px) {
-            .kpi-grid-4 { grid-template-columns:1fr 1fr; }
-            .kpi-grid-3 { grid-template-columns:1fr 1fr; }
-            .verify-grid { grid-template-columns:1fr; }
-            .alerts-grid { grid-template-columns:1fr; }
-            .header-content { grid-template-columns:1fr; }
-            .header-right {
-                width:100%;
-                justify-content:flex-start;
-                flex-wrap:wrap;
-            }
+        .risk-chip--danger  { background: rgba(239, 68, 68, 0.15);  color: var(--solar-danger); }
+        .risk-chip--warning { background: rgba(245, 158, 11, 0.15); color: var(--solar-warning); }
+        .risk-chip--ok      { background: rgba(34, 197, 94, 0.15);  color: var(--solar-success); }
+        html[data-kingTheme="light"] .risk-chip--warning { color: #B45309; }
+
+        .risk-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 9px 16px;
+        border-radius: 10px;
+        transition: all 0.3s var(--solar-ease);
+        width: fit-content;
+        margin-top: auto;
         }
-        @media(max-width:600px) {
-            .kpi-grid-4, .kpi-grid-3, .kpi-grid-2 { grid-template-columns:1fr; }
-            body { padding:12px; }
-            .header { padding:20px; }
-            .header-title { font-size:24px; }
+        .risk-item.danger  .risk-link { background: rgba(239, 68, 68, 0.1);  color: var(--solar-danger); }
+        .risk-item.warning .risk-link { background: rgba(245, 158, 11, 0.1); color: var(--solar-warning); }
+        .risk-item.ok      .risk-link { background: rgba(34, 197, 94, 0.1);  color: var(--solar-success); }
+        html[data-kingTheme="light"] .risk-item.warning .risk-link { color: #B45309; background: rgba(180, 83, 9, 0.10); }
+        .risk-link:hover { opacity: 0.85; transform: translateX(2px); }
+
+        .risk-secondary {
+        margin-top: var(--solar-gap);
+        padding: 18px 22px;
+        border-radius: 12px;
+        background: var(--surface-dark-lo);
+        border: 1px solid var(--solar-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        }
+
+        /* ═══ COMMAND CENTER ═══ */
+        .command-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+        gap: var(--solar-gap);
+        }
+        .command-module {
+        padding: 22px 20px;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-height: 130px;
+        animation: fadeUp 0.7s var(--solar-ease) both;
+        position: relative;
+        overflow: hidden;
+        }
+        .command-module::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 50%;
+        transform: translateX(-50%);
+        width: 60%; height: 1px;
+        background: var(--solar-gradient);
+        opacity: 0;
+        transition: opacity 0.4s var(--solar-ease);
+        }
+        .command-module:hover::after { opacity: 0.5; }
+        .command-icon {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px;
+        background: rgba(255, 107, 0, 0.08);
+        border: 1px solid rgba(255, 138, 0, 0.15);
+        transition: all 0.4s var(--solar-ease);
+        }
+        .command-module:hover .command-icon {
+        background: rgba(255, 107, 0, 0.15);
+        box-shadow: var(--solar-glow-sm);
+        transform: scale(1.05);
+        }
+        .command-title { font-size: 13px; font-weight: 700; color: var(--solar-text); line-height: 1.3; }
+        .command-desc  { font-size: 12px; color: var(--solar-text-soft); line-height: 1.4; }
+
+        /* ═══ ACTIVITY TIMELINE ═══ */
+        .timeline-panel { padding: 28px; animation: fadeUp 0.85s var(--solar-ease) both; }
+        .timeline { position: relative; display: flex; flex-direction: column; }
+        .timeline::before {
+        content: '';
+        position: absolute;
+        left: 19px; top: 8px; bottom: 8px;
+        width: 1px;
+        background: linear-gradient(180deg, rgba(255, 107, 0, 0.3), var(--solar-border), transparent);
+        }
+        .timeline-item {
+        display: flex;
+        gap: 18px;
+        padding: 16px 16px 16px 0;
+        position: relative;
+        transition: all 0.3s var(--solar-ease);
+        border-radius: 12px;
+        animation: fadeUp 0.6s var(--solar-ease) both;
+        }
+        .timeline-item:hover {
+        background: var(--surface-tint-lo);
+        padding-left: 8px;
+        }
+        /* FIX: was hardcoded rgba(255,255,255,0.03) — invisible in light */
+        .timeline-item + .timeline-item { border-top: 1px solid var(--divider); }
+
+        .timeline-dot {
+        width: 40px; height: 40px;
+        border-radius: 12px;
+        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 16px;
+        position: relative; z-index: 1;
+        border: 1px solid var(--solar-border);
+        }
+        .timeline-dot.success { background: rgba(34, 197, 94, 0.12); }
+        .timeline-dot.warning { background: rgba(245, 158, 11, 0.12); }
+        .timeline-dot.info    { background: rgba(96, 165, 250, 0.12); }
+        .timeline-body { flex: 1; min-width: 0; padding-top: 2px; }
+        .timeline-text {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--solar-text-soft);
+        line-height: 1.45;
+        margin-bottom: 4px;
+        }
+        .timeline-time {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--solar-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        }
+        .timeline-time::before {
+        content: '';
+        width: 4px; height: 4px;
+        border-radius: 50%;
+        background: var(--solar-accent);
+        opacity: 0.5;
+        }
+
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 1200px) {
+        .exec-kpi-grid, .ops-grid,
+        .workforce-primary, .workforce-secondary,
+        .risk-grid { grid-template-columns: repeat(2, 1fr); }
+        .analytics-grid, .analytics-grid-2 { grid-template-columns: 1fr; }
+        .health-metrics { grid-template-columns: repeat(3, 1fr); }
+        .chart-canvas-wrap { height: 360px; }
+        }
+        @media (max-width: 900px) {
+        .director-header-inner { grid-template-columns: 1fr; }
+        .director-actions { justify-content: flex-start; }
+        .verify-grid { grid-template-columns: 1fr; }
+        .health-metrics { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 640px) {
+        .director-shell { padding: 16px 14px 32px; gap: 28px; }
+        .exec-kpi-grid, .ops-grid,
+        .workforce-primary, .workforce-secondary,
+        .risk-grid { grid-template-columns: 1fr; }
+        .kpi-value, .kpi-value--hero { font-size: 1.75rem; }
+        .director-title { font-size: 1.4rem; }
+        .chart-canvas-wrap, .chart-canvas-wrap--md { height: 280px; }
+        .health-metrics { grid-template-columns: 1fr 1fr; }
+        .timeline::before { left: 15px; }
         }
     </style>
 </head>
 <body>
-<div class="container">
 
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 0 — HEADER
-══════════════════════════════════════════════════════════════ -->
-<div class="header">
-    <div class="header-bg"></div>
-    <div class="header-stripe"></div>
-    <div class="header-content">
-        <div class="header-left">
-            <div class="header-company">{{ BRAND_COMPANY_NAME }} &nbsp;·&nbsp; {{ BRAND_SHORT_NAME }}</div>
-            <div class="header-title">
-                <div class="crown-badge">👑</div>
-                King Dashboard
+<div class="director-shell">
+
+    <!-- ═══ HEADER ═══ -->
+    <header class="director-header glass">
+        <div class="director-header-glow"></div>
+        <div class="director-header-inner">
+            <div>
+                <div class="director-brand">{{ BRAND_COMPANY_NAME }} &nbsp;·&nbsp; {{ BRAND_SHORT_NAME }}</div>
+                <div class="director-title-row">
+                    <h1 class="director-title">Director Dashboard</h1>
+                    <div class="exec-badge" aria-label="Executive access">
+                        <span class="exec-badge-icon" title="Executive">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17l2-10 5 4 5-4 2 10H5z"/><path d="M5 17h14v2a1 1 0 01-1 1H6a1 1 0 01-1-1v-2z"/></svg>
+                        </span>
+                        <span class="exec-badge-icon" title="Protected">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </span>
+                        <span class="exec-badge-ring" title="Solar Intelligence">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>
+                        </span>
+                    </div>
+                </div>
+                <div class="director-meta">
+                    <div class="director-greeting">Good {{ time_of_day }}, {{ request.user.get_full_name|default:request.user.username }}</div>
+                    <div class="director-subtitle">{{ today|date:"l, d M Y" }} &nbsp;·&nbsp; Executive Intelligence Platform</div>
+                </div>
             </div>
-            <div class="header-greeting">Good {{ time_of_day }}, {{ request.user.get_full_name|default:request.user.username }}</div>
-            <div class="header-subtitle">{{ today|date:"l, d M Y" }} &nbsp;·&nbsp; Command Center</div>
+            <div class="director-actions">
+                <div class="hdr-chip">📅 {{ today|date:"M Y" }}</div>
+                <div class="hdr-chip">
+                    <div class="hdr-avatar">{{ request.user.username|first|upper }}</div>
+                    <div>
+                        <div class="hdr-username">{{ request.user.username }}</div>
+                        <div class="hdr-role">Director</div>
+                    </div>
+                </div>
+                <button class="hdr-btn king-refresh-btn" onclick="window.location.reload()" title="Refresh dashboard">↻</button>
+                <button class="hdr-btn king-theme-toggle" onclick="toggleKingTheme()">◐</button>
+                <a href="{% url 'king:king_logout' %}" class="hdr-btn logout-btn">Logout</a>
+            </div>
         </div>
-        <div class="header-right">
-            <div class="hdr-pill">📅 {{ today|date:"M Y" }}</div>
-            <div class="hdr-pill">
-                <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+    </header>
+
+    <!-- ═══ EXECUTIVE OVERVIEW ═══ -->
+    <section class="exec-hero">
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Executive Overview</div>
+            <span class="section-desc">Primary financial position — {{ today|date:"F Y" }}</span>
+        </div>
+        <div class="exec-kpi-grid">
+            <div class="exec-kpi exec-kpi--revenue glass exec-card stagger-1">
+                <div class="exec-kpi-top">
+                    <div class="exec-kpi-icon">💰</div>
+                    <span class="exec-chip chip-accent">{{ today|date:"Y" }}</span>
+                </div>
+                <div class="kpi-label">Revenue (YTD)</div>
+                <div class="kpi-value kpi-value--hero gold-text">₹{{ total_revenue|floatformat:0 }}</div>
+                <div class="kpi-desc">Manually recorded income — {{ today|date:"Y" }}</div>
+            </div>
+            <div class="exec-kpi exec-kpi--payroll glass exec-card stagger-2">
+                <div class="exec-kpi-top">
+                    <div class="exec-kpi-icon">💼</div>
+                    <span class="exec-chip {% if payroll_change <= 0 %}chip-up{% else %}chip-down{% endif %}">
+                        {% if payroll_change >= 0 %}↗{% else %}↘{% endif %} {{ payroll_change }}%
+                    </span>
+                </div>
+                <div class="kpi-label">Payroll Generated</div>
+                <div class="kpi-value kpi-value--hero green-text">₹{{ total_payroll|floatformat:0 }}</div>
+                <div class="kpi-desc">{{ payroll_generated_count }}/{{ total_active_workers }} workers processed this month</div>
+            </div>
+            <div class="exec-kpi exec-kpi--liability glass exec-card stagger-3">
+                <div class="exec-kpi-top">
+                    <div class="exec-kpi-icon">⚠️</div>
+                    <span class="exec-chip chip-down">Unpaid</span>
+                </div>
+                <div class="kpi-label">Outstanding Liability</div>
+                <div class="kpi-value kpi-value--hero red-text">₹{{ total_liability|floatformat:0 }}</div>
+                <div class="kpi-desc">Salaries generated but not yet disbursed</div>
+            </div>
+            <div class="exec-kpi exec-kpi--profit glass exec-card stagger-4">
+                <div class="exec-kpi-top">
+                    <div class="exec-kpi-icon">📊</div>
+                    <span class="exec-chip {% if profit_margin >= 0 %}chip-up{% else %}chip-down{% endif %}">{{ profit_margin }}% margin</span>
+                </div>
+                <div class="kpi-label">Net Position</div>
+                <div class="kpi-value kpi-value--hero {% if net_profit >= 0 %}gold-text{% else %}red-text{% endif %}">
+                    {% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}
+                </div>
+                <div class="kpi-desc">Revenue − Expenses − Payroll</div>
+            </div>
+        </div>
+
+        <!-- Financial health strip -->
+        <div class="health-strip glass">
+            <div class="health-strip-top">
+                <span class="health-strip-label">Financial Health Index</span>
+                <div class="health-track">
+                    <div class="health-fill" style="width:{% if profit_margin >= 0 %}{{ profit_margin|add:'50'|floatformat:0 }}{% else %}10{% endif %}%"></div>
+                </div>
+            </div>
+            <div class="health-metrics">
+                <div class="health-metric">
+                    <span class="hm-label">Revenue (YTD)</span>
+                    <span class="hm-value accent">₹{{ total_revenue|floatformat:0 }}</span>
+                </div>
+                <div class="health-metric">
+                    <span class="hm-label">Expenses</span>
+                    <span class="hm-value muted">₹{{ total_expenses|floatformat:0 }}</span>
+                </div>
+                <div class="health-metric">
+                    <span class="hm-label">Net Profit</span>
+                    <span class="hm-value {% if net_profit >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}
+                    </span>
+                </div>
+                <div class="health-metric">
+                    <span class="hm-label">Margin</span>
+                    <span class="hm-value {% if profit_margin >= 0 %}positive{% else %}negative{% endif %}">{{ profit_margin }}%</span>
+                </div>
+                <div class="health-metric">
+                    <span class="hm-label">Liability</span>
+                    <span class="hm-value negative">₹{{ total_liability|floatformat:0 }}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ OPERATIONS INTELLIGENCE ═══ -->
+    <section>
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Operations Intelligence</div>
+            <span class="section-desc">Work order pipeline — all time</span>
+        </div>
+        <div class="ops-grid">
+            <div class="ops-card ops-card--large glass exec-card stagger-1">
+                <div class="exec-kpi-top">
+                    <div class="exec-kpi-icon">📋</div>
+                    <span class="exec-chip chip-accent">{{ wo_count_summary.total }} orders</span>
+                </div>
+                <div class="kpi-label">Total Order Book Value</div>
+                <div class="kpi-value gold-text">₹{{ total_wo_value|floatformat:0 }}</div>
+                <div class="kpi-desc">
+                    Active: {{ wo_count_summary.active }} &nbsp;|&nbsp;
+                    Completed: {{ wo_count_summary.completed }} &nbsp;|&nbsp;
+                    Pending: {{ wo_count_summary.pending }}
+                </div>
+            </div>
+            <div class="ops-card ops-card--large glass exec-card stagger-2">
+                <div class="exec-kpi-top">
+                    <div class="exec-kpi-icon">✅</div>
+                    <span class="exec-chip chip-up">{{ wo_completion_pct }}% collected</span>
+                </div>
+                <div class="kpi-label">Collection Status</div>
+                <div class="kpi-value green-text">₹{{ revenue_received_on_wo|floatformat:0 }}</div>
+                <div class="kpi-desc">Revenue received across all work orders</div>
+                <div class="metric-progress">
+                    <div class="metric-progress-fill" style="width:{{ wo_completion_pct }}%;"></div>
+                </div>
+                <div class="metric-progress-label">{{ wo_completion_pct }}% of total order book collected</div>
+            </div>
+            <div class="ops-card ops-card--large glass exec-card stagger-3">
+                <div class="exec-kpi-top">
+                    <div class="exec-kpi-icon">⏳</div>
+                    <span class="exec-chip chip-down">To collect</span>
+                </div>
+                <div class="kpi-label">Pending Balance</div>
+                <div class="kpi-value red-text">₹{{ wo_pending_value|floatformat:0 }}</div>
+                <div class="kpi-desc">Remaining amount to be billed / collected</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ WORKFORCE COMMAND CENTER ═══ -->
+    <section>
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Workforce Command Center</div>
+            <span class="section-desc">Headcount, attendance &amp; payroll intelligence</span>
+        </div>
+        <div class="workforce-panel glass">
+            <div class="workforce-primary">
+                <div class="wf-card exec-card stagger-1">
+                    <div class="exec-kpi-top">
+                        <div class="exec-kpi-icon">👷</div>
+                        <span class="exec-chip chip-up">+{{ new_workers }} this month</span>
+                    </div>
+                    <div class="kpi-label">Active Workers</div>
+                    <div class="kpi-value">{{ total_workers }}</div>
+                    <div class="kpi-desc">Current headcount on site</div>
+                </div>
+                <div class="wf-card exec-card stagger-2">
+                    <div class="exec-kpi-top">
+                        <div class="exec-kpi-icon">📋</div>
+                        <span class="exec-chip {% if attendance_rate >= 80 %}chip-up{% else %}chip-down{% endif %}">{{ attendance_rate }}%</span>
+                    </div>
+                    <div class="kpi-label">Attendance Rate (MTD)</div>
+                    <div class="kpi-value">{{ attendance_rate }}%</div>
+                    <div class="kpi-desc">
+                        {% if todays_attendance.marked %}✓ Today marked{% else %}⚠ Today not marked yet{% endif %}
+                    </div>
+                </div>
+                <div class="wf-card exec-card stagger-3">
+                    <div class="exec-kpi-top">
+                        <div class="exec-kpi-icon">💼</div>
+                        <span class="exec-chip chip-up">{{ payroll_generated_count }}/{{ total_active_workers }}</span>
+                    </div>
+                    <div class="kpi-label">Payroll Generated (Month)</div>
+                    <div class="kpi-value green-text">₹{{ total_payroll|floatformat:0 }}</div>
+                    <div class="kpi-desc">Workers processed this billing cycle</div>
+                </div>
+            </div>
+            <div class="workforce-secondary">
+                <div class="wf-secondary-card exec-card stagger-4">
+                    <div class="kpi-label">Today's Salary Liability</div>
+                    <div class="kpi-value kpi-value--md cyan-text">₹{{ todays_daily_salary|floatformat:0 }}</div>
+                    <div class="kpi-desc">
+                        P: {{ todays_attendance.present }} &nbsp;|&nbsp;
+                        H: {{ todays_attendance.half_day }} &nbsp;|&nbsp;
+                        A: {{ todays_attendance.absent }}
+                    </div>
+                </div>
+                <div class="wf-secondary-card exec-card stagger-5">
+                    <div class="kpi-label">Accumulated Salary (MTD)</div>
+                    <div class="kpi-value kpi-value--md gold-text">₹{{ accumulated_salary|floatformat:0 }}</div>
+                    <div class="kpi-desc">{{ days_processed }}/{{ days_in_month }} days processed</div>
+                </div>
+                <div class="wf-secondary-card exec-card stagger-6">
+                    <div class="kpi-label">Today's Attendance</div>
+                    <div class="kpi-value kpi-value--md">{{ todays_attendance.total_marked }}<span class="kpi-suffix">/{{ todays_attendance.total_employees }}</span></div>
+                    <div class="kpi-desc">P: {{ todays_attendance.present }} &nbsp;|&nbsp; H: {{ todays_attendance.half_day }} &nbsp;|&nbsp; A: {{ todays_attendance.absent }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ FINANCIAL ANALYTICS ═══ -->
+    <section>
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Financial Analytics</div>
+            <span class="section-desc">Trend analysis &amp; expense composition</span>
+        </div>
+        <div class="analytics-grid analytics-stack">
+            <div class="chart-panel glass exec-card stagger-1">
+                <div class="chart-panel-head">
+                    <div class="chart-panel-title">6-Month Financial Overview</div>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" onclick="switchChart('bar',this)">Bar</button>
+                        <button class="chart-tab" onclick="switchChart('line',this)">Line</button>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrap"><canvas id="financialChart"></canvas></div>
+            </div>
+            <div class="chart-panel glass exec-card stagger-2">
+                <div class="chart-panel-head">
+                    <div>
+                        <div class="chart-panel-title">Expense Breakdown</div>
+                        <div class="chart-panel-sub">
+                            Payroll deductions: PF ₹{{ monthly_pf_deduction|floatformat:0 }} · ESIC ₹{{ monthly_esic_deduction|floatformat:0 }}
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrap"><canvas id="expenseCatChart"></canvas></div>
+            </div>
+        </div>
+        <div class="analytics-grid-2">
+            <div class="chart-panel glass exec-card stagger-3">
+                <div class="chart-panel-head">
+                    <div class="chart-panel-title">Workforce by Role</div>
+                </div>
+                <div class="chart-canvas-wrap chart-canvas-wrap--md"><canvas id="workforceChart"></canvas></div>
+            </div>
+            <div class="chart-panel glass exec-card stagger-4">
+                <div class="chart-panel-head">
+                    <div class="chart-panel-title">Revenue vs Payroll</div>
+                </div>
+                <div class="chart-canvas-wrap chart-canvas-wrap--md"><canvas id="rvpChart"></canvas></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ PAYROLL VERIFICATION ═══ -->
+    <section>
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Payroll Verification</div>
+            <span class="section-desc">{{ today|date:"F Y" }}</span>
+        </div>
+        <div class="verify-panel glass">
+            <div class="verify-grid">
                 <div>
-                    <div style="font-size:13px;font-weight:700;">{{ request.user.username }}</div>
-                    <div class="user-role-tag">Owner</div>
+                    <div class="verify-col-title verify-col-title--gold">📊 Calculated (From Attendance)</div>
+                    <div class="verify-rows">
+                        <div class="verify-row">
+                            <span class="verify-row-label">Total Salary Earned</span>
+                            <span class="verify-row-value verify-row-value--gold">₹{{ accumulated_salary|floatformat:0 }}</span>
+                        </div>
+                        <div class="verify-row">
+                            <span class="verify-row-label">Days Processed</span>
+                            <span class="verify-row-value verify-row-value--blue">{{ days_processed }} / {{ days_in_month }}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <button class="king-refresh-btn" onclick="window.location.reload()" title="Refresh dashboard">🔄</button>
-            
-            <button class="king-theme-toggle" onclick="toggleKingTheme()">🌙</button>
-            <a href="{% url 'king:king_logout' %}" class="logout-btn">🚪 Logout</a>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 1 — FINANCIAL HEALTH SNAPSHOT (always visible at top)
-══════════════════════════════════════════════════════════════ -->
-<div class="health-bar" style="margin-bottom:28px;">
-    <div class="health-label">💰 Financial Health — {{ today|date:"F Y" }}</div>
-    <div class="health-track">
-        <div class="health-fill" style="width:{% if profit_margin >= 0 %}{{ profit_margin|add:'50'|floatformat:0 }}{% else %}10{% endif %}%"></div>
-    </div>
-    <div class="health-segments">
-        <div class="health-seg">
-            <span class="hs-label">Revenue (YTD)</span>
-            <span class="hs-value gold">₹{{ total_revenue|floatformat:0 }}</span>
-        </div>
-        <div class="health-seg">
-            <span class="hs-label">Expenses</span>
-            <span class="hs-value" style="color:var(--text-secondary)">₹{{ total_expenses|floatformat:0 }}</span>
-        </div>
-        <div class="health-seg">
-            <span class="hs-label">Net Profit</span>
-            <span class="hs-value {% if net_profit >= 0 %}positive{% else %}negative{% endif %}">
-                {% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}
-            </span>
-        </div>
-        <div class="health-seg">
-            <span class="hs-label">Margin</span>
-            <span class="hs-value {% if profit_margin >= 0 %}positive{% else %}negative{% endif %}">{{ profit_margin }}%</span>
-        </div>
-        <div class="health-seg">
-            <span class="hs-label">Liability</span>
-            <span class="hs-value negative">₹{{ total_liability|floatformat:0 }}</span>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 1b — WORK ORDER FINANCIAL SUMMARY
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">📋 Work Order Pipeline — All Time</div>
-<div class="kpi-grid-3 kpi-row-gap">
-
-    <!-- Total WO Value -->
-    <div class="kpi-card kc-revenue">
-        <div class="kpi-top">
-            <div class="kpi-icon">📋</div>
-            <div class="kpi-trend t-gold">{{ wo_count_summary.total }} orders</div>
-        </div>
-        <div class="kpi-label">Total Order Book Value</div>
-        <div class="kpi-value gold-text">₹{{ total_wo_value|floatformat:0 }}</div>
-        <div class="kpi-desc">
-            Active: {{ wo_count_summary.active }} &nbsp;|&nbsp;
-            Completed: {{ wo_count_summary.completed }} &nbsp;|&nbsp;
-            Pending: {{ wo_count_summary.pending }}
-        </div>
-    </div>
-
-    <!-- Revenue Received on WOs -->
-    <div class="kpi-card kc-paid">
-        <div class="kpi-top">
-            <div class="kpi-icon">✅</div>
-            <div class="kpi-trend t-up">{{ wo_completion_pct }}% collected</div>
-        </div>
-        <div class="kpi-label">Order Value Collected</div>
-        <div class="kpi-value green-text">₹{{ revenue_received_on_wo|floatformat:0 }}</div>
-        <div class="kpi-desc">Revenue received across all work orders</div>
-        <div class="metric-progress" style="margin-top:12px;background:rgba(255,255,255,.08);height:6px;border-radius:3px;overflow:hidden;">
-            <div style="width:{{ wo_completion_pct }}%;height:100%;border-radius:3px;background:linear-gradient(90deg,#34d399,#10b981);transition:width 1.2s ease;"></div>
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">{{ wo_completion_pct }}% of total order book</div>
-    </div>
-
-    <!-- Pending / Balance to collect -->
-    <div class="kpi-card kc-liability">
-        <div class="kpi-top">
-            <div class="kpi-icon">⏳</div>
-            <div class="kpi-trend t-down">To collect</div>
-        </div>
-        <div class="kpi-label">Order Balance Pending</div>
-        <div class="kpi-value red-text">₹{{ wo_pending_value|floatformat:0 }}</div>
-        <div class="kpi-desc">Remaining amount to be billed / collected</div>
-    </div>
-
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 2 — PRIMARY KPIs (Revenue + Liability — highest priority)
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">💰 Revenue &amp; Liability — What Matters Most</div>
-<div class="kpi-grid-4 kpi-row-gap">
-
-    <!-- Manual Revenue — Yearly -->
-    <div class="kpi-card kc-revenue">
-        <div class="kpi-top">
-            <div class="kpi-icon">💰</div>
-            <div class="kpi-trend t-gold">{{ today|date:"Y" }}</div>
-        </div>
-        <div class="kpi-label">Manual Revenue (Yearly)</div>
-        <div class="kpi-value gold-text">₹{{ total_revenue|floatformat:0 }}</div>
-        <div class="kpi-desc">Manually recorded income — {{ today|date:"Y" }}</div>
-    </div>
-
-    <!-- Outstanding Liability -->
-    <div class="kpi-card kc-liability">
-        <div class="kpi-top">
-            <div class="kpi-icon">⚠️</div>
-            <div class="kpi-trend t-down">Unpaid</div>
-        </div>
-        <div class="kpi-label">Outstanding Liability</div>
-        <div class="kpi-value red-text">₹{{ total_liability|floatformat:0 }}</div>
-        <div class="kpi-desc">Salaries generated but not yet paid</div>
-    </div>
-
-    <!-- Advance Outstanding -->
-    <div class="kpi-card kc-expenses">
-        <div class="kpi-top">
-            <div class="kpi-icon">💳</div>
-            <div class="kpi-trend t-down">Active loans</div>
-        </div>
-        <div class="kpi-label">Advance Outstanding</div>
-        <div class="kpi-value red-text">₹{{ advance_outstanding|floatformat:0 }}</div>
-        <div class="kpi-desc">Unrecovered loans issued to workers</div>
-    </div>
-
-    <!-- Net Position -->
-    <div class="kpi-card kc-profit">
-        <div class="kpi-top">
-            <div class="kpi-icon">📊</div>
-            <div class="kpi-trend {% if profit_margin >= 0 %}t-up{% else %}t-down{% endif %}">{{ profit_margin }}% margin</div>
-        </div>
-        <div class="kpi-label">Net Profit This Month</div>
-        <div class="kpi-value {% if net_profit >= 0 %}gold-text{% else %}red-text{% endif %}">
-            {% if net_profit >= 0 %}+{% endif %}₹{{ net_profit|floatformat:0 }}
-        </div>
-        <div class="kpi-desc">Revenue − Expenses − Payroll</div>
-    </div>
-
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 3 — SALARY CARDS (Daily + Accumulated)
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">💵 Salary Tracker — Today &amp; Month</div>
-<div class="kpi-grid-3 kpi-row-gap">
-
-    <!-- Today's Daily Salary -->
-    <div class="kpi-card kc-daily">
-        <div class="kpi-top">
-            <div class="kpi-icon">📅</div>
-            <div class="kpi-trend t-up">{{ today|date:"d M" }}</div>
-        </div>
-        <div class="kpi-label">Today's Salary Liability</div>
-        <div class="kpi-value cyan-text">₹{{ todays_daily_salary|floatformat:0 }}</div>
-        <div class="kpi-desc">
-            P: {{ todays_attendance.present }} &nbsp;|&nbsp;
-            H: {{ todays_attendance.half_day }} &nbsp;|&nbsp;
-            A: {{ todays_attendance.absent }}
-        </div>
-    </div>
-
-    <!-- Accumulated Monthly -->
-    <div class="kpi-card kc-accum">
-        <div class="kpi-top">
-            <div class="kpi-icon">📈</div>
-            <div class="kpi-trend t-gold">{{ days_processed }}/{{ days_in_month }} days</div>
-        </div>
-        <div class="kpi-label">Accumulated Salary (MTD)</div>
-        <div class="kpi-value gold-text">₹{{ accumulated_salary|floatformat:0 }}</div>
-        <div class="kpi-desc">Total salary earned so far this month</div>
-    </div>
-
-    <!-- Payroll Generated -->
-    <div class="kpi-card kc-revenue">
-        <div class="kpi-top">
-            <div class="kpi-icon">💼</div>
-            <div class="kpi-trend {% if payroll_change <= 0 %}t-up{% else %}t-down{% endif %}">
-                {% if payroll_change >= 0 %}↗{% else %}↘{% endif %} {{ payroll_change }}%
+                <div>
+                    <div class="verify-col-title verify-col-title--green">💰 Generated Payroll</div>
+                    <div class="verify-rows">
+                        <div class="verify-row">
+                            <span class="verify-row-label">Total Payroll Amount</span>
+                            <span class="verify-row-value verify-row-value--green">₹{{ generated_payroll_total|floatformat:0 }}</span>
+                        </div>
+                        <div class="verify-row">
+                            <span class="verify-row-label">Workers Processed</span>
+                            <span class="verify-row-value verify-row-value--blue">{{ payroll_generated_count }} / {{ total_active_workers }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% if generated_payroll_total > 0 %}
+                    {% if accumulated_salary == generated_payroll_total %}
+                    <div class="verify-result match">
+                        <div class="verify-result-title">✅ Perfect Match — Payroll is accurate</div>
+                        <div class="verify-result-detail">
+                            Calculated ₹{{ accumulated_salary|floatformat:0 }} = Generated ₹{{ generated_payroll_total|floatformat:0 }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="verify-result mismatch">
+                        <div class="verify-result-title">❌ Discrepancy Detected — Review required</div>
+                        <div class="verify-result-detail">
+                            Calculated ₹{{ accumulated_salary|floatformat:0 }} &nbsp;≠&nbsp; Generated ₹{{ generated_payroll_total|floatformat:0 }}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="verify-result waiting">
+                    <div class="verify-result-title">⏳ Awaiting Payroll Generation</div>
+                    <div class="verify-result-detail">
+                        Expected payroll: ₹{{ accumulated_salary|floatformat:0 }} based on {{ days_processed }} days of attendance
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
-        <div class="kpi-label">Payroll Generated (Month)</div>
-        <div class="kpi-value green-text">₹{{ total_payroll|floatformat:0 }}</div>
-        <div class="kpi-desc">{{ payroll_generated_count }}/{{ total_active_workers }} workers processed</div>
-    </div>
+    </section>
 
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 4 — WORKFORCE CARDS
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">👷 Workforce Overview</div>
-<div class="kpi-grid-3 kpi-row-gap">
-
-    <div class="kpi-card kc-workers">
-        <div class="kpi-top">
-            <div class="kpi-icon">👷</div>
-            <div class="kpi-trend t-up">+{{ new_workers }} this month</div>
+    <!-- ═══ RISK & ALERTS CENTER ═══ -->
+    <section>
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Risk &amp; Alerts Center</div>
+            <span class="section-desc">Items requiring executive attention</span>
         </div>
-        <div class="kpi-label">Active Workers</div>
-        <div class="kpi-value">{{ total_workers }}</div>
-        <div class="kpi-desc">Current headcount on site</div>
-    </div>
-
-    <div class="kpi-card kc-attendance">
-        <div class="kpi-top">
-            <div class="kpi-icon">📋</div>
-            <div class="kpi-trend {% if attendance_rate >= 80 %}t-up{% else %}t-down{% endif %}">
-                {{ attendance_rate }}%
-            </div>
-        </div>
-        <div class="kpi-label">Attendance Rate (MTD)</div>
-        <div class="kpi-value">{{ attendance_rate }}%</div>
-        <div class="kpi-desc">
-            {% if todays_attendance.marked %}✓ Today marked{% else %}⚠ Today not marked yet{% endif %}
-        </div>
-    </div>
-
-    <div class="kpi-card kc-daily">
-        <div class="kpi-top">
-            <div class="kpi-icon">📊</div>
-            <div class="kpi-trend t-neu">Today</div>
-        </div>
-        <div class="kpi-label">Today's Attendance</div>
-        <div class="kpi-value">{{ todays_attendance.total_marked }}<span style="font-size:16px;font-weight:600;color:var(--text-muted);">/{{ todays_attendance.total_employees }}</span></div>
-        <div class="kpi-desc">P: {{ todays_attendance.present }} &nbsp;|&nbsp; H: {{ todays_attendance.half_day }} &nbsp;|&nbsp; A: {{ todays_attendance.absent }}</div>
-    </div>
-
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 5 — CHARTS ROW 1 (Financial trends + Expense breakdown)
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">📈 Financial Trends</div>
-<div class="charts-grid" style="margin-bottom:0;">
-    <div class="chart-card">
-        <div class="chart-head">
-            <div class="chart-title">📈 6-Month Overview</div>
-            <div class="chart-tabs">
-                <button class="chart-tab active" onclick="switchChart('bar',this)">Bar</button>
-                <button class="chart-tab" onclick="switchChart('line',this)">Line</button>
-            </div>
-        </div>
-        <div class="chart-wrap"><canvas id="financialChart"></canvas></div>
-    </div>
-    <div class="chart-card">
-        <div class="chart-head">
-            <div>
-                <div class="chart-title">💸 Expense Breakdown</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-                    Payroll deductions included: PF ₹{{ monthly_pf_deduction|floatformat:0 }} | ESIC ₹{{ monthly_esic_deduction|floatformat:0 }}
+        <div class="risk-center glass">
+            <div class="risk-grid">
+                <div class="risk-item {% if pending_bills_count > 0 %}danger{% else %}ok{% endif %} exec-card stagger-1">
+                    <div class="risk-head">
+                        <div class="risk-icon">📄</div>
+                        <div>
+                            <div class="risk-title">Pending Vendor Bills</div>
+                            <div class="risk-sub">{{ pending_bills_count }} bill{{ pending_bills_count|pluralize }} awaiting payment</div>
+                        </div>
+                    </div>
+                    <span class="risk-chip {% if pending_bills_count > 0 %}risk-chip--danger{% else %}risk-chip--ok{% endif %}">
+                        {% if pending_bills_count > 0 %}Action Required{% else %}Clear{% endif %}
+                    </span>
+                    <div class="risk-amount">₹{{ pending_bills_amount|floatformat:0 }}</div>
+                    <a href="{% url 'billing:billing_dashboard' %}" class="risk-link">View Bills →</a>
+                </div>
+                <div class="risk-item {% if advance_outstanding > 0 %}warning{% else %}ok{% endif %} exec-card stagger-2">
+                    <div class="risk-head">
+                        <div class="risk-icon">💳</div>
+                        <div>
+                            <div class="risk-title">Outstanding Advances</div>
+                            <div class="risk-sub">Unrecovered loans to workers</div>
+                        </div>
+                    </div>
+                    <span class="risk-chip {% if advance_outstanding > 0 %}risk-chip--warning{% else %}risk-chip--ok{% endif %}">
+                        {% if advance_outstanding > 0 %}Monitor{% else %}Clear{% endif %}
+                    </span>
+                    <div class="risk-amount">₹{{ advance_outstanding|floatformat:0 }}</div>
+                    <a href="{% url 'manager_dashboard' %}" class="risk-link">Manage →</a>
+                </div>
+                <div class="risk-item {% if total_liability > 0 %}danger{% else %}ok{% endif %} exec-card stagger-3">
+                    <div class="risk-head">
+                        <div class="risk-icon">💵</div>
+                        <div>
+                            <div class="risk-title">Unpaid Salaries</div>
+                            <div class="risk-sub">Salaries pending disbursement</div>
+                        </div>
+                    </div>
+                    <span class="risk-chip {% if total_liability > 0 %}risk-chip--danger{% else %}risk-chip--ok{% endif %}">
+                        {% if total_liability > 0 %}Critical{% else %}Clear{% endif %}
+                    </span>
+                    <div class="risk-amount">₹{{ total_liability|floatformat:0 }}</div>
+                    <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="risk-link">View Payroll →</a>
                 </div>
             </div>
         </div>
-        <div class="chart-wrap"><canvas id="expenseCatChart"></canvas></div>
-    </div>
-</div>
+    </section>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 5b — CHARTS ROW 2 (Workforce + Revenue vs Payroll)
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">🏗️ Workforce &amp; Payroll Trends</div>
-<div class="charts-grid-2" style="margin-bottom:0;">
-    <div class="chart-card">
-        <div class="chart-head">
-            <div class="chart-title">🏗️ Workforce by Role</div>
+    <!-- ═══ COMMAND CENTER ═══ -->
+    <section>
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Command Center</div>
+            <span class="section-desc">Quick navigation to core modules</span>
         </div>
-        <div class="chart-wrap"><canvas id="workforceChart"></canvas></div>
-    </div>
-    <div class="chart-card">
-        <div class="chart-head">
-            <div class="chart-title">💹 Revenue vs Payroll</div>
+        <div class="command-grid">
+            <a href="{% url 'king:revenue_dashboard' %}" class="command-module glass exec-card stagger-1">
+                <div class="command-icon">💹</div>
+                <div class="command-title">Manual Revenue</div>
+                <div class="command-desc">Record income entries</div>
+            </a>
+            <a href="{% url 'king:workorder_dashboard' %}" class="command-module glass exec-card stagger-2">
+                <div class="command-icon">📋</div>
+                <div class="command-title">Work Orders</div>
+                <div class="command-desc">Contracts &amp; clients</div>
+            </a>
+            <a href="{% url 'king:ledger' %}" class="command-module glass exec-card stagger-3">
+                <div class="command-icon">📒</div>
+                <div class="command-title">Ledger</div>
+                <div class="command-desc">Dr/Cr entries &amp; balance</div>
+            </a>
+            <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="command-module glass exec-card stagger-4">
+                <div class="command-icon">💼</div>
+                <div class="command-title">Payroll Reports</div>
+                <div class="command-desc">Monthly summaries</div>
+            </a>
+            <a href="{% url 'employee_list' %}" class="command-module glass exec-card stagger-5">
+                <div class="command-icon">👥</div>
+                <div class="command-title">Workforce</div>
+                <div class="command-desc">Employee management</div>
+            </a>
+            <a href="{% url 'billing:billing_dashboard' %}" class="command-module glass exec-card stagger-6">
+                <div class="command-icon">📄</div>
+                <div class="command-title">Bills &amp; Invoices</div>
+                <div class="command-desc">Vendor payments</div>
+            </a>
+            <a href="{% url 'expenses:expense_dashboard' %}" class="command-module glass exec-card stagger-7">
+                <div class="command-icon">💸</div>
+                <div class="command-title">Daily Expenses</div>
+                <div class="command-desc">Site cost tracking</div>
+            </a>
+            <a href="{% url 'manager_dashboard' %}" class="command-module glass exec-card stagger-8">
+                <div class="command-icon">⚙️</div>
+                <div class="command-title">Manager View</div>
+                <div class="command-desc">Daily operations</div>
+            </a>
+            <a href="{% url 'king_audit_history' %}" class="command-module glass exec-card stagger-9">
+                <div class="command-icon">🧾</div>
+                <div class="command-title">Audit Trail</div>
+                <div class="command-desc">Full compliance log</div>
+            </a>
         </div>
-        <div class="chart-wrap"><canvas id="rvpChart"></canvas></div>
-    </div>
-</div>
+    </section>
 
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 6 — PAYROLL VERIFICATION
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">✅ Payroll Verification</div>
-<div class="chart-card" style="margin-bottom:0;">
-    <div class="chart-head">
-        <div class="chart-title">🔍 Calculated vs Generated Salary — {{ today|date:"F Y" }}</div>
-    </div>
-    <div class="verify-grid">
-        <div>
-            <div class="verify-col-title" style="border-bottom:2px solid var(--gold-500);">
-                📊 Calculated (From Attendance)
-            </div>
-            <div class="verify-row">
-                <span class="verify-row-label">Total Salary Earned</span>
-                <span class="verify-row-value" style="color:var(--gold-400);">₹{{ accumulated_salary|floatformat:0 }}</span>
-            </div>
-            <div class="verify-row">
-                <span class="verify-row-label">Days Processed</span>
-                <span class="verify-row-value" style="color:var(--blue-400);">{{ days_processed }} / {{ days_in_month }}</span>
-            </div>
+    <!-- ═══ ACTIVITY TIMELINE ═══ -->
+    <section>
+        <div class="section-head">
+            <div class="section-title"><span class="section-title-bar"></span> Activity Timeline</div>
+            <span class="section-desc">Recent system events</span>
         </div>
-        <div>
-            <div class="verify-col-title" style="border-bottom:2px solid var(--green-500);">
-                💰 Generated Payroll
-            </div>
-            <div class="verify-row">
-                <span class="verify-row-label">Total Payroll Amount</span>
-                <span class="verify-row-value" style="color:var(--green-400);">₹{{ generated_payroll_total|floatformat:0 }}</span>
-            </div>
-            <div class="verify-row">
-                <span class="verify-row-label">Workers Processed</span>
-                <span class="verify-row-value" style="color:var(--blue-400);">{{ payroll_generated_count }} / {{ total_active_workers }}</span>
-            </div>
-        </div>
-
-        <!-- RESULT -->
-        {% if generated_payroll_total > 0 %}
-            {% if accumulated_salary == generated_payroll_total %}
-            <div class="verify-result match" style="grid-column:1/-1;">
-                <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:var(--green-400);">
-                    ✅ Perfect Match — Payroll is accurate
+        <div class="timeline-panel glass">
+            <div class="timeline" id="kingActivityList">
+                {% for activity in recent_activities %}
+                <div class="timeline-item">
+                    <div class="timeline-dot {{ activity.type }}">{{ activity.icon }}</div>
+                    <div class="timeline-body">
+                        <div class="timeline-text">{{ activity.text }}</div>
+                        <div class="timeline-time">{{ activity.time }}</div>
+                    </div>
                 </div>
-                <div style="font-size:12px;color:var(--text-muted);">
-                    Calculated ₹{{ accumulated_salary|floatformat:0 }} = Generated ₹{{ generated_payroll_total|floatformat:0 }}
+                {% empty %}
+                <div class="timeline-item">
+                    <div class="timeline-dot info">ℹ️</div>
+                    <div class="timeline-body">
+                        <div class="timeline-text">No recent activity yet</div>
+                        <div class="timeline-time">System is running — {{ today|date:"d M Y" }}</div>
+                    </div>
                 </div>
-            </div>
-            {% else %}
-            <div class="verify-result mismatch" style="grid-column:1/-1;">
-                <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:var(--red-400);">
-                    ❌ Discrepancy Detected — Review required
-                </div>
-                <div style="font-size:12px;color:var(--text-muted);">
-                    Calculated ₹{{ accumulated_salary|floatformat:0 }} &nbsp;≠&nbsp; Generated ₹{{ generated_payroll_total|floatformat:0 }}
-                </div>
-            </div>
-            {% endif %}
-        {% else %}
-        <div class="verify-result waiting" style="grid-column:1/-1;">
-            <div style="font-size:14px;font-weight:700;color:var(--blue-400);">⏳ Awaiting Payroll Generation</div>
-            <div style="font-size:12px;color:var(--text-muted);">
-                Expected payroll: ₹{{ accumulated_salary|floatformat:0 }} based on {{ days_processed }} days of attendance
+                {% endfor %}
             </div>
         </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 7 — ALERTS
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">🚨 Alerts &amp; Action Required</div>
-<div class="alerts-grid" style="margin-bottom:0;">
-
-    <div class="alert-card {% if pending_bills_count > 0 %}danger{% else %}ok{% endif %}">
-        <div class="alert-head">
-            <div class="alert-icon">📄</div>
-            <div>
-                <div class="alert-title">Pending Vendor Bills</div>
-                <div class="alert-sub">{{ pending_bills_count }} bill{{ pending_bills_count|pluralize }} awaiting payment</div>
-            </div>
-        </div>
-        <div class="alert-amount">₹{{ pending_bills_amount|floatformat:0 }}</div>
-        <a href="{% url 'billing:billing_dashboard' %}" class="alert-link">View Bills →</a>
-    </div>
-
-    <div class="alert-card {% if advance_outstanding > 0 %}warning{% else %}ok{% endif %}">
-        <div class="alert-head">
-            <div class="alert-icon">💳</div>
-            <div>
-                <div class="alert-title">Outstanding Advances</div>
-                <div class="alert-sub">Unrecovered loans to workers</div>
-            </div>
-        </div>
-        <div class="alert-amount">₹{{ advance_outstanding|floatformat:0 }}</div>
-        <a href="{% url 'manager_dashboard' %}" class="alert-link">Manage →</a>
-    </div>
-
-    <div class="alert-card {% if total_liability > 0 %}danger{% else %}ok{% endif %}">
-        <div class="alert-head">
-            <div class="alert-icon">💵</div>
-            <div>
-                <div class="alert-title">Unpaid Salaries</div>
-                <div class="alert-sub">Salaries pending disbursement</div>
-            </div>
-        </div>
-        <div class="alert-amount">₹{{ total_liability|floatformat:0 }}</div>
-        <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="alert-link">View Payroll →</a>
-    </div>
+    </section>
 
 </div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 8 — QUICK NAVIGATION
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">⚡ Quick Navigation</div>
-<div class="actions-grid" style="margin-bottom:0;">
-    <a href="{% url 'king:revenue_dashboard' %}" class="action-card">
-        <div class="action-icon">💹</div>
-        <div class="action-title">Manual Revenue</div>
-        <div class="action-desc">Record income entries</div>
-    </a>
-    <a href="{% url 'king:workorder_dashboard' %}" class="action-card">
-        <div class="action-icon">📋</div>
-        <div class="action-title">Work Orders</div>
-        <div class="action-desc">Contracts &amp; clients</div>
-    </a>
-    <a href="{% url 'king:ledger' %}" class="action-card">
-        <div class="action-icon">📒</div>
-        <div class="action-title">Ledger</div>
-        <div class="action-desc">Dr/Cr entries &amp; balance</div>
-    </a>
-    <a href="{% url 'payroll_batch_summary' %}?month={{ today|date:'Y-m' }}" class="action-card">
-        <div class="action-icon">💼</div>
-        <div class="action-title">Payroll Reports</div>
-        <div class="action-desc">Monthly summaries</div>
-    </a>
-    <a href="{% url 'employee_list' %}" class="action-card">
-        <div class="action-icon">👥</div>
-        <div class="action-title">Workforce</div>
-        <div class="action-desc">Employee management</div>
-    </a>
-    <a href="{% url 'billing:billing_dashboard' %}" class="action-card">
-        <div class="action-icon">📄</div>
-        <div class="action-title">Bills &amp; Invoices</div>
-        <div class="action-desc">Vendor payments</div>
-    </a>
-    <a href="{% url 'expenses:expense_dashboard' %}" class="action-card">
-        <div class="action-icon">💸</div>
-        <div class="action-title">Daily Expenses</div>
-        <div class="action-desc">Site cost tracking</div>
-    </a>
-    <a href="{% url 'manager_dashboard' %}" class="action-card">
-        <div class="action-icon">⚙️</div>
-        <div class="action-title">Manager View</div>
-        <div class="action-desc">Daily operations</div>
-    </a>
-    <a href="{% url 'king_audit_history' %}" class="action-card">
-        <div class="action-icon">🧾</div>
-        <div class="action-title">Audit Trail</div>
-        <div class="action-desc">Full compliance log</div>
-    </a>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     ZONE 9 — RECENT ACTIVITY (always last)
-══════════════════════════════════════════════════════════════ -->
-<div class="zone-label">🕒 Recent Activity</div>
-<div class="activity-card">
-    <div class="activity-list" id="kingActivityList">
-        {% for activity in recent_activities %}
-        <div class="activity-item">
-            <div class="activity-dot {{ activity.type }}">{{ activity.icon }}</div>
-            <div>
-                <div class="activity-text">{{ activity.text }}</div>
-                <div class="activity-time">{{ activity.time }}</div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="activity-item">
-            <div class="activity-dot info">ℹ️</div>
-            <div>
-                <div class="activity-text">No recent activity yet</div>
-                <div class="activity-time">System is running — {{ today|date:"d M Y" }}</div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-</div><!-- /container -->
 
 <script src="{% static 'js/king_theme.js' %}"></script>
 <script>
-// ─────────────────────────────────────────────────────────────────
-// THEME-AWARE CHART INITIALIZATION
-// ─────────────────────────────────────────────────────────────────
+const SOLAR = {
+    accent:     '#FF8A00',
+    accentLit:  '#FFA800',
+    accentDim:  '#FF6B00',
+    success:    '#22C55E',
+    danger:     '#EF4444',
+    warning:    '#F59E0B',
+    text:       '#9CA3AF',
+    textSoft:   '#E5E7EB',
+    grid:       'rgba(255,255,255,0.04)',
+    tooltipBg:  'rgba(21,26,40,0.95)',
+    tooltipBorder: 'rgba(255,138,0,0.2)',
+};
 
 function getChartColors() {
-    const isDark = document.documentElement.dataset.kingTheme === 'dark';
     return {
-        gridColor:   isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)',
-        tickColor:   isDark ? '#6b7294' : '#6b7280',
-        legendColor: isDark ? '#a8b0c8' : '#6b7280',
-        borderColor: isDark ? '#111420' : '#e5e5e5'
+        gridColor:   SOLAR.grid,
+        tickColor:   SOLAR.text,
+        legendColor: SOLAR.textSoft,
+        borderColor: 'transparent',
     };
 }
 
+function makeGradient(ctx, colorStart, colorEnd, height) {
+    const g = ctx.createLinearGradient(0, 0, 0, height || 400);
+    g.addColorStop(0, colorStart);
+    g.addColorStop(1, colorEnd);
+    return g;
+}
+
+const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: {
+                color: SOLAR.textSoft,
+                padding: 20,
+                font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: '500' },
+                usePointStyle: true,
+                pointStyleWidth: 8,
+                boxWidth: 8,
+            },
+        },
+        tooltip: {
+            backgroundColor: SOLAR.tooltipBg,
+            titleColor: '#FFFFFF',
+            bodyColor: SOLAR.textSoft,
+            borderColor: SOLAR.tooltipBorder,
+            borderWidth: 1,
+            cornerRadius: 10,
+            padding: 14,
+            titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: '700' },
+            bodyFont:  { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+            displayColors: true,
+            boxPadding: 6,
+        },
+    },
+    scales: {
+        x: {
+            grid: { color: SOLAR.grid, drawBorder: false },
+            ticks: { color: SOLAR.text, font: { size: 11 }, padding: 8 },
+            border: { display: false },
+        },
+        y: {
+            grid: { color: SOLAR.grid, drawBorder: false },
+            ticks: {
+                color: SOLAR.text,
+                font: { size: 11 },
+                padding: 10,
+                callback: v => '₹' + Number(v).toLocaleString('en-IN'),
+            },
+            border: { display: false },
+        },
+    },
+};
+
 function initializeCharts() {
-    if (typeof Chart === 'undefined') {
-        return;
-    }
+    if (typeof Chart === 'undefined') return;
 
     const colors = getChartColors();
     const chartLabels = {{ chart_labels|safe }};
@@ -867,92 +1591,166 @@ function initializeCharts() {
     const expenseData = {{ expense_data|safe }};
     const payrollData = {{ payroll_data|safe }};
 
-    Chart.defaults.color       = colors.legendColor;
-    Chart.defaults.borderColor = colors.gridColor;
+    Chart.defaults.color = colors.legendColor;
+    Chart.defaults.borderColor = 'transparent';
 
-    // Financial Bar/Line
-    const financialCtx = document.getElementById('financialChart').getContext('2d');
-    window.financialChart = new Chart(financialCtx, {
+    const finCtx = document.getElementById('financialChart').getContext('2d');
+    const finH = 400;
+    window.financialChart = new Chart(finCtx, {
         type: 'bar',
         data: {
             labels: chartLabels,
             datasets: [
-                { label:'Revenue',  data:revenueData, backgroundColor:'rgba(52,211,153,0.7)',  borderColor:'#34d399', borderWidth:1.5, borderRadius:4 },
-                { label:'Expenses', data:expenseData, backgroundColor:'rgba(248,113,113,0.7)', borderColor:'#f87171', borderWidth:1.5, borderRadius:4 },
-                { label:'Payroll',  data:payrollData, backgroundColor:'rgba(167,139,250,0.7)', borderColor:'#a78bfa', borderWidth:1.5, borderRadius:4 },
-            ]
+                {
+                    label: 'Revenue',
+                    data: revenueData,
+                    backgroundColor: makeGradient(finCtx, 'rgba(34,197,94,0.7)', 'rgba(34,197,94,0.15)', finH),
+                    borderColor: SOLAR.success,
+                    borderWidth: 0,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Expenses',
+                    data: expenseData,
+                    backgroundColor: makeGradient(finCtx, 'rgba(239,68,68,0.6)', 'rgba(239,68,68,0.1)', finH),
+                    borderColor: SOLAR.danger,
+                    borderWidth: 0,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Payroll',
+                    data: payrollData,
+                    backgroundColor: makeGradient(finCtx, 'rgba(255,138,0,0.6)', 'rgba(255,107,0,0.1)', finH),
+                    borderColor: SOLAR.accent,
+                    borderWidth: 0,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                },
+            ],
         },
         options: {
-            responsive:true, maintainAspectRatio:false,
-            plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:16, font:{size:12} } } },
-            scales:{
-                x:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor } },
-                y:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor, callback: v => '₹'+v.toLocaleString() } }
-            }
-        }
+            ...chartDefaults,
+            plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'bottom' } },
+        },
     });
 
-    // Expense Category Donut
     window.expenseCatChart = new Chart(document.getElementById('expenseCatChart').getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: {{ expense_cat_labels|safe }},
-            datasets:[{ data:{{ expense_cat_data|safe }},
-                backgroundColor:['#f59e0b','#ef4444','#3b82f6','#10b981','#8b5cf6'],
-                borderWidth:2, borderColor:colors.borderColor, hoverOffset:8 }]
+            datasets: [{
+                data: {{ expense_cat_data|safe }},
+                backgroundColor: ['#FF8A00', '#EF4444', '#60A5FA', '#22C55E', '#A78BFA'],
+                borderWidth: 0,
+                hoverOffset: 12,
+                spacing: 3,
+            }],
         },
-        options:{ responsive:true, maintainAspectRatio:false, cutout:'65%',
-            plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:12, font:{size:12} } } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            plugins: {
+                legend: chartDefaults.plugins.legend,
+                tooltip: chartDefaults.plugins.tooltip,
+            },
+        },
     });
 
-    // Workforce Donut
     window.roleChart = new Chart(document.getElementById('workforceChart').getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: {{ role_labels|safe }},
-            datasets:[{ data:{{ role_counts|safe }},
-                backgroundColor:['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444'],
-                borderWidth:2, borderColor:colors.borderColor, hoverOffset:8 }]
+            datasets: [{
+                data: {{ role_counts|safe }},
+                backgroundColor: ['#FF8A00', '#A78BFA', '#22C55E', '#60A5FA', '#EF4444'],
+                borderWidth: 0,
+                hoverOffset: 12,
+                spacing: 3,
+            }],
         },
-        options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
-            plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:12, font:{size:12} } } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: chartDefaults.plugins.legend,
+                tooltip: chartDefaults.plugins.tooltip,
+            },
+        },
     });
 
-    // Revenue vs Payroll Line
-    new Chart(document.getElementById('rvpChart').getContext('2d'), {
+    const rvpCtx = document.getElementById('rvpChart').getContext('2d');
+    new Chart(rvpCtx, {
         type: 'line',
         data: {
             labels: chartLabels,
-            datasets:[
-            { label:'Revenue', data:revenueData, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.08)', tension:0.4, fill:true, pointBackgroundColor:'#f59e0b', pointRadius:4 },
-            { label:'Payroll', data:payrollData, borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.08)', tension:0.4, fill:true, pointBackgroundColor:'#a78bfa', pointRadius:4 },
-        ]
-    },
-    options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:'bottom', labels:{ color:colors.legendColor, padding:16, font:{size:12} } } },
-        scales:{
-            x:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor } },
-            y:{ grid:{ color:colors.gridColor }, ticks:{ color:colors.tickColor, callback: v => '₹'+v.toLocaleString() } }
-        }
-    }
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: revenueData,
+                    borderColor: SOLAR.accentLit,
+                    backgroundColor: makeGradient(rvpCtx, 'rgba(255,138,0,0.2)', 'rgba(255,107,0,0)', 380),
+                    tension: 0.45,
+                    fill: true,
+                    pointBackgroundColor: SOLAR.accentLit,
+                    pointBorderColor: '#151A28',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 2.5,
+                },
+                {
+                    label: 'Payroll',
+                    data: payrollData,
+                    borderColor: '#A78BFA',
+                    backgroundColor: makeGradient(rvpCtx, 'rgba(167,139,250,0.15)', 'rgba(167,139,250,0)', 380),
+                    tension: 0.45,
+                    fill: true,
+                    pointBackgroundColor: '#A78BFA',
+                    pointBorderColor: '#151A28',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 2.5,
+                },
+            ],
+        },
+        options: chartDefaults,
     });
 }
 
 function switchChart(type, btn) {
     document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
-    window.financialChart.config.type = type;
+    const chart = window.financialChart;
+    chart.config.type = type;
+    const ctx = chart.ctx;
+    const h = 400;
     if (type === 'line') {
-        window.financialChart.data.datasets.forEach(ds => {
-            ds.fill = true; ds.tension = 0.4;
-            ds.backgroundColor = ds.borderColor.replace(')',',.1)').replace('rgb','rgba');
+        chart.data.datasets.forEach((ds, i) => {
+            const colors = [
+                [SOLAR.success, 'rgba(34,197,94,0.15)'],
+                [SOLAR.danger,  'rgba(239,68,68,0.15)'],
+                [SOLAR.accent,  'rgba(255,138,0,0.15)'],
+            ];
+            ds.fill = true;
+            ds.tension = 0.45;
+            ds.borderWidth = 2.5;
+            ds.pointRadius = 5;
+            ds.borderColor = colors[i][0];
+            ds.backgroundColor = makeGradient(ctx, colors[i][1], 'rgba(0,0,0,0)', h);
+            ds.borderRadius = 0;
         });
     } else {
-        window.financialChart.data.datasets[0].backgroundColor = 'rgba(52,211,153,0.7)';
-        window.financialChart.data.datasets[1].backgroundColor = 'rgba(248,113,113,0.7)';
-        window.financialChart.data.datasets[2].backgroundColor = 'rgba(167,139,250,0.7)';
+        chart.data.datasets[0].backgroundColor = makeGradient(ctx, 'rgba(34,197,94,0.7)', 'rgba(34,197,94,0.15)', h);
+        chart.data.datasets[1].backgroundColor = makeGradient(ctx, 'rgba(239,68,68,0.6)', 'rgba(239,68,68,0.1)', h);
+        chart.data.datasets[2].backgroundColor = makeGradient(ctx, 'rgba(255,138,0,0.6)', 'rgba(255,107,0,0.1)', h);
+        chart.data.datasets.forEach(ds => { ds.fill = false; ds.tension = 0; ds.borderRadius = 8; ds.borderWidth = 0; });
     }
-    window.financialChart.update();
+    chart.update();
 }
 
 function renderKingActivities(activities) {
@@ -961,22 +1759,22 @@ function renderKingActivities(activities) {
 
     if (!activities || activities.length === 0) {
         listEl.innerHTML = `
-        <div class="activity-item">
-            <div class="activity-dot info">ℹ️</div>
-            <div>
-                <div class="activity-text">No recent activity yet</div>
-                <div class="activity-time">System is running</div>
+        <div class="timeline-item">
+            <div class="timeline-dot info">ℹ️</div>
+            <div class="timeline-body">
+                <div class="timeline-text">No recent activity yet</div>
+                <div class="timeline-time">System is running</div>
             </div>
         </div>`;
         return;
     }
 
-    listEl.innerHTML = activities.map((activity) => `
-        <div class="activity-item">
-            <div class="activity-dot ${activity.type}">${activity.icon}</div>
-            <div>
-                <div class="activity-text">${activity.text}</div>
-                <div class="activity-time">${activity.time}</div>
+    listEl.innerHTML = activities.map((activity, i) => `
+        <div class="timeline-item" style="animation-delay:${i * 0.05}s">
+            <div class="timeline-dot ${activity.type}">${activity.icon}</div>
+            <div class="timeline-body">
+                <div class="timeline-text">${activity.text}</div>
+                <div class="timeline-time">${activity.time}</div>
             </div>
         </div>
     `).join('');
@@ -995,14 +1793,12 @@ async function refreshKingActivities() {
     }
 }
 
-// Initialize charts on page load
+
+
 window.addEventListener('DOMContentLoaded', () => {
     const startCharts = () => {
-        try {
-            initializeCharts();
-        } catch (err) {
-            console.error('Chart initialization failed:', err);
-        }
+        try { initializeCharts(); }
+        catch (err) { console.error('Chart initialization failed:', err); }
     };
 
     if (typeof Chart !== 'undefined') {
@@ -1011,15 +1807,32 @@ window.addEventListener('DOMContentLoaded', () => {
         const fallback = document.createElement('script');
         fallback.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
         fallback.onload = startCharts;
-        fallback.onerror = () => {
-            console.error('Chart.js failed to load from fallback CDN as well.');
-        };
+        fallback.onerror = () => console.error('Chart.js failed to load.');
         document.head.appendChild(fallback);
     }
 
     refreshKingActivities();
     setInterval(refreshKingActivities, 15000);
 });
+
+// Add this exact function right before the closing body tag
+// Force the handler onto the global window namespace so onclick="toggleKingTheme()" can find it instantly
+window.toggleKingTheme = function() {
+    const currentTheme = document.documentElement.getAttribute('data-kingTheme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    // Apply state to the HTML tag wrapper
+    document.documentElement.setAttribute('data-kingTheme', newTheme);
+    localStorage.setItem('king_theme', newTheme);
+};
+
+// Handle fallback initialization sync if a browser state stalls
+document.addEventListener('DOMContentLoaded', () => {
+    const activeTheme = localStorage.getItem('king_theme') || 'dark';
+    document.documentElement.setAttribute('data-kingTheme', activeTheme);
+});
 </script>
 </body>
 </html>
+
+

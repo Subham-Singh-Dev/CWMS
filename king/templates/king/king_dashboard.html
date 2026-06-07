@@ -165,6 +165,19 @@
         }
         .kpi-desc { font-size:12px; color:var(--text-muted); }
 
+        .kpi-card.kc-paid {
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .kpi-card.kc-paid::after {
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+        }
+
+        /* Optional: ensures the green text actually shows up if not already defined */
+        .green-text {
+            color: #10b981; 
+        }
+
         /* gold gradient text for revenue */
         .kpi-value.gold-text {
             background:linear-gradient(135deg,var(--gold-400),var(--gold-300));
@@ -394,6 +407,55 @@
             <span class="hs-value negative">₹{{ total_liability|floatformat:0 }}</span>
         </div>
     </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ZONE 1b — WORK ORDER FINANCIAL SUMMARY
+══════════════════════════════════════════════════════════════ -->
+<div class="zone-label">📋 Work Order Pipeline — All Time</div>
+<div class="kpi-grid-3 kpi-row-gap">
+
+    <!-- Total WO Value -->
+    <div class="kpi-card kc-revenue">
+        <div class="kpi-top">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-trend t-gold">{{ wo_count_summary.total }} orders</div>
+        </div>
+        <div class="kpi-label">Total Order Book Value</div>
+        <div class="kpi-value gold-text">₹{{ total_wo_value|floatformat:0 }}</div>
+        <div class="kpi-desc">
+            Active: {{ wo_count_summary.active }} &nbsp;|&nbsp;
+            Completed: {{ wo_count_summary.completed }} &nbsp;|&nbsp;
+            Pending: {{ wo_count_summary.pending }}
+        </div>
+    </div>
+
+    <!-- Revenue Received on WOs -->
+    <div class="kpi-card kc-paid">
+        <div class="kpi-top">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-trend t-up">{{ wo_completion_pct }}% collected</div>
+        </div>
+        <div class="kpi-label">Order Value Collected</div>
+        <div class="kpi-value green-text">₹{{ revenue_received_on_wo|floatformat:0 }}</div>
+        <div class="kpi-desc">Revenue received across all work orders</div>
+        <div class="metric-progress" style="margin-top:12px;background:rgba(255,255,255,.08);height:6px;border-radius:3px;overflow:hidden;">
+            <div style="width:{{ wo_completion_pct }}%;height:100%;border-radius:3px;background:linear-gradient(90deg,#34d399,#10b981);transition:width 1.2s ease;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">{{ wo_completion_pct }}% of total order book</div>
+    </div>
+
+    <!-- Pending / Balance to collect -->
+    <div class="kpi-card kc-liability">
+        <div class="kpi-top">
+            <div class="kpi-icon">⏳</div>
+            <div class="kpi-trend t-down">To collect</div>
+        </div>
+        <div class="kpi-label">Order Balance Pending</div>
+        <div class="kpi-value red-text">₹{{ wo_pending_value|floatformat:0 }}</div>
+        <div class="kpi-desc">Remaining amount to be billed / collected</div>
+    </div>
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════

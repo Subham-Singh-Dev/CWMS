@@ -17,7 +17,36 @@ from decimal import Decimal
 
 from django.db import models
 from django.utils import timezone
+from django.db.models import Sum
 
+
+class BillingAccount(models.Model):
+    """Vendor / client account master for billing statements."""
+    name = models.CharField(max_length=255, unique=True, verbose_name="Account Name")
+    address = models.TextField(blank=True, null=True)
+    gst_number = models.CharField(max_length=15, blank=True, null=True, verbose_name="GST Number")
+    phone = models.CharField(max_length=15, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        'auth.User', on_delete=models.CASCADE
+    )
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = "Billing Account"
+        verbose_name_plural = "Billing Accounts"
+
+    def __str__(self):
+        return self.name
+
+    def total_billed(self):
+        return self.bills.aggregate(t=Sum('amount'))['t'] or Decimal('0.00')
+
+    def total_paid(self):
+        return self.bills.aggregate(t=Sum('paid_amount'))['t'] or Decimal('0.00')
+
+    def balance_outstanding(self):
+        return max(self.total_billed() - self.total_paid(), Decimal('0.00'))
 
 class Bill(models.Model):
     """
@@ -39,6 +68,15 @@ class Bill(models.Model):
     	("cheque", "Cheque"),
     	("bank_transfer", "Bank Transfer"),
     ]
+
+    account = models.ForeignKey(
+        'BillingAccount',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bills',
+        verbose_name="Vendor / Account"
+    )
 
     bill_type = models.CharField(
         max_length=20,

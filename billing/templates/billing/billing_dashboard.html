@@ -524,7 +524,7 @@
             <div class="brand-name">{{ BRAND_SHORT_NAME }}</div>
             <div class="brand-subtitle">
                 🧾 Billing —
-                {% if selected_type == 'client' %}Credit Customer (Incoming){% else %}Debtors (Outgoing){% endif %}
+                {% if selected_type == 'client' %}Dr — Receivables (Client Pays You){% else %}Cr — Payables (You Owe){% endif %}
                 · {{ selected_month_display }}
             </div>
         </div>
@@ -539,6 +539,7 @@
                 </svg>
                 Download PDF
             </a>
+            <a href="{% url 'billing:account_list' %}" class="btn-back">🏢 Accounts</a>
         </div>
     </div>
 
@@ -546,14 +547,15 @@
     <div class="filters">
         <div class="type-tabs">
             <a class="tab tab-client {% if selected_type == 'client' %}active{% endif %}"
-               href="{% url 'billing:billing_dashboard' %}?type=client&month={{ selected_month }}">
-                <span class="tab-dot"></span> Credit Customer (Incoming)
+            href="{% url 'billing:billing_dashboard' %}?type=client&month={{ selected_month }}">
+                <span class="tab-dot"></span> Receivables (Dr) — Client Pays You
             </a>
             <a class="tab tab-debtor {% if selected_type == 'debtor' %}active{% endif %}"
-               href="{% url 'billing:billing_dashboard' %}?type=debtor&month={{ selected_month }}">
-                <span class="tab-dot"></span> Debtors (Outgoing)
+            href="{% url 'billing:billing_dashboard' %}?type=debtor&month={{ selected_month }}">
+                <span class="tab-dot"></span> Payables (Cr) — You Pay Vendor
             </a>
         </div>
+
         <form method="get" class="month-form">
             <input type="hidden" name="type" value="{{ selected_type }}">
             <input class="month-input" type="month" name="month" value="{{ selected_month }}" required>
@@ -725,8 +727,8 @@
                 <div class="form-field">
                     <label class="form-label">Bill Type</label>
                     <select class="form-select" name="bill_type" required>
-                        <option value="client" {% if selected_type == 'client' %}selected{% endif %}>Credit Customer</option>
-                        <option value="debtor" {% if selected_type == 'debtor' %}selected{% endif %}>Debtor</option>
+                        <option value="client" {% if selected_type == 'Receivables' %}selected{% endif %}>Receivables</option>
+                        <option value="debtor" {% if selected_type == 'Payables' %}selected{% endif %}>Payables</option>
                     </select>
                 </div>
                 <div class="form-field">
@@ -736,6 +738,16 @@
                 <div class="form-field">
                     <label class="form-label">Amount (₹)</label>
                     <input class="form-input" type="number" name="amount" min="0" step="0.01" placeholder="0.00" required>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label">Assign to Account</label>
+                    <select class="form-select" name="account_id">
+                        <option value="">— Unassigned —</option>
+                        {% for acc in all_accounts %}
+                        <option value="{{ acc.id }}">{{ acc.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-field">
                     <label class="form-label">PDF Attachment</label>

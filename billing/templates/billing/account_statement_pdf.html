@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Account Statement</title>
+<style>
+@page { size: A4; margin: 12mm 10mm; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; }
+.header { text-align:center; margin-bottom:14px; border-bottom:2px solid #000; padding-bottom:10px; }
+.co-name { font-size:20px; font-weight:bold; }
+.co-sub { font-size:11px; color:#444; margin-top:3px; }
+.party-section { margin:12px 0; padding:10px; border:1px solid #ccc; border-radius:4px; }
+.party-label { font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:.5px; color:#666; }
+.party-name { font-size:14px; font-weight:bold; margin-top:3px; }
+.party-detail { font-size:11px; color:#444; margin-top:2px; }
+.period { text-align:center; font-size:12px; font-weight:bold; margin:10px 0; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th { border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:6px 5px; font-weight:bold; font-size:10px; text-align:left; }
+td { padding:5px; border-bottom:0.5px solid #ddd; vertical-align:top; }
+.right { text-align:right; }
+.center { text-align:center; }
+
+/* Fixed xhtml2pdf Split Matrix Box System Layout */
+.matrix-container { width: 100%; margin-top: 20px; }
+.matrix-box { width: 48%; display: inline-block; vertical-align: top; border: 1px solid #ccc; border-radius: 4px; padding: 10px; }
+.matrix-receivables { float: left; border-top: 2px solid #065f46; }
+.matrix-payables { float: right; border-top: 2px solid #991b1b; }
+.matrix-title { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
+.title-rec { color: #065f46; }
+.title-pay { color: #991b1b; }
+
+.matrix-table { width: 100%; margin-top: 0; }
+.matrix-table td { padding: 4px 2px; border-bottom: none; font-size: 11px; }
+.matrix-table .label { font-weight: normal; color: #444; }
+.matrix-table .matrix-total-row td { border-top: 1px dashed #777; font-weight: bold; font-size: 11.5px; padding-top: 6px; }
+
+/* Net Account Summary Position */
+.net-box { clear: both; margin-top: 20px; padding: 10px; background: #f8fafc; border: 1.5px solid #0f172a; border-radius: 4px; text-align: center; font-size: 12px; font-weight: bold; }
+
+.badge-paid { color:#065f46; font-weight:bold; }
+.badge-unpaid { color:#991b1b; font-weight:bold; }
+.badge-client { color:#1e40af; font-weight:bold; }
+.badge-debtor { color:#b45309; font-weight:bold; }
+</style>
+</head>
+<body>
+<div class="header">
+    <div class="co-name">{{ BRAND_COMPANY_NAME }}</div>
+    {% if BRAND_COMPANY_ADDRESS %}<div class="co-sub">{{ BRAND_COMPANY_ADDRESS }}</div>{% endif %}
+    {% if BRAND_COMPANY_GSTIN %}<div class="co-sub">GSTIN: {{ BRAND_COMPANY_GSTIN }}</div>{% endif %}
+    <div style="font-size:14px;font-weight:bold;letter-spacing:3px;margin-top:6px;">ACCOUNT STATEMENT</div>
+</div>
+
+<div class="party-section">
+    <div class="party-label">Account / Vendor</div>
+    <div class="party-name">{{ account.name }}</div>
+    {% if account.gst_number %}<div class="party-detail">GSTIN: {{ account.gst_number }}</div>{% endif %}
+    {% if account.address %}<div class="party-detail">{{ account.address }}</div>{% endif %}
+    {% if account.phone %}<div class="party-detail">Phone: {{ account.phone }}</div>{% endif %}
+</div>
+
+<div class="period">Period: {{ from_date|date:"d/m/Y" }} to {{ to_date|date:"d/m/Y" }}</div>
+
+<!-- Expanded Main Items Table to display itemized GST -->
+<table>
+    <thead>
+        <tr>
+            <th style="width:8%;">Bill No.</th>
+            <th style="width:10%;">Date</th>
+            <th style="width:14%;">Type</th>
+            <th style="width:26%;">Description</th>
+            <th class="right" style="width:12%;">Base Amt (₹)</th>
+            <th class="right" style="width:10%;">GST 18%</th>
+            <th class="right" style="width:14%;">Total (₹)</th>
+            <th class="center" style="width:6%;">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bill in bills %}
+        <tr>
+            <td>BILL-{{ bill.id|stringformat:"04d" }}</td>
+            <td>{{ bill.created_at|date:"d/m/Y" }}</td>
+            <td>
+                {% if bill.bill_type == 'client' %}
+                    <span class="badge-client">Receivable (Dr)</span>
+                {% else %}
+                    <span class="badge-debtor">Payable (Cr)</span>
+                {% endif %}
+            </td>
+            <td>{{ bill.description }}</td>
+            <td class="right">₹{{ bill.amount|floatformat:2 }}</td>
+            <td class="right">
+                <!-- Inline computation replicating your dashboard view's 18% math matrix standard -->
+                ₹{% widthratio bill.amount 100 18 %}.00
+            </td>
+            <td class="right" style="font-weight:bold;">
+                ₹{% widthratio bill.amount 100 118 %}.00
+            </td>
+            <td class="center">
+                {% if bill.is_paid %}<span class="badge-paid">Paid</span>{% else %}<span class="badge-unpaid">Unpaid</span>{% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" style="text-align:center;padding:20px;color:#777;">No bills for this period.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if bills %}
+<div class="matrix-container">
+    
+    <!-- Receivables Matrix (Client Ledger) -->
+    <div class="matrix-box matrix-receivables">
+        <div class="matrix-title title-rec">📥 Receivables (Client Matrix)</div>
+        <table class="matrix-table">
+            <tr><td class="label">Total Invoiced Amount:</td><td class="right">₹{{ total_receivable_with_gst|floatformat:2 }}</td></tr>
+            <tr><td class="label" style="color:#065f46;">Total Collected Amount:</td><td class="right" style="color:#065f46;">- ₹{{ total_received|floatformat:2 }}</td></tr>
+            <tr class="matrix-total-row"><td>Outstanding to Collect:</td><td class="right" style="color:#065f46;">₹{{ outstanding_receivable|floatformat:2 }}</td></tr>
+        </table>
+    </div>
+
+    <!-- Payables Matrix (Vendor Ledger) -->
+    <div class="matrix-box matrix-payables">
+        <div class="matrix-title title-pay">📤 Payables (Vendor Matrix)</div>
+        <table class="matrix-table">
+            <tr><td class="label">Total Bills Received:</td><td class="right">₹{{ total_payable_with_gst|floatformat:2 }}</td></tr>
+            <tr><td class="label" style="color:#991b1b;">Total Settled Amount:</td><td class="right" style="color:#991b1b;">- ₹{{ total_paid|floatformat:2 }}</td></tr>
+            <tr class="matrix-total-row"><td>Outstanding to Pay:</td><td class="right" style="color:#991b1b;">₹{{ outstanding_payable|floatformat:2 }}</td></tr>
+        </table>
+    </div>
+
+</div>
+
+<!-- Final Accounting Net Summary Block Position -->
+<div class="net-box">
+    {% if is_receivable_dominant %}
+        📈 Net Account Position: Client owes you an overall balance of ₹{{ net_difference|floatformat:2 }}
+    {% else %}
+        <!-- Uses built-in filter to drop the negative sign if payables are higher -->
+        ⚠️ Net Account Position: You owe this Vendor an overall balance of ₹{{ net_difference|stringformat:".2f"|slice:"1:" }}
+    {% endif %}
+</div>
+
+{% endif %}
+
+<div style="clear:both; margin-top:30px; font-size:10px; color:#999; text-align:center;">
+    Generated on {{ today|date:"d M Y" }} &nbsp;·&nbsp; {{ BRAND_COMPANY_NAME }}
+</div>
+</body>
+</html>

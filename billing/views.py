@@ -33,6 +33,8 @@ from portal.decorators import manager_required
 
 from .models import Bill
 
+from billing.models import Bill, BillingAccount
+from datetime import datetime as dt
 
 
 @manager_required
@@ -86,12 +88,21 @@ def billing_dashboard(request, viewing_as_owner=False):
             messages.error(request, "Invalid amount. Please enter a valid number.")
             return redirect(redirect_url)
         
+        account_id = request.POST.get('account_id') or None
+        account = None
+        if account_id:
+            try:
+                account = BillingAccount.objects.get(id=account_id)
+            except BillingAccount.DoesNotExist:
+                pass
+        
         Bill.objects.create(
             bill_type=bill_type,
             description=description,
             amount=bill_amount,
             pdf_file=pdf_file,
-            is_paid=False
+            is_paid=False,
+            account=account
         )
 
         messages.success(request, "Bill uploaded successfully.")
@@ -141,6 +152,8 @@ def billing_dashboard(request, viewing_as_owner=False):
     unpaid_percentage = 100 - paid_percentage
     unpaid_bill_percentage = int((unpaid_count / total_bills) * 100) if total_bills else 0
 
+    all_accounts = BillingAccount.objects.all().order_by('name')
+
     debtor_health = ""
     debtor_health_color = ""
     if selected_type == Bill.BILL_TYPE_DEBTOR:
@@ -173,6 +186,7 @@ def billing_dashboard(request, viewing_as_owner=False):
         "selected_month_display": selected_month.strftime("%B %Y"),
         "debtor_health": debtor_health,
         "debtor_health_color": debtor_health_color,
+        "all_accounts": all_accounts,
     }
 
     return render(request, "billing/billing_dashboard.html", context)
@@ -349,4 +363,136 @@ def billing_pdf(request):
     
     if pisa_status.err:
         return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response
+
+@manager_required
+def account_list(request):
+    """List billing accounts (vendor/client masters)."""
+    accounts = BillingAccount.objects.filter(
+        created_by=request.user
+    ).prefetch_related('bills').order_by('name')
+    
+    # Make all accounts visible to all managers (not just creator)
+    # since bills are shared — override above with:
+    accounts = BillingAccount.objects.all().order_by('name')
+    
+    return render(request, 'billing/account_list.html', {
+        'accounts': accounts,
+    })
+
+
+@manager_required
+@require_POST
+def account_add(request):
+    """Create a new billing account."""
+    name = request.POST.get('name', '').strip()
+    if not name:
+        messages.error(request, 'Account name is required.')
+        return redirect('billing:account_list')
+
+    if BillingAccount.objects.filter(name__iexact=name).exists():
+        messages.error(request, f'Account "{name}" already exists.')
+        return redirect('billing:account_list')
+
+    BillingAccount.objects.create(
+        name=name,
+        address=request.POST.get('address') or None,
+        gst_number=request.POST.get('gst_number') or None,
+        phone=request.POST.get('phone') or None,
+        created_by=request.user,
+    )
+    messages.success(request, f'Account "{name}" created.')
+    return redirect('billing:account_list')
+
+
+@manager_required
+@require_POST
+def account_delete(request, account_id):
+    """Delete a billing account (bills become unlinked)."""
+    acc = get_object_or_404(BillingAccount, id=account_id)
+    name = acc.name
+    acc.delete()
+    messages.success(request, f'Account "{name}" deleted. Bills are now unassigned.')
+    return redirect('billing:account_list')
+
+
+@manager_required
+def account_statement_pdf(request, account_id):
+    """Export all bills for an account split by Receivables (Dr) and Payables (Cr)."""
+    account = get_object_or_404(BillingAccount, id=account_id)
+    
+    from_date_str = request.GET.get('from_date')
+    to_date_str = request.GET.get('to_date')
+    
+    today = timezone.now().date()
+    from_date = dt.strptime(from_date_str, '%Y-%m-%d').date() if from_date_str else today.replace(day=1, month=1)
+    to_date = dt.strptime(to_date_str, '%Y-%m-%d').date() if to_date_str else today
+    
+    # Base ledger collection query
+    bills = account.bills.filter(
+        created_at__date__gte=from_date,
+        created_at__date__lte=to_date,
+    ).order_by('created_at')
+    
+    gst_rate = Decimal('0.18')
+
+    # 1. RECEIVABLES (Client Side) Calculations
+    client_bills = bills.filter(bill_type='client')
+    rec_base = client_bills.aggregate(t=Sum('amount'))['t'] or Decimal('0.00')
+    rec_gst = (rec_base * gst_rate).quantize(Decimal('0.01'))
+    total_receivable_with_gst = rec_base + rec_gst
+    total_received = client_bills.aggregate(t=Sum('paid_amount'))['t'] or Decimal('0.00')
+    outstanding_receivable = max(total_receivable_with_gst - total_received, Decimal('0.00'))
+
+    # 2. PAYABLES (Debtor Side) Calculations
+    debtor_bills = bills.filter(bill_type='debtor')
+    pay_base = debtor_bills.aggregate(t=Sum('amount'))['t'] or Decimal('0.00')
+    pay_gst = (pay_base * gst_rate).quantize(Decimal('0.01'))
+    total_payable_with_gst = pay_base + pay_gst
+    total_paid = debtor_bills.aggregate(t=Sum('paid_amount'))['t'] or Decimal('0.00')
+    outstanding_payable = max(total_payable_with_gst - total_paid, Decimal('0.00'))
+
+    # 3. Overall Totals for Ledger Reference
+    total_base = rec_base + pay_base
+    total_gst = rec_gst + pay_gst
+    total_with_gst = total_base + total_gst
+    net_difference = outstanding_receivable - outstanding_payable
+
+    context = {
+        'account': account,
+        'bills': bills,
+        'from_date': from_date,
+        'to_date': to_date,
+        'today': today,
+        
+        # General Table Summary Totals
+        'total_base': total_base,
+        'total_gst': total_gst,
+        'total_with_gst': total_with_gst,
+        
+        # Receivables (Dr) Matrix Breakdown
+        'total_receivable_with_gst': total_receivable_with_gst,
+        'total_received': total_received,
+        'outstanding_receivable': outstanding_receivable,
+        
+        # Payables (Cr) Matrix Breakdown
+        'total_payable_with_gst': total_payable_with_gst,
+        'total_paid': total_paid,
+        'outstanding_payable': outstanding_payable,
+        'net_difference': net_difference,
+        'is_receivable_dominant': outstanding_receivable >= outstanding_payable,
+    }
+    
+    template = get_template('billing/account_statement_pdf.html')
+    html = template.render(context)
+    
+    response = HttpResponse(content_type='application/pdf')
+    slug = account.name.replace(' ', '_')
+    response['Content-Disposition'] = (
+        f'attachment; filename="Statement_{slug}_{from_date}_to_{to_date}.pdf"'
+    )
+    
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('PDF generation failed: <pre>' + html + '</pre>')
     return response

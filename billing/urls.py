@@ -14,4 +14,12 @@ urlpatterns = [
    
     path('manager/billing/pdf/', views.billing_pdf, name='billing_pdf'),
 
+    path('accounts/', views.account_list, name='account_list'),
+
+    path('accounts/add/', views.account_add, name='account_add'),
+
+    path('accounts/<int:account_id>/delete/', views.account_delete, name='account_delete'),
+    
+    path('accounts/<int:account_id>/statement/pdf/', views.account_statement_pdf, name='account_statement_pdf'),
+
 ]

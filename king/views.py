@@ -36,6 +36,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.core.cache import cache
 from xhtml2pdf import pisa
+from decimal import Decimal as _D
 
 from employees.models import Employee
 from attendance.models import Attendance
@@ -500,6 +501,36 @@ def king_dashboard(request):
         total_net=Coalesce(Sum('net_pay'), Decimal('0.00')),
         total_paid=Coalesce(Sum('net_pay', filter=Q(is_paid=True)), Decimal('0.00'))
     )
+
+    wo_summary = WorkOrder.objects.aggregate(
+        total_value=Coalesce(Sum('order_value'), Decimal('0.00')),
+    )
+    total_wo_value = wo_summary['total_value']
+
+    # Revenue received across ALL work orders (sum of Revenue entries linked to WOs)
+    revenue_received_on_wo = Revenue.objects.filter(
+        work_order__isnull=False
+    ).aggregate(
+        total=Coalesce(Sum('amount'), Decimal('0.00'))
+    )['total']
+
+    # Also count unlinked manual revenue (revenue with no WO) separately — keep this
+    # as "other income"; the WO completion is purely WO-linked revenue vs WO value
+    wo_pending_value = max(total_wo_value - revenue_received_on_wo, Decimal('0.00'))
+
+    # WO completion percentage (for the progress bar)
+    wo_completion_pct = (
+        round((float(revenue_received_on_wo) / float(total_wo_value)) * 100, 1)
+        if total_wo_value > 0 else 0
+    )
+
+    # Count of work orders by status
+    wo_count_summary = WorkOrder.objects.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(status='active')),
+        completed=Count('id', filter=Q(status='completed')),
+        pending=Count('id', filter=Q(status='pending')),
+    )
     
     # Current month liability = total net - what's been paid
     total_liability = (cur_month_payroll['total_net'] - cur_month_payroll['total_paid']) or Decimal('0.00')
@@ -674,6 +705,13 @@ def king_dashboard(request):
         'expense_change':      pct_change(cur_expenses, prev_expenses),
         'payroll_change':      pct_change(cur_payroll,  prev_payroll),
         'liability_change':    0,
+
+        #workorder metrics
+        'total_wo_value':         total_wo_value,
+        'revenue_received_on_wo': revenue_received_on_wo,
+        'wo_pending_value':       wo_pending_value,
+        'wo_completion_pct':      wo_completion_pct,
+        'wo_count_summary':       wo_count_summary,
 
         # Chart data
         'chart_labels':        json.dumps(chart_labels),

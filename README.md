@@ -7,8 +7,9 @@
 <div align="center">
 
 [![CI](https://github.com/Subham-Singh-Dev/cwms/actions/workflows/ci.yml/badge.svg)](https://github.com/Subham-Singh-Dev/cwms/actions)
-[![Live](https://img.shields.io/badge/Live_App-00b37e?style=for-the-badge&logo=render&logoColor=white)](https://cwms-1fdo.onrender.com/portal/login/)
-[![API Docs](https://img.shields.io/badge/Swagger_Docs-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://cwms-1fdo.onrender.com/api/docs/)
+[![Live App](https://img.shields.io/badge/Live_App-Portal_Login-00b37e?style=for-the-badge&logoColor=white)](https://sakuntalamindia.com/portal/login/)
+[![API Docs](https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://sakuntalamindia.com/api/docs/)
+[![Deployed](https://img.shields.io/badge/Deployed-Hetzner_Cloud_%C2%B7_VPS-00b37e?style=for-the-badge)](https://sakuntalamindia.com)
 [![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Django](https://img.shields.io/badge/Django_5.2-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
@@ -19,10 +20,9 @@
 
 <div align="center">
 
-**A production-grade Django monolith that automates daily-wage workforce management for construction contractors.**  
-Built for and deployed at a real contractor company managing workers across multiple sites.
+**A production Django system handling workforce management for a construction contractor in Chhattisgarh. Self-hosted on a VPS. Manages 100–150 daily-wage workers on a live site, with multi-site support built and verified for up to 160 employees across 3 locations.**
 
-[🚀 Live App](https://cwms-1fdo.onrender.com/portal/login/) · [📖 API Docs](https://cwms-1fdo.onrender.com/api/docs/) · [🐛 Report Bug](https://github.com/Subham-Singh-Dev/cwms/issues)
+[🚀 Live App](https://sakuntalamindia.com/portal/login/) · [📖 API Docs](https://sakuntalamindia.com/api/docs/) · [🐛 Report Bug](https://github.com/Subham-Singh-Dev/cwms/issues)
 
 </div>
 
@@ -32,6 +32,8 @@ Built for and deployed at a real contractor company managing workers across mult
 
 - [The Problem It Solves](#-the-problem-it-solves)
 - [Performance](#-performance)
+- [Tested at Scale](#-tested-at-scale)
+- [Worker Portal](#-worker-portal)
 - [Architecture](#-architecture)
 - [Multi-Site Architecture](#-multi-site-architecture)
 - [Key Engineering Decisions](#-key-engineering-decisions)
@@ -46,6 +48,7 @@ Built for and deployed at a real contractor company managing workers across mult
 - [Test Management Commands](#-test-management-commands)
 - [Deployment](#-deployment)
 - [Future Enhancements](#-future-enhancements)
+- [License](#-license)
 
 ---
 
@@ -70,42 +73,89 @@ Built for and deployed at a real contractor company managing workers across mult
 
 | Metric | Value |
 |---|---|
-| Dashboard API (Redis cached) | **2118ms → 26ms** (98.8% faster) |
-| Test coverage | **64%** |
-| Concurrent workers handled | **150–500+** |
-| Sites supported | **Unlimited** (site field driven) |
-| CI | Every push to `main` |
+| Dashboard load (Redis cached) | 26ms (down from 2,118ms uncached) |
+| Payroll verified (3-site test) | 160 / 160 — 0 errors |
+| Attendance records processed | 4,800 in one payroll cycle |
+| Sites supported | Unlimited (site field-driven) |
+| CI | Every push to main |
 
 </div>
 
 ---
 
+## ✅ Tested at Scale
+
+CWMS ships with a 4-step Django management command suite for end-to-end payroll verification on a clean database. It was used to verify multi-site payroll across 3 sites and 160 employees.
+
+<div align="center">
+
+| Metric | Result |
+|---|---|
+| Employees verified | 160 / 160 |
+| Attendance records | 4,800 |
+| Total gross payroll | ₹22,62,355.50 |
+| Advance recovered | ₹2,33,916.50 |
+| Net payroll disbursed | ₹19,59,716.34 |
+| PF deductions | ₹64,680.12 |
+| ESIC deductions | ₹4,042.54 |
+| Anomalies / errors | 0 |
+| Verdict | ✅ ALL 160 RECORDS MATHEMATICALLY CORRECT |
+
+</div>
+
+The test suite inserts data directly into the database via Django management commands, bypassing the UI's future-date attendance guard. The sparse calendar in live screenshots is expected — the payroll math is what the verification proves.
+
+```bash
+docker-compose exec web python manage.py step1_populate_data
+docker-compose exec web python manage.py step2_mark_attendance
+docker-compose exec web python manage.py step3_generate_payroll
+docker-compose exec web python manage.py step4_verify_payroll
+```
+
+---
+
+## 👷 Worker Portal
+
+Workers log in at `/portal/login/` using their phone number and password. Once signed in they see:
+
+- **Attendance calendar** — color-coded by Present, Absent, Half Day, and On Leave
+
+- **Leave balances** — EL / CL / SL with days remaining
+
+- **Monthly salary card** — Gross → Advance deducted → PF → ESIC → Net Pay
+
+- **Advance history** — outstanding balance and repayment timeline
+
+- **Payslip history** — previous months with a download button
+
+This is the live worker experience running in production on the Raigarh site today.
+
+---
+
 ## 🏗 Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           Client Layer                               │
-│           Django Templates + Vanilla JS  │  JWT REST API            │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────────────┐
-│                       Django 5.2 Monolith                            │
-│                                                                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐            │
-│  │employees │  │attendance│  │ payroll  │  │ billing  │            │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘            │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐            │
-│  │ expenses │  │  portal  │  │   king   │  │analytics │            │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘            │
-│  ┌──────────┐  ┌──────────────────────────────────────┐             │
-│  │  leaves  │  │  transaction.atomic() + select_for_update()  │     │
-│  └──────────┘  └──────────────────────────────────────┘             │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │                          │
-           ┌───────────────▼────────┐   ┌────────────▼─────────────┐
-           │  PostgreSQL (Render)   │   │  Redis (django-redis      │
-           │  Primary data store    │   │  + DummyCache fallback)   │
-           └────────────────────────┘   └──────────────────────────┘
+```text
+Internet → Nginx (port 443 SSL, Certbot) → Gunicorn unix socket (3 workers) → Django → PostgreSQL + Redis
+
+Nginx serves /static/ and /media/ directly. Gunicorn only handles dynamic requests.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Production Request Path                             │
+│                                                                             │
+│  Internet                                                                   │
+│     ↓                                                                       │
+│  Nginx (443 SSL, Certbot)                                                   │
+│     ↓                                                                       │
+│  Gunicorn unix socket (3 workers)                                           │
+│     ↓                                                                       │
+│  Django 5.2 monolith                                                        │
+│   ├─ employees    ├─ attendance    ├─ payroll    ├─ billing                │
+│   ├─ expenses     ├─ portal        ├─ king       ├─ analytics               │
+│   └─ leaves       └─ auth / API / admin                                    │
+│                                                                             │
+│  PostgreSQL 18.4 (localhost · Hetzner VPS)                                  │
+│  Redis (localhost · cache hit ~26ms)                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -152,21 +202,24 @@ workers = Employee.objects.filter(is_active=True, site=manager_site)
 
 ### Site Layout (Production)
 
-```
-CWMS
- ├── Raigarh   →  manager_raigarh   →  70 employees
- ├── Bhilai    →  manager_bhilai    →  60 employees
- └── Korba     →  manager_korba     →  30 employees
+```text
+CWMS (production)
+ └── Raigarh  →  manager_raigarh  →  ~100–150 employees (live)
+
+CWMS (multi-site verified)
+ ├── Raigarh  →  manager_raigarh  →  70 employees
+ ├── Bhilai   →  manager_bhilai   →  60 employees
+ └── Korba    →  manager_korba    →  30 employees
                                        ─────────────
-                                       160 employees total
+                                       160 employees total (test-verified)
 ```
 
 ### Rules
 
-- Each manager sees **only their site's employees** in bulk attendance
-- King (owner) sees **all employees** across all sites — no restriction
+- Each manager sees only their site's employees in bulk attendance
+- King (owner) sees all employees across all sites — no restriction
 - Adding a new site requires one line in `SITE_CHOICES` — no code changes
-- All other modules (payroll, advances, expenses, billing) are **not scoped** — any manager can operate them from any location
+- All other modules (payroll, advances, expenses, billing) are not scoped — any manager can operate them from any location
 
 ---
 
@@ -277,18 +330,18 @@ Expenses cannot be edited or deleted after 7 days — enforced at the view layer
 |---|---|
 | Language | Python 3.11 |
 | Framework | Django 5.2 + Django REST Framework |
-| Database | SQLite (dev) · PostgreSQL via `DATABASE_URL` (prod) |
+| Database | SQLite (dev) · PostgreSQL 18.4 on Hetzner VPS (prod) |
 | Auth | Session-based (portal) · JWT via `djangorestframework-simplejwt` (API) |
 | API Docs | drf-spectacular (Swagger / OpenAPI 3.0) |
-| Caching | django-redis with DummyCache fallback |
+| Caching | Redis (prod) with DummyCache fallback in simple deployments |
 | PDF Generation | xhtml2pdf |
 | Financial Arithmetic | Python `Decimal` — zero float errors |
 | Transaction Safety | `transaction.atomic()` + `select_for_update()` |
 | Frontend | Django Templates · Vanilla JS · CSS3 |
-| Static Files | WhiteNoise |
-| CI/CD | GitHub Actions → auto-deploy to Render on `main` |
-| Deployment | Render (web service + managed PostgreSQL) |
-| Testing | pytest + pytest-django · 64% coverage |
+| Static Files | WhiteNoise in app; Nginx serves static/media in production |
+| CI/CD | GitHub Actions + manual deploy to Hetzner VPS |
+| Deployment | Hetzner Cloud CPX22 · Nginx · Gunicorn · PostgreSQL 18.4 · Redis |
+| Testing | pytest + pytest-django |
 
 ---
 
@@ -323,12 +376,12 @@ Expenses cannot be edited or deleted after 7 days — enforced at the view layer
 <summary><strong>📅 Attendance System</strong></summary>
 
 - Daily tracking: Present / Half Day / Absent / Leave
-- **Multi-site bulk attendance UI** — each manager sees only their site's employees, preventing cross-site overwrites
+- Multi-site bulk attendance UI — each manager sees only their site's employees, preventing cross-site overwrites
 - Sticky summary strip showing Present / Half Day / Absent / Leave counts, visible while scrolling
 - Past-date attendance loads real records from DB — not defaults
 - Overtime hours per attendance record
 - Validation: current-month only; future dates allowed only for approved leave; overtime only when status is Present
-- Default status for new records is **Absent** (not Present) to prevent accidental ghost attendance
+- Default status for new records is Absent (not Present) to prevent accidental ghost attendance
 </details>
 
 <details>
@@ -356,7 +409,7 @@ Expenses cannot be edited or deleted after 7 days — enforced at the view layer
 <summary><strong>👷 Employee Management</strong></summary>
 
 - Full employee master with statutory fields (PF number, ESIC, bank details, IDs)
-- **Site field** — each employee tagged to a work location for manager scoping
+- Site field — each employee tagged to a work location for manager scoping
 - Employment type: `LOCAL` or `PERMANENT` (drives PF/ESIC applicability and leave quota)
 - Auto-generated system usernames (`EMPxxxxx`) on creation
 - Worker login via phone number + password
@@ -366,9 +419,12 @@ Expenses cannot be edited or deleted after 7 days — enforced at the view layer
 <details>
 <summary><strong>🖥 Worker Portal (Enhanced Dashboard)</strong></summary>
 
-- Unified worker dashboard: salary summary, attendance calendar, leave balance, advances, payslips
+- Attendance calendar color-coded by Present / Absent / Half Day / On Leave
+- Leave balances for EL / CL / SL with days remaining
+- Current month salary card with Gross → Advance deducted → PF → ESIC → Net Pay
+- Advance outstanding balance and repayment history
+- Payslip history with a download button
 - Light/dark theme toggle with persistent preference
-- Visual status chips, progress bars, and empty-state messaging
 - Mobile-first, responsive layout for on-site usage
 </details>
 
@@ -404,7 +460,7 @@ Expenses cannot be edited or deleted after 7 days — enforced at the view layer
 <details>
 <summary><strong>👑 King (Owner) Dashboard</strong></summary>
 
-- KPIs: payroll liability, expenses, revenue, cash flow, attendance — **aggregated across all sites**
+- KPIs: payroll liability, expenses, revenue, cash flow, attendance — aggregated across all sites
 - Work order lifecycle management
 - Manual revenue register + ledger accounts + ledger entries
 - Ledger PDF export with party filters
@@ -414,13 +470,12 @@ Expenses cannot be edited or deleted after 7 days — enforced at the view layer
 
 ## 📁 Project Structure
 
-```
+```text
 CWMS/
 ├── manage.py
 ├── requirements.txt
-├── Procfile                       # gunicorn for Render
-├── build.sh / render_setup.sh     # migrate + collectstatic
-├── .env.example
+├── Procfile                       # gunicorn entrypoint for production
+├── build.sh / deployment helpers  # migrate + collectstatic
 ├── docker-compose.yml
 ├── populate_database.py           # demo data seeder
 ├── config/                        # settings, URLs, wsgi, cache_utils
@@ -451,7 +506,7 @@ CWMS/
 ### Prerequisites
 
 - Python 3.11+
-- Redis 7+ (optional — falls back to DummyCache)
+- Redis 7+ for production caching
 - pip
 
 ### Local Setup
@@ -464,7 +519,7 @@ cd cwms
 # 2. Virtual environment
 python -m venv venv
 source venv/bin/activate        # Linux/Mac
-venv\Scripts\activate           # Windows
+venv\Scripts\activate          # Windows
 
 # 3. Install dependencies
 pip install -r requirements.txt
@@ -541,7 +596,7 @@ Log in as each manager and open Mark Attendance. Each manager should see only th
 
 ## 📖 API Reference
 
-Full interactive docs: **https://cwms-1fdo.onrender.com/api/docs/**
+Full interactive docs: **https://sakuntalamindia.com/api/docs/**
 
 ### Auth Endpoints
 
@@ -549,6 +604,8 @@ Full interactive docs: **https://cwms-1fdo.onrender.com/api/docs/**
 |---|---|---|
 | POST | `/api/token/` | Obtain JWT access + refresh token |
 | POST | `/api/token/refresh/` | Refresh expired access token |
+| GET | `/api/schema/` | OpenAPI schema |
+| GET | `/api/docs/` | Swagger UI |
 
 Access token: 5 minutes. Refresh token: 24 hours. All endpoints require `Authorization: Bearer <token>`.
 
@@ -557,24 +614,26 @@ Access token: 5 minutes. Refresh token: 24 hours. All endpoints require `Authori
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
 | GET | `/api/employees/` | Manager | List active employees |
-| GET/PUT/DELETE | `/api/employees/<id>/` | Authenticated | Employee detail |
+| GET | `/api/employees/<id>/` | Authenticated | Employee detail |
+| PUT | `/api/employees/<id>/` | Authenticated | Partial update |
+| DELETE | `/api/employees/<id>/` | Authenticated | Delete employee |
 | GET/POST | `/api/attendance/` | Manager | Attendance records |
 | GET | `/api/payroll/?month=YYYY-MM` | Manager | Salary list |
 | GET/POST | `/api/advances/` | Manager | Advances list / issue |
 | GET | `/api/activity/` | Manager | Recent audit feed (cached) |
 
-> **Security note:** Employee detail endpoints currently check authentication but do not enforce manager-only access. Lock these down before exposing to untrusted clients.
+> **Security note:** Employee detail endpoints currently require authentication but should still be locked to manager-only access before exposing them to untrusted clients.
 
 ### Quick Start
 
 ```bash
 # Get token
-curl -X POST https://cwms-1fdo.onrender.com/api/token/ \
+curl -X POST https://sakuntalamindia.com/api/token/ \
   -H "Content-Type: application/json" \
   -d '{"username": "your_user", "password": "your_pass"}'
 
 # Use token
-curl https://cwms-1fdo.onrender.com/api/employees/ \
+curl https://sakuntalamindia.com/api/employees/ \
   -H "Authorization: Bearer <access_token>"
 ```
 
@@ -582,11 +641,14 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 
 ## 🔗 URL Endpoints
 
+All documented URLs below are verified against the live `urlpatterns` in the codebase.
+
 <details>
 <summary><strong>Authentication</strong></summary>
 
 | Method | URL | Description |
 |---|---|---|
+| GET | `/` | Redirects to `/portal/login/` |
 | GET/POST | `/portal/login/` | Worker / Manager login |
 | GET | `/portal/logout/` | Portal logout |
 | GET/POST | `/king/secure/owner-x7k2/` | King secure login |
@@ -599,6 +661,7 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 | Method | URL | Description |
 |---|---|---|
 | GET | `/portal/manager/dashboard/` | Manager dashboard |
+| GET | `/portal/manager/dashboard/recent-activity/` | Manager dashboard activity feed |
 | GET/POST | `/portal/manager/attendance/bulk/` | Bulk attendance (site-scoped) |
 | POST | `/portal/manager/run-payroll/` | Trigger payroll batch |
 | GET/POST | `/portal/manager/advances/issue/` | Issue advance |
@@ -618,13 +681,20 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 |---|---|---|
 | GET | `/manager/employees/` | Employee list |
 | GET/POST | `/manager/employees/add/` | Add employee |
-| GET | `/manager/employees/profile/<id>/` | Employee profile |
+| GET/POST | `/manager/employees/edit/<employee_id>/` | Edit employee |
+| GET | `/manager/employees/profile/<employee_id>/` | Employee profile |
 | GET/POST | `/manager/billing/` | Billing dashboard / upload |
 | POST | `/toggle_bill_status/<bill_id>/` | Toggle paid/unpaid |
 | POST | `/record-payment/<bill_id>/` | Record partial payment |
+| POST | `/delete_bill/<bill_id>/` | Delete bill |
 | GET | `/manager/billing/pdf/` | Billing PDF |
+| GET | `/accounts/` | Billing accounts |
+| GET/POST | `/accounts/add/` | Add billing account |
+| POST | `/accounts/<account_id>/delete/` | Delete billing account |
+| GET | `/accounts/<account_id>/statement/pdf/` | Billing account statement PDF |
 | GET/POST | `/manager/expenses/` | Expenses / add |
-| GET/POST | `/manager/expenses/edit/<id>/` | Edit (7-day lock enforced) |
+| POST | `/manager/expenses/delete/<expense_id>/` | Delete expense |
+| GET/POST | `/manager/expenses/edit/<expense_id>/` | Edit (7-day lock enforced) |
 | GET | `/manager/expenses/export/` | CSV |
 | GET | `/manager/expenses/pdf/` | PDF |
 </details>
@@ -655,22 +725,57 @@ curl https://cwms-1fdo.onrender.com/api/employees/ \
 | Method | URL | Description |
 |---|---|---|
 | GET | `/king/dashboard/` | Business analytics (all sites) |
+| GET | `/king/dashboard/recent-activity/` | King dashboard activity feed |
 | GET | `/king/workorders/` | Work orders |
+| GET/POST | `/king/workorders/add/` | Add work order |
+| GET | `/king/workorders/<wo_id>/` | Work order detail |
+| GET/POST | `/king/workorders/<wo_id>/edit/` | Edit work order |
+| POST | `/king/workorders/<wo_id>/status/` | Update work order status |
 | GET | `/king/revenue/` | Revenue dashboard |
+| GET/POST | `/king/revenue/add/` | Add revenue |
+| POST | `/king/revenue/delete/<rev_id>/` | Delete revenue |
 | GET | `/king/ledger/` | Ledger view |
+| GET/POST | `/king/ledger/add/` | Add ledger entry |
+| POST | `/king/ledger/delete/<entry_id>/` | Delete ledger entry |
 | GET | `/king/ledger/pdf/` | Ledger PDF |
 | GET | `/king/accounts/` | Account list |
+| GET/POST | `/king/accounts/add/` | Add account |
+| GET/POST | `/king/accounts/<account_id>/edit/` | Edit account |
+| POST | `/king/accounts/<account_id>/delete/` | Delete account |
 | GET | `/king/audit/` | Full audit history |
 | GET | `/king/audit/export/csv/` | Audit CSV |
 | GET | `/king/audit/export/pdf/` | Audit PDF |
 | GET | `/portal/manager/audit/` | Manager audit history (scoped) |
+| GET | `/portal/manager/audit/export/csv/` | Manager audit CSV |
+| GET | `/portal/manager/audit/export/pdf/` | Manager audit PDF |
+</details>
+
+<details>
+<summary><strong>API & Schema</strong></summary>
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `/api/schema/` | OpenAPI schema |
+| GET | `/api/docs/` | Swagger UI |
+| POST | `/api/token/` | JWT obtain pair |
+| POST | `/api/token/refresh/` | JWT refresh |
+| GET | `/api/activity/` | Recent activity feed |
+| GET | `/api/attendance/` | Attendance records |
+| POST | `/api/attendance/` | Create attendance row |
+| GET | `/api/employees/` | Employee list |
+| GET | `/api/employees/<id>/` | Employee detail |
+| PUT | `/api/employees/<id>/` | Partial update |
+| DELETE | `/api/employees/<id>/` | Employee delete |
+| GET | `/api/payroll/` | Payroll list |
+| GET | `/api/advances/` | Advance list |
+| POST | `/api/advances/` | Issue advance |
 </details>
 
 ---
 
 ## 🧪 Test Management Commands
 
-CWMS ships with a 4-step management command suite for full end-to-end testing on a clean database (designed for Docker).
+CWMS ships with a 4-step management command suite for full end-to-end testing on a clean database.
 
 ```bash
 # Run in order on a fresh DB
@@ -703,37 +808,55 @@ docker-compose exec web python manage.py step4_verify_payroll
 
 ### CI/CD (GitHub Actions)
 
-```
-push to main
-  → pip install -r requirements.txt
-  → python manage.py check
-  → python manage.py test
-  → auto-deploy to Render
-```
-
-### Production (Self-Hosted)
+Every push to `main` triggers:
 
 ```
-OS:        Ubuntu 22.04 LTS
-Web:       Nginx + Gunicorn
-Database:  PostgreSQL 14+
-Cache:     Redis 7+
-Process:   Systemd
-SSL:       Let's Encrypt
-RAM:       2GB minimum
+→ pip install -r requirements.txt
+→ python manage.py check
+→ python manage.py test
+```
+
+### Deploy to VPS
+
+```
+su - cwms && cd cwms && source venv/bin/activate
+git pull origin main --no-edit
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+exit
+systemctl restart gunicorn
+```
+
+### Production Server
+
+```
+Provider:        Hetzner Cloud CPX22
+Specs:           2 vCPU AMD EPYC · 4 GB RAM · 80 GB NVMe SSD
+OS:              Ubuntu 26.04 LTS
+Web server:      Nginx + Gunicorn (3 workers · unix socket)
+SSL:             Let's Encrypt via Certbot (auto-renewing)
+Database:        PostgreSQL 18.4 (localhost)
+Cache:           Redis (localhost · DB index 1)
+Process manager: systemd
+Live since:      June 2026
 ```
 
 ### Production Checklist
 
-- [ ] `DEBUG=False` and a strong `SECRET_KEY` in environment
-- [ ] `REDIS_URL` set with correct DB index; verify `CACHES` in `settings.py` matches
-- [ ] Route `cwms.cache` logger to Sentry or file for Redis failure alerts
-- [ ] Set Redis `maxmemory` and eviction policy for your cache footprint
-- [ ] Create `ManagerProfile` for every manager user via Django admin
-- [ ] Tag all employees with their `site` value before go-live
-- [ ] Verify each manager can only see their site's employees in bulk attendance
-- [ ] Lock down `/api/employees/<id>/` to manager-only access
-- [ ] Configure AWS S3 or Cloudflare R2 for media file storage
+- [x] `DEBUG=False` in `.env`
+- [x] Strong `SECRET_KEY` set
+- [x] SSL active (Certbot)
+- [x] `CSRF_TRUSTED_ORIGINS` configured
+- [x] `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` enforced
+- [x] `SECURE_HSTS_PRELOAD` enforced
+- [x] `ManagerProfile` created for all managers
+- [x] All employees tagged with `site` value
+- [x] Site-scoped attendance verified
+- [x] `django_extensions` scoped to `DEBUG=True` only
+- [ ] `/api/employees/<id>/` locked to manager-only
+- [ ] AWS S3 / Cloudflare R2 for media storage
+- [ ] `BRAND_COMPANY_GSTIN` (contractor not yet registered)
 
 ---
 
@@ -746,6 +869,7 @@ RAM:       2GB minimum
 - [ ] Budget tracking and forecasting
 - [ ] Tax and compliance automation
 - [ ] Site-level financial breakdown in owner dashboard
+- [ ] Work order value tracking and vendor account ledger (planned)
 
 ---
 
@@ -759,6 +883,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:2c5364,50:203a43,100:0f2027&height=120&section=footer" width="100%"/>
 
-*Built to solve real problems for real contractors — not a demo project.*
+*Shipped to production. Running live. Built by a final-year CS student.*
 
 </div>

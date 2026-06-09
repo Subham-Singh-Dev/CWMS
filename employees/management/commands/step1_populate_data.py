@@ -27,6 +27,7 @@ from decimal import Decimal
 from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 
 from employees.models import Employee, Role
 from leaves.models import LeavePolicy
@@ -423,44 +424,46 @@ class Command(BaseCommand):
 
     # ── LEAVES ───────────────────────────────────────────────────────────────
 
+    # ── LEAVES ───────────────────────────────────────────────────────────────
     def _create_leaves(self, employees, managers):
-        """Assign leaves for May 1-5 for ~20 employees across all sites."""
-        self.stdout.write("\nAssigning leaves (May 1-5)...")
+        """Assign leaves for the first 5 days of the CURRENT month."""
+        self.stdout.write("\nAssigning leaves (First 5 days of current month)...")
         LEAVE_TYPES = ["EL", "CL", "SL"]
-
+        
+        # Dynamic date calculation
+        now = timezone.now()
+        first_day = now.replace(day=1)
+        
         targets = random.sample(employees, min(20, len(employees)))
-        count   = 0
+        count = 0
 
         for emp in targets:
             manager_user = managers.get(emp.site, next(iter(managers.values())))
-
             leave_type = random.choice(LEAVE_TYPES)
-            start_day  = random.randint(1, 3)
-            end_day    = min(start_day + random.randint(0, 2), 5)
+            
+            # Use dynamic dates relative to 'now'
+            start_day = random.randint(1, 3)
+            end_day = min(start_day + random.randint(0, 2), 5)
             total_days = (end_day - start_day) + 1
 
             try:
                 assign_leave(
                     employee=emp,
                     leave_type=leave_type,
-                    from_date=date(2026, 5, start_day),
-                    to_date=date(2026, 5, end_day),
+                    from_date=first_day.replace(day=start_day).date(),
+                    to_date=first_day.replace(day=end_day).date(),
                     total_days=total_days,
                     reason=random.choice(LEAVE_REASONS),
                     address_on_leave="Native village, Chhattisgarh",
-                    application_date=date(2026, 4, 30),
+                    application_date=first_day.replace(day=1).date(), # Application start of month
                     approved_by=manager_user,
                     department="Construction Site",
                 )
                 count += 1
             except Exception as e:
-                self.stdout.write(
-                    self.style.WARNING(f"  ⚠ Leave failed ({emp.name}): {e}")
-                )
+                self.stdout.write(self.style.WARNING(f" ⚠ Leave failed ({emp.name}): {e}"))
 
-        self.stdout.write(
-            self.style.SUCCESS(f"  ✅ {count} leave records assigned")
-        )
+        self.stdout.write(self.style.SUCCESS(f" ✅ {count} leave records assigned"))
 
     # ── CREDENTIALS SUMMARY ──────────────────────────────────────────────────
 

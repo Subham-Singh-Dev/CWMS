@@ -1,5 +1,7 @@
+from datetime import date as dt
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
@@ -31,14 +33,17 @@ class PayrollFlowTests(TestCase):
 			is_active=True,
 		)
 
-	def test_generate_employee_salary_creates_record_for_current_month(self):
-		today = timezone.now().date()
-		month_start = today.replace(day=1)
+	@patch('django.utils.timezone.now')
+	def test_generate_employee_salary_creates_record_for_current_month(self, mock_now):
+		# Lock time to first day of NEXT month so month-end guard passes for "previous" month
+		mock_now.return_value = dt(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+		today = timezone.now().date()           # → 2026-06-01
+		month_start = date(2026, 5, 1)          # → May payroll (fully ended)
 		month_str = month_start.strftime('%Y-%m')
 
 		Attendance.objects.create(
 			employee=self.employee,
-			date=today,
+			date=date(2026, 5, 15),
 			status='P',
 			overtime_hours=Decimal('1.0'),
 		)
@@ -51,9 +56,11 @@ class PayrollFlowTests(TestCase):
 		self.assertEqual(response.status_code, 302)
 		self.assertEqual(MonthlySalary.objects.filter(employee=self.employee, month=month_start).count(), 1)
 
-	def test_generate_employee_salary_duplicate_keeps_single_record(self):
+	@patch('django.utils.timezone.now')
+	def test_generate_employee_salary_duplicate_keeps_single_record(self, mock_now):
+		mock_now.return_value = dt(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 		today = timezone.now().date()
-		month_start = today.replace(day=1)
+		month_start = date(2026, 5, 1)
 		month_str = month_start.strftime('%Y-%m')
 
 		MonthlySalary.objects.create(
@@ -193,9 +200,11 @@ class PayrollFlowTests(TestCase):
 		salary.refresh_from_db()
 		self.assertFalse(salary.is_paid)
 
-	def test_generate_monthly_salary_applies_pf_esic_and_total_deductions(self):
-		today = timezone.now().date()
-		month_start = today.replace(day=1)
+	@patch('django.utils.timezone.now')
+	def test_generate_monthly_salary_applies_pf_esic_and_total_deductions(self, mock_now):
+		mock_now.return_value = dt(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+		today = timezone.now().date()           # → 2026-06-01
+		month_start = date(2026, 5, 1)
 
 		self.employee.pf_applicable = True
 		self.employee.esic_applicable = True
@@ -205,7 +214,7 @@ class PayrollFlowTests(TestCase):
 
 		Attendance.objects.create(
 			employee=self.employee,
-			date=today,
+			date=date(2026, 5, 15),
 			status='P',
 			overtime_hours=Decimal('1.0'),
 		)
@@ -214,7 +223,7 @@ class PayrollFlowTests(TestCase):
 			employee=self.employee,
 			amount=Decimal('100.00'),
 			remaining_amount=Decimal('100.00'),
-			issued_date=today,
+			issued_date=date(2026, 5, 1),
 		)
 
 		salary = generate_monthly_salary(self.employee, month_start)
@@ -238,7 +247,7 @@ class MonthlySalaryIntegrityTests(TestCase):
 			name='Integrity Employee',
 			role=self.role,
 			daily_wage=Decimal('500.00'),
-			join_date=timezone.now().date().replace(day=1),
+			join_date=date(2026, 1, 1),
 			is_active=True,
 		)
 
@@ -301,3 +310,34 @@ class MonthlySalaryIntegrityTests(TestCase):
 			salary.clean()
 
 		self.assertIn('net_pay', ctx.exception.message_dict)
+
+	def test_generate_employee_salary_early_release_bypasses_month_end_guard(self):
+		"""Verify mid-month settlement works for employees leaving before month-end."""
+		# Use current month — guard would normally block this
+		today = timezone.now().date()
+		month_start = today.replace(day=1)
+
+		Attendance.objects.create(
+			employee=self.employee,
+			date=today,
+			status='P',
+			overtime_hours=Decimal('0.0'),
+		)
+
+		# early_release=True must succeed even mid-month
+		salary = generate_monthly_salary(self.employee, month_start, early_release=True)
+		self.assertIsNotNone(salary)
+		self.assertEqual(
+			MonthlySalary.objects.filter(employee=self.employee, month=month_start).count(),
+			1
+		)
+	@patch('django.utils.timezone.now')
+	def test_bulk_payroll_blocked_mid_month(self, mock_now):
+		"""Verify bulk payroll (early_release=False) cannot run mid-month."""
+		from unittest.mock import patch as _patch
+		from django.core.exceptions import ValidationError as DjangoValidationError
+		# Freeze to mid-month
+		mock_now.return_value = dt(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+		with self.assertRaises(DjangoValidationError):
+			generate_monthly_salary(self.employee, date(2026, 6, 1))  # no early_release

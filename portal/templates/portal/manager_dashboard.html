@@ -842,6 +842,13 @@
         {% endfor %}
     {% endif %}
 
+    {% if show_payroll_reminder %}
+    <div class="alert alert-warning" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 8px;">
+        <strong style="color: #92400e;">⚠️ Payroll Window Closing!</strong>
+        <p style="color: #92400e; margin: 5px 0 0;">Today is the last day of {{ current_month|date:"F Y" }}. Please finalize all attendance before midnight so payroll can be processed tomorrow.</p>
+    </div>
+    {% endif %}
+
     <!-- ============================================
          SUMMARY BAR - Quick Overview
          ============================================ -->

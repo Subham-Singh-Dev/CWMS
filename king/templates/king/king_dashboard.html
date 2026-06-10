@@ -1063,6 +1063,20 @@
         </div>
     </header>
 
+    {% if show_payroll_reminder %}
+    <div class="glass" style="border-left: 4px solid var(--solar-accent); padding: 20px; border-radius: var(--solar-radius); background: rgba(255, 107, 0, 0.05);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 24px;">📅</div>
+            <div>
+                <h3 style="color: var(--solar-accent-lit); font-size: 14px; margin-bottom: 4px;">Month-End Financial Cycle</h3>
+                <p style="color: var(--solar-text-soft); font-size: 13px;">
+                    Today is the last day of {{ current_month|date:"F Y" }}. Ensure all site managers have locked attendance records so we can trigger the automated payroll generation tomorrow.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ═══ EXECUTIVE OVERVIEW ═══ -->
     <section class="exec-hero">
         <div class="section-head">

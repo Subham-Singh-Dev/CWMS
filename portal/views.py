@@ -12,7 +12,7 @@ Dependencies: employees, attendance, payroll, audit service, and decorators.
 # IMPORTS
 # ============================================================
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib import messages
@@ -28,6 +28,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.core.cache import cache
 from xhtml2pdf import pisa
+import calendar as _cal
 
 from analytics.services.audit_service import create_audit_log, recent_activity_items_for_manager
 from attendance.models import Attendance
@@ -38,6 +39,16 @@ from payroll.services import SalaryAlreadyGeneratedError, generate_monthly_salar
 
 from .decorators import manager_required, worker_required
 
+def _is_month_closed(target_date) -> bool:
+    """Return True if the month for target_date has fully ended.
+
+    Attendance is locked for closed months to maintain payroll consistency.
+    A month is 'closed' the day after its last calendar day.
+    This mirrors the month-end guard in payroll/services.py exactly.
+    """
+    import calendar
+    last_day = calendar.monthrange(target_date.year, target_date.month)[1]
+    return timezone.now().date() > date(target_date.year, target_date.month, last_day)
 
 def _cache_delete_pattern(pattern: str) -> None:
     from config.cache_utils import delete_pattern as _delete_pattern
@@ -349,6 +360,12 @@ def manager_dashboard(request, viewing_as_owner=False):
     if recent_activities is None:
         recent_activities = recent_activity_items_for_manager(limit=8)
         cache.set(activity_cache_key, recent_activities, timeout=300)
+    
+    # ── PAYROLL REMINDER BANNER ──────────────────────────────────────────────
+    # Show a warning on the last day of the month reminding managers to run payroll.
+    last_day_of_current_month = _cal.monthrange(today.year, today.month)[1]
+    show_payroll_reminder = (today.day == last_day_of_current_month)
+    # ─────────────────────────────────────────────────────────────────────────
 
     context.update(
         {
@@ -359,6 +376,7 @@ def manager_dashboard(request, viewing_as_owner=False):
             'outstanding_liability': outstanding_liability,
             'advances_given': advances_given,
             'recent_activities': recent_activities,
+            'show_payroll_reminder': show_payroll_reminder,
         }
     )
 
@@ -436,6 +454,18 @@ def bulk_attendance(request):
             and selected_date.month < today.month
         ):
             messages.error(request, "❌ Cannot mark attendance for previous months.")
+            selected_date = today
+        elif _is_month_closed(selected_date):
+            # PAYROLL CONSISTENCY GUARD: If the month has ended, attendance is locked.
+            # Editing attendance after payroll can be generated would corrupt salary records.
+            import calendar as _cal
+            last_day = _cal.monthrange(selected_date.year, selected_date.month)[1]
+            messages.error(
+                request,
+                f"🔒 Attendance for {selected_date.strftime('%B %Y')} is locked. "
+                f"The month ended on {selected_date.replace(day=last_day).strftime('%d %b %Y')} "
+                f"and payroll may already have been processed."
+            )
             selected_date = today
         else:
             try:
@@ -608,7 +638,7 @@ def run_payroll(request):
                 for employee in employees:
                     current_employee = employee
                     try:
-                        salary = generate_monthly_salary(employee, selected_month)
+                        salary = generate_monthly_salary(employee, selected_month, early_release=True)
                     except SalaryAlreadyGeneratedError:
                         skipped += 1
                         logger.warning(

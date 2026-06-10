@@ -15,6 +15,7 @@ and decorator layers.
 # ============================================================
 # IMPORTS
 # ============================================================
+from calendar import calendar
 import io
 import json
 import logging
@@ -683,11 +684,15 @@ def king_dashboard(request):
     if recent_activities is None:
         recent_activities = recent_activity_items_for_king(limit=8)
         cache.set(activity_cache_key, recent_activities, timeout=300)
-
+    
+    now = timezone.now()
+    today = now.date()
     # ── Context ───────────────────────────────────────────────────
     context = {
         'today':               today,
         'time_of_day':         time_of_day,
+        'show_payroll_reminder': now.day == calendar.monthrange(now.year, now.month)[1],
+        "current_month":        now,
 
         # KPIs
         'total_revenue':       cur_revenue,

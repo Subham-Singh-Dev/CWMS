@@ -32,6 +32,8 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
+import calendar
+from datetime import timedelta, date
 
 from attendance.models import Attendance
 from payroll.models import Advance, MonthlySalary
@@ -95,7 +97,7 @@ def _calculate_esic(gross_pay: Decimal, rate: Decimal) -> Decimal:
     return (gross_pay * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def generate_monthly_salary(employee, month):
+def generate_monthly_salary(employee, month, early_release: bool = False):
     """Generate and persist a salary record for one employee and month.
 
     Args:
@@ -105,6 +107,11 @@ def generate_monthly_salary(employee, month):
     Returns:
         MonthlySalary | None: The salary record, or None when there is nothing to
         record (zero gross pay and no unsettled advances).
+
+    Args:
+        early_release (bool): If True, bypasses the month-end guard. Use ONLY for
+            mid-month settlement of employees leaving before month-end.
+            Default is False. Bulk payroll must never pass True.
 
     Raises:
         ValueError: If `month` is not the first day of a month.
@@ -120,9 +127,18 @@ def generate_monthly_salary(employee, month):
         raise ValueError("Month must be the first day of the month")
 
     today = timezone.now().date()
-    if month > today.replace(day=1):
+    # ── MONTH-END GUARD ──────────────────────────────────────────────────────────
+    # BUSINESS RULE: Payroll can only be generated AFTER the month has fully ended.
+    # This prevents mid-month generation where attendance is still incomplete.
+    # Example: June payroll is only unlocked from July 1st onwards.
+    last_day_of_month = calendar.monthrange(month.year, month.month)[1]
+    month_end = date(month.year, month.month, last_day_of_month)
+
+    if today <= month_end and not early_release:
+        unlock_date = (month_end + timedelta(days=1)).strftime('%d %B %Y')
         raise ValidationError(
-            f"Cannot generate payroll for future month: {month.strftime('%B %Y')}"
+            f"Payroll for {month.strftime('%B %Y')} can only be generated "
+            f"on or after {unlock_date}. Attendance must be complete before payroll is run."
         )
 
     if employee.join_date.replace(day=1) > month:

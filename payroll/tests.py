@@ -1,5 +1,4 @@
-from datetime import date as dt
-from datetime import date
+from datetime import date, datetime, timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -29,24 +28,26 @@ class PayrollFlowTests(TestCase):
 			name='Employee One',
 			role=self.role,
 			daily_wage=Decimal('500.00'),
-			join_date=timezone.now().date().replace(day=1),
+			join_date=timezone.now().date().replace(month=1, day=1),
 			is_active=True,
 		)
 
 	@patch('django.utils.timezone.now')
 	def test_generate_employee_salary_creates_record_for_current_month(self, mock_now):
 		# Lock time to first day of NEXT month so month-end guard passes for "previous" month
-		mock_now.return_value = dt(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+		mock_now.return_value = datetime(2026, 6, 1, 12, 0, 0, tzinfo=dt_timezone.utc)
 		today = timezone.now().date()           # → 2026-06-01
 		month_start = date(2026, 5, 1)          # → May payroll (fully ended)
 		month_str = month_start.strftime('%Y-%m')
 
-		Attendance.objects.create(
-			employee=self.employee,
-			date=date(2026, 5, 15),
-			status='P',
-			overtime_hours=Decimal('1.0'),
-		)
+		Attendance.objects.bulk_create([
+			Attendance(
+				employee=self.employee,
+				date=date(2026, 5, 15),
+				status='P',
+				overtime_hours=Decimal('1.0'),
+			)
+		])
 
 		response = self.client.post(
 			reverse('generate_employee_salary'),
@@ -58,7 +59,7 @@ class PayrollFlowTests(TestCase):
 
 	@patch('django.utils.timezone.now')
 	def test_generate_employee_salary_duplicate_keeps_single_record(self, mock_now):
-		mock_now.return_value = dt(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+		mock_now.return_value = datetime(2026, 6, 1, 12, 0, 0, tzinfo=dt_timezone.utc)
 		today = timezone.now().date()
 		month_start = date(2026, 5, 1)
 		month_str = month_start.strftime('%Y-%m')
@@ -202,7 +203,7 @@ class PayrollFlowTests(TestCase):
 
 	@patch('django.utils.timezone.now')
 	def test_generate_monthly_salary_applies_pf_esic_and_total_deductions(self, mock_now):
-		mock_now.return_value = dt(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+		mock_now.return_value = datetime(2026, 6, 1, 12, 0, 0, tzinfo=dt_timezone.utc)
 		today = timezone.now().date()           # → 2026-06-01
 		month_start = date(2026, 5, 1)
 
@@ -212,12 +213,14 @@ class PayrollFlowTests(TestCase):
 		self.employee.esic_rate = Decimal('0.0075')
 		self.employee.save(update_fields=['pf_applicable', 'esic_applicable', 'pf_rate', 'esic_rate'])
 
-		Attendance.objects.create(
-			employee=self.employee,
-			date=date(2026, 5, 15),
-			status='P',
-			overtime_hours=Decimal('1.0'),
-		)
+		Attendance.objects.bulk_create([
+			Attendance(
+				employee=self.employee,
+				date=date(2026, 5, 15),
+				status='P',
+				overtime_hours=Decimal('1.0'),
+			)
+		])
 
 		Advance.objects.create(
 			employee=self.employee,
@@ -337,7 +340,7 @@ class MonthlySalaryIntegrityTests(TestCase):
 		from unittest.mock import patch as _patch
 		from django.core.exceptions import ValidationError as DjangoValidationError
 		# Freeze to mid-month
-		mock_now.return_value = dt(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+		mock_now.return_value = datetime(2026, 6, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
 
 		with self.assertRaises(DjangoValidationError):
 			generate_monthly_salary(self.employee, date(2026, 6, 1))  # no early_release

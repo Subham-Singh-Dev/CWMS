@@ -269,3 +269,111 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+
+# ============================================================
+# LOGGING
+# ============================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {module}:{lineno} — {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '[{asctime}] {levelname} — {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+
+    'handlers': {
+        # Django errors and warnings → django.log
+        'django_file': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': '/var/log/cwms/django.log',
+            'when': 'midnight',
+            'backupCount': 14,
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
+        # All app-level logs (your logger.info, logger.warning etc) → app.log
+        'app_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': '/var/log/cwms/app.log',
+            'when': 'midnight',
+            'backupCount': 14,
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
+        # Security events (login attempts, IDOR blocks) → security.log
+        'security_file': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': '/var/log/cwms/security.log',
+            'when': 'midnight',
+            'backupCount': 14,
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
+        # Also print everything to console so journalctl catches it
+        'console': {
+            'level': 'WARNING',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+
+    'loggers': {
+        # Django internals (500 errors, template errors, DB errors)
+        'django': {
+            'handlers': ['django_file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # Django request logger — this is what logs 500 tracebacks
+        'django.request': {
+            'handlers': ['django_file', 'console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # Django DB logger — logs slow queries if needed later
+        'django.db.backends': {
+            'handlers': ['django_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # Your app loggers (king, portal, payroll, attendance etc)
+        'king': {
+            'handlers': ['app_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'portal': {
+            'handlers': ['app_file', 'security_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'payroll': {
+            'handlers': ['app_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'attendance': {
+            'handlers': ['app_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'analytics': {
+            'handlers': ['app_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

@@ -274,6 +274,9 @@ if not DEBUG:
 # ============================================================
 # LOGGING
 # ============================================================
+LOG_DIR = config('LOG_DIR', default=str(BASE_DIR / 'logs'))
+os.makedirs(LOG_DIR, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -296,7 +299,7 @@ LOGGING = {
         'django_file': {
             'level': 'WARNING',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': '/var/log/cwms/django.log',
+            'filename': os.path.join(LOG_DIR, 'django.log'),
             'when': 'midnight',
             'backupCount': 14,
             'encoding': 'utf-8',
@@ -306,7 +309,7 @@ LOGGING = {
         'app_file': {
             'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': '/var/log/cwms/app.log',
+            'filename': os.path.join(LOG_DIR, 'app.log'),
             'when': 'midnight',
             'backupCount': 14,
             'encoding': 'utf-8',
@@ -316,7 +319,7 @@ LOGGING = {
         'security_file': {
             'level': 'WARNING',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': '/var/log/cwms/security.log',
+            'filename': os.path.join(LOG_DIR, 'security.log'),
             'when': 'midnight',
             'backupCount': 14,
             'encoding': 'utf-8',

@@ -1452,6 +1452,12 @@ def ledger_view(request):
  
     # Reason: Account picker must include all parties for owner.
     all_accounts = LedgerAccount.objects.order_by('name')
+
+    brand = BrandSettings.objects.first()
+
+    company_name = brand.company_name if brand else 'CWMS System'
+    company_address = brand.company_address if brand else ''
+    company_gstin = brand.company_gstin if brand else ''
  
     create_audit_log(
         user=request.user,
@@ -1472,9 +1478,9 @@ def ledger_view(request):
         'from_date':         from_date,
         'to_date':           to_date,
         'entry_types':       LedgerEntry.ENTRY_TYPE_CHOICES,
-        'company_name':      settings.BRAND_COMPANY_NAME,
-        'company_address':   settings.BRAND_COMPANY_ADDRESS,
-        'company_gstin':     settings.BRAND_COMPANY_GSTIN,
+        'company_name':      company_name,
+        'company_address':   company_address,
+        'company_gstin':     company_gstin,
         'total_debit_fmt':   data['total_debit_fmt'],
         'total_credit_fmt':  data['total_credit_fmt'],
         'debit_balance_fmt': data['debit_balance_fmt'],

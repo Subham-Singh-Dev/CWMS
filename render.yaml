@@ -1,0 +1,36 @@
+databases:
+  - name: cwms-db
+    plan: free
+    databaseName: cwms
+    user: cwms
+
+services:
+  - type: web
+    name: cwms-web
+    runtime: python
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: cwms-web.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://cwms-web.onrender.com
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cwms-db
+          property: connectionString
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false

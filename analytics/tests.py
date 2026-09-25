@@ -1,5 +1,6 @@
 from django.contrib.auth.models import Group, User
 from django.test import RequestFactory, TestCase
+from unittest.mock import patch
 
 from analytics.models import AuditLog
 from analytics.services.audit_service import create_audit_log, infer_user_role
@@ -61,3 +62,17 @@ class AuditServiceTests(TestCase):
 		self.assertEqual(log.username, 'SYSTEM')
 		self.assertEqual(log.user_role, 'System')
 		self.assertEqual(log.ip_address, '127.0.0.1')
+
+	def test_create_audit_log_does_not_break_request_when_write_fails(self):
+		with patch('analytics.services.audit_service.AuditLog.objects.create', side_effect=RuntimeError('database unavailable')):
+			log = create_audit_log(
+				user=None,
+				username='failed-login',
+				activity='user',
+				action='login',
+				entity_type='User',
+				entity_id=0,
+				entity_name='failed-login',
+			)
+
+		self.assertIsNone(log)

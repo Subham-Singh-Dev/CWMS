@@ -8,9 +8,13 @@ Author note: Business views should call create_audit_log but should not fail har
 metadata (like IP) is missing.
 """
 
+import logging
+
 from analytics.models import AuditLog
 from django.core.cache import cache
 from config.cache_utils import delete_pattern
+
+logger = logging.getLogger(__name__)
 
 
 def infer_user_role(user):
@@ -53,20 +57,26 @@ def create_audit_log(
         else:
             ip_address = request.META.get('REMOTE_ADDR')
 
-    log = AuditLog.objects.create(
-        user=user,
-        username=username or 'SYSTEM',
-        user_role=infer_user_role(user),
-        activity=activity,
-        action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        entity_name=entity_name,
-        details=details,
-        ip_address=ip_address,
-        status=status,
-        error_message=error_message,
-    )
+    try:
+        log = AuditLog.objects.create(
+            user=user,
+            username=username or 'SYSTEM',
+            user_role=infer_user_role(user),
+            activity=activity,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_name=entity_name,
+            details=details,
+            ip_address=ip_address,
+            status=status,
+            error_message=error_message,
+        )
+    except Exception:
+        logger.exception(
+            "Audit log write failed for %s %s", action, entity_type
+        )
+        return None
 
     # NOTE: cache invalidation moved out of audit log write path to avoid
     # unnecessary busting of activity caches on every audit entry.
